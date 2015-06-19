@@ -8,6 +8,7 @@
 #include "WCSimWCDigitizerSK.hh"
 #include "WCSimWCTriggerNHits.hh"
 #include "WCSimWCTriggerNHits2.hh"
+#include "WCSimWCTriggerNHitsThenITC.hh"
 #include "WCSimWCAddDarkNoise.hh"
 #include "WCSimWCPMT.hh"
 #include "WCSimDetectorConstruction.hh"
@@ -83,6 +84,10 @@ WCSimEventAction::WCSimEventAction(WCSimRunAction* myRun,
     }
     else if(TriggerChoice == "NHits2") {
       WCSimWCTriggerNHits2* WCTM = new WCSimWCTriggerNHits2("WCReadout", detectorConstructor, DAQMessenger);
+      DMman->AddNewModule(WCTM);
+    }
+    else if(TriggerChoice == "NHitsThenITC") {
+      WCSimWCTriggerNHitsThenITC* WCTM = new WCSimWCTriggerNHitsThenITC("WCReadout", detectorConstructor, DAQMessenger);
       DMman->AddNewModule(WCTM);
     }
   }//not SKI_SKDETSIM

@@ -4,6 +4,7 @@
 #include "G4UImessenger.hh"
 #include "G4UIcmdWithAString.hh"
 #include "G4UIcmdWithAnInteger.hh"
+#include "G4UIcmdWithADouble.hh"
 #include "G4UIdirectory.hh"
 
 class G4UIcommand;
@@ -41,10 +42,19 @@ private:
 
   G4UIdirectory*        NHitsTriggerDir;
   G4UIcmdWithAnInteger* NHitsTriggerThreshold;
-  G4int                 StoreSetNHitsThreshold;
+  G4int                 StoreNHitsThreshold;
   G4UIcmdWithAnInteger* NHitsTriggerWindow;
-  G4int                 StoreSetNHitsWindow;
+  G4int                 StoreNHitsWindow;
 
+  G4UIdirectory*        ITCRatioTriggerDir;
+  G4UIcmdWithADouble*   ITCRatioTriggerThreshold;
+  G4double              StoreITCRatioTriggerThreshold;
+  G4UIcmdWithAnInteger* ITCRatioTriggerSmallWindow;
+  G4int                 StoreITCRatioTriggerSmallWindow;
+  G4UIcmdWithAnInteger* ITCRatioTriggerLargeWindowLow;
+  G4int                 StoreITCRatioTriggerLargeWindowLow;
+  G4UIcmdWithAnInteger* ITCRatioTriggerLargeWindowHigh;
+  G4int                 StoreITCRatioTriggerLargeWindowHigh;
 };
 
 #endif

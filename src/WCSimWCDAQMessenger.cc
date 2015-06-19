@@ -34,12 +34,14 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger()
   TriggerChoice->SetGuidance("Available choices are:\n"
 			     "NHits\n"
 			     "NHits2\n"
+			     "NHitsThenITC\n"
 			     "SKI_SKDETSIM (combined trigger & digitization (therefore ignores /DAQ/Digitization); buggy) \n"
 			     );
   TriggerChoice->SetParameterName("Trigger", false);
   TriggerChoice->SetCandidates(
 			       "NHits "
 			       "NHits2 "
+			       "NHitsThenITC "
 			       "SKI_SKDETSIM "
 			       );
   TriggerChoice->AvailableForStates(G4State_PreInit, G4State_Idle);
@@ -52,13 +54,41 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger()
   NHitsTriggerThreshold->SetGuidance("Set the NHits trigger threshold");
   NHitsTriggerThreshold->SetParameterName("NHitsThreshold",true);
   NHitsTriggerThreshold->SetDefaultValue(25);
-  StoreSetNHitsThreshold = 25;
+  StoreNHitsThreshold = 25;
 
   NHitsTriggerWindow = new G4UIcmdWithAnInteger("/DAQ/TriggerNHits/Window", this);
   NHitsTriggerWindow->SetGuidance("Set the NHits trigger window (in ns)");
   NHitsTriggerWindow->SetParameterName("NHitsWindow",true);
   NHitsTriggerWindow->SetDefaultValue(200);
-  StoreSetNHitsWindow = 200;
+  StoreNHitsWindow = 200;
+
+  //ITC Ratio trigger specifc options
+  ITCRatioTriggerDir = new G4UIdirectory("/DAQ/TriggerITCRatio/");
+  ITCRatioTriggerDir->SetGuidance("Commands specific to the ITCRatio trigger");
+  
+  ITCRatioTriggerThreshold = new G4UIcmdWithADouble("/DAQ/TriggerITCRatio/Threshold", this);
+  ITCRatioTriggerThreshold->SetGuidance("Set the ITCRatio trigger threshold");
+  ITCRatioTriggerThreshold->SetParameterName("ITCRatioThreshold",true);
+  ITCRatioTriggerThreshold->SetDefaultValue(0.3);
+  StoreITCRatioTriggerThreshold = 0.3;
+
+  ITCRatioTriggerSmallWindow = new G4UIcmdWithAnInteger("/DAQ/TriggerITCRatio/SmallWindow", this);
+  ITCRatioTriggerSmallWindow->SetGuidance("Set the ITCRatio small trigger window (in ns) i.e. for the numerator");
+  ITCRatioTriggerSmallWindow->SetParameterName("ITCRatioSmallWindow",true);
+  ITCRatioTriggerSmallWindow->SetDefaultValue(200);
+  StoreITCRatioTriggerSmallWindow = 200;
+
+  ITCRatioTriggerLargeWindowLow = new G4UIcmdWithAnInteger("/DAQ/TriggerITCRatio/LargeWindowLow", this);
+  ITCRatioTriggerLargeWindowLow->SetGuidance("Set the ITCRatio large trigger window low edge (in ns) i.e. for the denominator");
+  ITCRatioTriggerLargeWindowLow->SetParameterName("ITCRatioLargeWindowLow",true);
+  ITCRatioTriggerLargeWindowLow->SetDefaultValue(200);
+  StoreITCRatioTriggerLargeWindowLow = 200;
+
+  ITCRatioTriggerLargeWindowHigh = new G4UIcmdWithAnInteger("/DAQ/TriggerITCRatio/LargeWindowHigh", this);
+  ITCRatioTriggerLargeWindowHigh->SetGuidance("Set the ITCRatio large trigger window high edge (in ns) i.e. for the denominator");
+  ITCRatioTriggerLargeWindowHigh->SetParameterName("ITCRatioLargeWindowHigh",true);
+  ITCRatioTriggerLargeWindowHigh->SetDefaultValue(1000);
+  StoreITCRatioTriggerLargeWindowHigh = 1000;
 }
 
 WCSimWCDAQMessenger::~WCSimWCDAQMessenger()
@@ -66,6 +96,11 @@ WCSimWCDAQMessenger::~WCSimWCDAQMessenger()
   delete NHitsTriggerDir;
   delete NHitsTriggerThreshold;
   delete NHitsTriggerWindow;
+
+  delete ITCRatioTriggerThreshold;
+  delete ITCRatioTriggerSmallWindow;
+  delete ITCRatioTriggerLargeWindowLow;
+  delete ITCRatioTriggerLargeWindowHigh;
 
   delete DigitizerChoice;
   delete TriggerChoice;
@@ -86,13 +121,31 @@ void WCSimWCDAQMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
     G4cout << "Trigger choice set to " << newValue << G4endl;
     StoreTriggerChoice = newValue;
   }
+
   else if (command == NHitsTriggerThreshold) {
     G4cout << "NHits trigger threshold set to " << newValue << G4endl;
-    StoreSetNHitsThreshold = NHitsTriggerThreshold->GetNewIntValue(newValue);
+    StoreNHitsThreshold = NHitsTriggerThreshold->GetNewIntValue(newValue);
   }
   else if (command == NHitsTriggerWindow) {
     G4cout << "NHits trigger window set to " << newValue << G4endl;
-    StoreSetNHitsWindow = NHitsTriggerWindow->GetNewIntValue(newValue);
+    StoreNHitsWindow = NHitsTriggerWindow->GetNewIntValue(newValue);
+  }
+
+  else if(command == ITCRatioTriggerThreshold) {
+    G4cout << "ITC ratio threshold set to " << newValue << G4endl;
+    StoreITCRatioTriggerThreshold = ITCRatioTriggerThreshold->GetNewDoubleValue(newValue);
+  }
+  else if(command == ITCRatioTriggerSmallWindow) {
+    G4cout << "ITC ratio small trigger window set to " << newValue << G4endl;
+    StoreITCRatioTriggerSmallWindow = ITCRatioTriggerSmallWindow->GetNewIntValue(newValue);
+  }
+  else if(command == ITCRatioTriggerLargeWindowLow) {
+    G4cout << "ITC ratio large trigger window low edge set to " << newValue << G4endl;
+    StoreITCRatioTriggerLargeWindowLow = ITCRatioTriggerLargeWindowLow->GetNewIntValue(newValue);
+  }
+  else if(command == ITCRatioTriggerLargeWindowHigh) {
+    G4cout << "ITC ratio large trigger window high edge set to " << newValue << G4endl;
+    StoreITCRatioTriggerLargeWindowHigh = ITCRatioTriggerLargeWindowHigh->GetNewIntValue(newValue);
   }
 }
 
@@ -108,10 +161,20 @@ void WCSimWCDAQMessenger::TellEventAction()
 void WCSimWCDAQMessenger::TellTrigger()
 {
   G4cout << "Passing Trigger options to the trigger class instance" << G4endl;
-  WCSimTrigger->SetNHitsThreshold(StoreSetNHitsThreshold);
-  G4cout << "\tNHits trigger threshold set to " << StoreSetNHitsThreshold << G4endl;
-  WCSimTrigger->SetNHitsWindow(StoreSetNHitsWindow);
-  G4cout << "\tNHits trigger window set to " << StoreSetNHitsWindow << G4endl;
+
+  WCSimTrigger->SetNHitsThreshold(StoreNHitsThreshold);
+  G4cout << "\tNHits trigger threshold set to " << StoreNHitsThreshold << G4endl;
+  WCSimTrigger->SetNHitsWindow(StoreNHitsWindow);
+  G4cout << "\tNHits trigger window set to " << StoreNHitsWindow << G4endl;
+
+  WCSimTrigger->SetITCRatioThreshold(StoreITCRatioTriggerThreshold);
+  G4cout << "\tITC ratio threshold set to " << StoreITCRatioTriggerThreshold << G4endl;
+  WCSimTrigger->SetITCRatioSmallWindow(StoreITCRatioTriggerSmallWindow);
+  G4cout << "\tITC ratio small window set to " << StoreITCRatioTriggerSmallWindow << G4endl;
+  WCSimTrigger->SetITCRatioLargeWindowLow(StoreITCRatioTriggerLargeWindowLow);
+  G4cout << "\tITC ratio large window low edge set to " << StoreITCRatioTriggerLargeWindowLow << G4endl;
+  WCSimTrigger->SetITCRatioLargeWindowHigh(StoreITCRatioTriggerLargeWindowHigh);
+  G4cout << "\tITC ratio large window high edge set to " << StoreITCRatioTriggerLargeWindowHigh << G4endl;
 }
 
 void WCSimWCDAQMessenger::TellDigitizer()

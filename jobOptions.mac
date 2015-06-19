@@ -23,3 +23,8 @@
 /DAQ/TriggerNHits/Threshold 25
 # control the NHits trigger window (ns)
 /DAQ/TriggerNHits/Window 200
+#control the ITC ratio parameters. ITC ratio is (nhits in small window) / (nhits in large window)
+/DAQ/TriggerITCRatio/Threshold 0.3
+/DAQ/TriggerITCRatio/SmallWindow 200
+/DAQ/TriggerITCRatio/LargeWindowLow 200
+/DAQ/TriggerITCRatio/LargeWindowHigh 1000
