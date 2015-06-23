@@ -9,6 +9,8 @@
 #include "G4UIcmdWithADouble.hh"
 #include "G4UIcmdWithAnInteger.hh"
 
+#include <string>
+
 WCSimWCDAQMessenger::WCSimWCDAQMessenger()
 {
   WCSimDAQDir = new G4UIdirectory("/DAQ/");
@@ -45,7 +47,23 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger()
 			       "SKI_SKDETSIM "
 			       );
   TriggerChoice->AvailableForStates(G4State_PreInit, G4State_Idle);
-  
+
+  //Save failure trigger specific options
+  SaveFailuresTriggerDir = new G4UIdirectory("/DAQ/TriggerSaveFailures/");
+  SaveFailuresTriggerDir->SetGuidance("Commands specific to the Save Failures trigger");
+
+  SaveFailuresTriggerMode = new G4UIcmdWithAnInteger("/DAQ/TriggerSaveFailures/Mode", this);
+  SaveFailuresTriggerMode->SetGuidance("0: save only triggered events; 1: save both triggered and failed events; 2: save only failed events");
+  SaveFailuresTriggerMode->SetParameterName("SaveFailuresMode",true);
+  SaveFailuresTriggerMode->SetDefaultValue(0);
+  StoreSaveFailuresMode = 0;
+
+  SaveFailuresTriggerTime = new G4UIcmdWithADouble("/DAQ/TriggerSaveFailures/TriggerTime", this);
+  SaveFailuresTriggerTime->SetGuidance("The trigger time for the events which failed other triggers");
+  SaveFailuresTriggerTime->SetParameterName("SaveFailuresTime",true);
+  SaveFailuresTriggerTime->SetDefaultValue(100);
+  StoreSaveFailuresTime = 100;
+
   //NHits trigger specifc options
   NHitsTriggerDir = new G4UIdirectory("/DAQ/TriggerNHits/");
   NHitsTriggerDir->SetGuidance("Commands specific to the NHits trigger");
@@ -93,6 +111,10 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger()
 
 WCSimWCDAQMessenger::~WCSimWCDAQMessenger()
 {
+  delete SaveFailuresTriggerDir;
+  delete SaveFailuresTriggerMode;
+  delete SaveFailuresTriggerTime;
+
   delete NHitsTriggerDir;
   delete NHitsTriggerThreshold;
   delete NHitsTriggerWindow;
@@ -122,6 +144,28 @@ void WCSimWCDAQMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
     StoreTriggerChoice = newValue;
   }
 
+  //Save failures "trigger"
+  else if (command == SaveFailuresTriggerMode) {
+    StoreSaveFailuresMode = SaveFailuresTriggerMode->GetNewIntValue(newValue);
+    std::string failuremode;
+    if(StoreSaveFailuresMode == 0)
+      failuremode = "Saving only triggered events";
+    else if(StoreSaveFailuresMode == 1)
+      failuremode = "Saving both triggered and failed events";
+    else if(StoreSaveFailuresMode == 2)
+      failuremode = "Saving only failed events";
+    else {
+      G4cerr << "Unknown value of /DAQ/TriggerSaveFailures/Mode " << StoreSaveFailuresMode << " Exiting..." << G4endl;
+      exit(-1);
+    }      
+    G4cout << failuremode << G4endl;
+  }
+  else if (command == SaveFailuresTriggerTime) {
+    G4cout << "Trigger time for events which fail all triggers will be set to " << newValue << G4endl;
+    StoreSaveFailuresTime = SaveFailuresTriggerTime->GetNewDoubleValue(newValue);
+  }
+
+  //NHits trigger
   else if (command == NHitsTriggerThreshold) {
     G4cout << "NHits trigger threshold set to " << newValue << G4endl;
     StoreNHitsThreshold = NHitsTriggerThreshold->GetNewIntValue(newValue);
@@ -131,6 +175,7 @@ void WCSimWCDAQMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
     StoreNHitsWindow = NHitsTriggerWindow->GetNewIntValue(newValue);
   }
 
+  //ITC ratio trigger
   else if(command == ITCRatioTriggerThreshold) {
     G4cout << "ITC ratio threshold set to " << newValue << G4endl;
     StoreITCRatioTriggerThreshold = ITCRatioTriggerThreshold->GetNewDoubleValue(newValue);
@@ -162,8 +207,20 @@ void WCSimWCDAQMessenger::TellTrigger()
 {
   G4cout << "Passing Trigger options to the trigger class instance" << G4endl;
 
+  WCSimTrigger->SetSaveFailuresMode(StoreSaveFailuresMode);
+  G4cout << ((StoreSaveFailuresMode) ? "Saving only gates which fail all triggers" : "Saving all events") << G4endl;
+  WCSimTrigger->SetSaveFailuresTime(StoreSaveFailuresTime);
+  G4cout << "Trigger time for events which fail all triggers will be set to " << StoreSaveFailuresTime << G4endl;
+
   WCSimTrigger->SetNHitsThreshold(StoreNHitsThreshold);
-  G4cout << "\tNHits trigger threshold set to " << StoreNHitsThreshold << G4endl;
+  std::string failuremode;
+  if(StoreNHitsThreshold == 0)
+    failuremode = "Saving only triggered events";
+  else if(StoreNHitsThreshold == 1)
+    failuremode = "Saving both triggered and failed events";
+  else if(StoreNHitsThreshold == 2)
+    failuremode = "Saving only failed events";
+  G4cout << "\t" << failuremode << G4endl;
   WCSimTrigger->SetNHitsWindow(StoreNHitsWindow);
   G4cout << "\tNHits trigger window set to " << StoreNHitsWindow << G4endl;
 

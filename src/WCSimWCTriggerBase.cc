@@ -181,8 +181,7 @@ void WCSimWCTriggerBase::AlgNHits(WCSimWCDigitsCollection* WCDCPMT, bool remove_
   
   //call FillDigitsCollection() if at least one trigger was issued
   G4cout << "Found " << ntrig << " NHit triggers" << G4endl;
-  if(ntrig)
-    FillDigitsCollection(WCDCPMT, remove_hits, this_triggerType);
+  FillDigitsCollection(WCDCPMT, remove_hits, this_triggerType);
 }
 
 void WCSimWCTriggerBase::AlgNHitsThenITC(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits)
@@ -320,12 +319,28 @@ void WCSimWCTriggerBase::AlgNHitsThenITC(WCSimWCDigitsCollection* WCDCPMT, bool 
   
   //call FillDigitsCollection() if at least one trigger was issued
   G4cout << "Found " << ntrig << " NHitThenITC triggers" << G4endl;
-  if(ntrig)
-    FillDigitsCollection(WCDCPMT, remove_hits, kTriggerUndefined);
+  FillDigitsCollection(WCDCPMT, remove_hits, kTriggerUndefined);
 }
 
 void WCSimWCTriggerBase::FillDigitsCollection(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, TriggerType_t save_triggerType)
 {
+
+  //saveFailuresMode = 0 - save only triggered events
+  //saveFailuresMode = 1 - save both triggered & not triggered events
+  //saveFailuresMode = 2 - save only not triggered events
+  if(TriggerTimes.size()) {
+    if(saveFailuresMode == 2)
+      return;
+  }
+  else {
+    if(saveFailuresMode == 0)
+      return;
+    TriggerTypes.push_back(kTriggerFailure);
+    TriggerTimes.push_back(saveFailuresTime);
+    TriggerInfos.push_back(std::vector<Float_t>(1, -1));
+    save_triggerType = kTriggerFailure;
+  }
+
   WCSimPMTObject * PMT = myDetector->GetPMTPointer("glassFaceWCPMT"); //for hit time smearing
 
   //Loop over trigger times
