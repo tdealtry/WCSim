@@ -62,6 +62,12 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger()
   NHitsTriggerWindow->SetDefaultValue(200);
   StoreNHitsWindow = 200;
 
+  NHitsTriggerAdjustForNoise = new G4UIcmdWithABool("/DAQ/TriggerNHits/AdjustForNoise", this);
+  NHitsTriggerAdjustForNoise->SetGuidance("Adjust the NHits trigger threshold automatically dependent on the average noise rate");
+  NHitsTriggerAdjustForNoise->SetParameterName("NHitsAdjustForNoise",true);
+  NHitsTriggerAdjustForNoise->SetDefaultValue(false);
+  StoreNHitsAdjustForNoise = false;
+
   //ITC Ratio trigger specifc options
   ITCRatioTriggerDir = new G4UIdirectory("/DAQ/TriggerITCRatio/");
   ITCRatioTriggerDir->SetGuidance("Commands specific to the ITCRatio trigger");
@@ -96,6 +102,7 @@ WCSimWCDAQMessenger::~WCSimWCDAQMessenger()
   delete NHitsTriggerDir;
   delete NHitsTriggerThreshold;
   delete NHitsTriggerWindow;
+  delete NHitsTriggerAdjustForNoise;
 
   delete ITCRatioTriggerThreshold;
   delete ITCRatioTriggerSmallWindow;
@@ -129,6 +136,11 @@ void WCSimWCDAQMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
   else if (command == NHitsTriggerWindow) {
     G4cout << "NHits trigger window set to " << newValue << G4endl;
     StoreNHitsWindow = NHitsTriggerWindow->GetNewIntValue(newValue);
+  }
+  else if (command == NHitsTriggerAdjustForNoise) {
+    StoreNHitsAdjustForNoise = NHitsTriggerAdjustForNoise->GetNewBooleanValue(newValue);
+    if(StoreNHitsAdjustForNoise)
+      G4cout << "\tWill adjust NHits trigger threshold using average dark noise rate" << G4endl;
   }
 
   else if(command == ITCRatioTriggerThreshold) {
@@ -166,6 +178,9 @@ void WCSimWCDAQMessenger::TellTrigger()
   G4cout << "\tNHits trigger threshold set to " << StoreNHitsThreshold << G4endl;
   WCSimTrigger->SetNHitsWindow(StoreNHitsWindow);
   G4cout << "\tNHits trigger window set to " << StoreNHitsWindow << G4endl;
+  WCSimTrigger->SetNHitsAdjustForNoise(StoreNHitsAdjustForNoise);
+  if(StoreNHitsAdjustForNoise)
+    G4cout << "\tWill adjust NHits trigger threshold using average dark noise rate" << G4endl;
 
   WCSimTrigger->SetITCRatioThreshold(StoreITCRatioTriggerThreshold);
   G4cout << "\tITC ratio threshold set to " << StoreITCRatioTriggerThreshold << G4endl;

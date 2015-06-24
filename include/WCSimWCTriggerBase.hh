@@ -36,13 +36,14 @@ public:
 
   void SetNHitsThreshold         (G4int threshold)    { nhitsThreshold = threshold; }
   void SetNHitsWindow            (G4int window)       { nhitsWindow = window; }
+  void SetNHitsAdjustForNoise    (G4int adjust)       { nhitsAdjustForNoise = adjust; }
   void SetITCRatioSmallWindow    (G4int window)       { itcSmallWindow = window; }
   void SetITCRatioLargeWindowLow (G4int window)       { itcLargeWindowLow = window; }
   void SetITCRatioLargeWindowHigh(G4int window)       { itcLargeWindowHigh = window; }
   void SetITCRatioThreshold      (G4double threshold) { itcRatioThreshold = threshold; }
 
 
-
+  void SetDarkRate(double idarkrate){ PMTDarkRate = idarkrate; }
   virtual void SetPMTSize(G4float /*inputSize*/) {}; //function used in old class (WCSimWCDigitizer), called in WCSimEventAction
 
 protected:
@@ -66,6 +67,7 @@ private:
 
   G4int    nhitsThreshold;
   G4int    nhitsWindow;
+  G4bool   nhitsAdjustForNoise;
   G4int    itcSmallWindow;
   G4int    itcLargeWindowLow;
   G4int    itcLargeWindowHigh;
@@ -80,7 +82,7 @@ private:
   static const double eventgatedown; // ns
   static const double LongTime; // ns
 
-
+  double PMTDarkRate;
 };
 
 #endif

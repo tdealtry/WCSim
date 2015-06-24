@@ -23,6 +23,8 @@
 /DAQ/TriggerNHits/Threshold 25
 # control the NHits trigger window (ns)
 /DAQ/TriggerNHits/Window 200
+#automatically adjust the NHits threshold depending on the average noise occupancy during the trigger window
+/DAQ/TriggerNHits/AdjustForNoise false
 #control the ITC ratio parameters. ITC ratio is (nhits in small window) / (nhits in large window)
 /DAQ/TriggerITCRatio/Threshold 0.3
 /DAQ/TriggerITCRatio/SmallWindow 200

@@ -45,6 +45,8 @@ private:
   G4int                 StoreNHitsThreshold;
   G4UIcmdWithAnInteger* NHitsTriggerWindow;
   G4int                 StoreNHitsWindow;
+  G4UIcmdWithABool*     NHitsTriggerAdjustForNoise;
+  G4bool                StoreNHitsAdjustForNoise;
 
   G4UIdirectory*        ITCRatioTriggerDir;
   G4UIcmdWithADouble*   ITCRatioTriggerThreshold;

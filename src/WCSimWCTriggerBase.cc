@@ -47,8 +47,24 @@ WCSimWCTriggerBase::WCSimWCTriggerBase(G4String name,
     DAQMessenger->TellMeAboutTheTrigger(this);
     DAQMessenger->TellTrigger();
   }
-}
 
+  if(nhitsAdjustForNoise) {
+    int npmts = GetTotalNumPmts();
+    double trigger_window_seconds = nhitsWindow * 1E-9;
+    double dark_rate_Hz = PMTDarkRate * 1000;
+    double average_occupancy = dark_rate_Hz * trigger_window_seconds * npmts;
+
+    G4cout << "Average number of PMTs in detector active in a " << nhitsWindow
+	 << "ns window with a dark noise rate of " << PMTDarkRate
+	 << "kHz is " << average_occupancy
+	   << " (" << npmts << " total PMTs)"
+	 << G4endl;
+    G4cout << "Updating the NHits threshold, from " << nhitsThreshold
+	   << " to " << nhitsThreshold + round(average_occupancy) << G4endl;
+    nhitsThreshold += round(average_occupancy);
+  }
+}
+  
 WCSimWCTriggerBase::~WCSimWCTriggerBase(){
 }
 
