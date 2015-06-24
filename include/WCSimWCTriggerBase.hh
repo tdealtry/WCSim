@@ -34,6 +34,8 @@ public:
   TriggerType_t        GetTriggerType(int i) { return TriggerTypes[i];}
   std::vector<Float_t> GetTriggerInfo(int i) { return TriggerInfos[i];}
 
+  void SetSaveFailuresMode       (G4int mode )        { saveFailuresMode = mode; }
+  void SetSaveFailuresTime       (G4double time )     { saveFailuresTime = time; }
   void SetNHitsThreshold         (G4int threshold)    { nhitsThreshold = threshold; }
   void SetNHitsWindow            (G4int window)       { nhitsWindow = window; }
   void SetNHitsAdjustForNoise    (G4int adjust)       { nhitsAdjustForNoise = adjust; }
@@ -50,8 +52,8 @@ protected:
 
   virtual void DoTheWork(WCSimWCDigitsCollection* WCDCPMT) = 0; //this should call the trigger algorithms, and handle any temporary DigitsCollection's
   //these are the algorithms that perform triggering
-  void AlgNHits       (WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, bool test=false);
-  void AlgNHitsThenITC(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits);
+  void AlgNHits            (WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, bool test=false);
+  void AlgNHitsThenITC     (WCSimWCDigitsCollection* WCDCPMT, bool remove_hits);
 
   WCSimWCDigitsCollection*   DigitsCollection;
   std::map<int,int>          DigiHitMap; // need to check if a hit already exists..
@@ -65,6 +67,8 @@ protected:
 
 private:
 
+  G4int    saveFailuresMode;
+  G4double saveFailuresTime;
   G4int    nhitsThreshold;
   G4int    nhitsWindow;
   G4bool   nhitsAdjustForNoise;

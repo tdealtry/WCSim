@@ -19,6 +19,10 @@
 # set at least one (both to be sure) to SKI_SKDETSIM if you want to use the old combined Digitization & Trigger classes
 /DAQ/Digitizer SKIV
 /DAQ/Trigger NHits
+#do we want to save only triggered events (mode 0), both triggered events & failed events (mode 1), or only failed events (mode 2)?
+/DAQ/TriggerSaveFailures/Mode 0
+#what trigger time to use for the failed events?
+/DAQ/TriggerSaveFailures/TriggerTime 100
 # control the NHits trigger threshold
 /DAQ/TriggerNHits/Threshold 25
 # control the NHits trigger window (ns)

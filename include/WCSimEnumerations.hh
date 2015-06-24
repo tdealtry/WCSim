@@ -8,7 +8,8 @@ typedef enum ETriggerType {
   kTriggerNHits,
   kTriggerNHitsSKDETSIM,
   kTriggerNHitsTest,
-  kTriggerITCRatio
+  kTriggerITCRatio,
+  kTriggerFailure
 } TriggerType_t;
 
 class WCSimEnumerations
@@ -29,6 +30,9 @@ public:
       break;
     case (kTriggerITCRatio) :
       return "ITCRatio";
+      break;
+    case (kTriggerFailure) :
+      return "No_trigger_passed";
       break;
     default:
       return "";
