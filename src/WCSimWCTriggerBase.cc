@@ -48,8 +48,16 @@ WCSimWCTriggerBase::WCSimWCTriggerBase(G4String name,
     DAQMessenger->TellTrigger();
   }
 
-  if(nhitsAdjustForNoise) {
-    int npmts = GetTotalNumPmts();
+  digitizeCalled = false;
+}
+  
+WCSimWCTriggerBase::~WCSimWCTriggerBase(){
+}
+
+void WCSimWCTriggerBase::Digitize()
+{
+  if(nhitsAdjustForNoise && !digitizeCalled) {
+    int npmts = this->myDetector->GetTotalNumPmts();
     double trigger_window_seconds = nhitsWindow * 1E-9;
     double dark_rate_Hz = PMTDarkRate * 1000;
     double average_occupancy = dark_rate_Hz * trigger_window_seconds * npmts;
@@ -62,14 +70,9 @@ WCSimWCTriggerBase::WCSimWCTriggerBase(G4String name,
     G4cout << "Updating the NHits threshold, from " << nhitsThreshold
 	   << " to " << nhitsThreshold + round(average_occupancy) << G4endl;
     nhitsThreshold += round(average_occupancy);
+    digitizeCalled = true;
   }
-}
-  
-WCSimWCTriggerBase::~WCSimWCTriggerBase(){
-}
 
-void WCSimWCTriggerBase::Digitize()
-{
   //Input is collection of all digitized hits that passed the threshold
   //Output is all digitized hits which pass the trigger
   

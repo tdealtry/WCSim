@@ -233,6 +233,9 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
     //clear old info inside the digitizer
     WCTM->ReInitialize();
 
+    //tell it the dark noise rate (for calculating the average dark occupancy -> can adjust the NHits threshold)
+    WCTM->SetDarkRate(WCDNM->GetDarkRate());
+
     //Apply the trigger
     // This takes the digits, and places them into trigger gates
     // Also throws away digits not contained in an trigger gate

@@ -87,6 +87,7 @@ private:
   static const double LongTime; // ns
 
   double PMTDarkRate;
+  bool   digitizeCalled;
 };
 
 #endif

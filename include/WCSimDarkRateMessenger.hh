@@ -18,17 +18,16 @@ class WCSimDarkRateMessenger: public G4UImessenger
 public:
   WCSimDarkRateMessenger(WCSimWCDigitizer*);
   WCSimDarkRateMessenger(WCSimWCAddDarkNoise*);
-  WCSimDarkRateMessenger(WCSimWCTriggerBase*);
-
 
   ~WCSimDarkRateMessenger();
 
   void SetNewValue(G4UIcommand* command, G4String newValue);
 
 private:
+  void Initalise();
+
   WCSimWCDigitizer* WCSimDigitize;
   WCSimWCAddDarkNoise* WCSimAddDarkNoise;
-  WCSimWCTriggerBase* WCSimTrigger;
 
   G4UIdirectory* WCSimDir;
   G4UIcmdWithADoubleAndUnit* SetFrequency;

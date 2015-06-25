@@ -177,14 +177,14 @@ void WCSimWCDAQMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
     G4cout << "NHits trigger threshold set to " << newValue << G4endl;
     StoreNHitsThreshold = NHitsTriggerThreshold->GetNewIntValue(newValue);
   }
+  else if (command == NHitsTriggerAdjustForNoise) {
+    StoreNHitsAdjustForNoise = NHitsTriggerAdjustForNoise->GetNewBoolValue(newValue);
+    if(StoreNHitsAdjustForNoise)
+      G4cout << "Will adjust NHits trigger threshold using average dark noise rate" << G4endl;
+  }
   else if (command == NHitsTriggerWindow) {
     G4cout << "NHits trigger window set to " << newValue << G4endl;
     StoreNHitsWindow = NHitsTriggerWindow->GetNewIntValue(newValue);
-  }
-  else if (command == NHitsTriggerAdjustForNoise) {
-    StoreNHitsAdjustForNoise = NHitsTriggerAdjustForNoise->GetNewBooleanValue(newValue);
-    if(StoreNHitsAdjustForNoise)
-      G4cout << "\tWill adjust NHits trigger threshold using average dark noise rate" << G4endl;
   }
 
   //ITC ratio trigger
@@ -220,24 +220,24 @@ void WCSimWCDAQMessenger::TellTrigger()
   G4cout << "Passing Trigger options to the trigger class instance" << G4endl;
 
   WCSimTrigger->SetSaveFailuresMode(StoreSaveFailuresMode);
-  G4cout << ((StoreSaveFailuresMode) ? "Saving only gates which fail all triggers" : "Saving all events") << G4endl;
-  WCSimTrigger->SetSaveFailuresTime(StoreSaveFailuresTime);
-  G4cout << "Trigger time for events which fail all triggers will be set to " << StoreSaveFailuresTime << G4endl;
-
-  WCSimTrigger->SetNHitsThreshold(StoreNHitsThreshold);
   std::string failuremode;
-  if(StoreNHitsThreshold == 0)
+  if(StoreSaveFailuresMode == 0)
     failuremode = "Saving only triggered events";
-  else if(StoreNHitsThreshold == 1)
+  else if(StoreSaveFailuresMode == 1)
     failuremode = "Saving both triggered and failed events";
-  else if(StoreNHitsThreshold == 2)
+  else if(StoreSaveFailuresMode == 2)
     failuremode = "Saving only failed events";
   G4cout << "\t" << failuremode << G4endl;
-  WCSimTrigger->SetNHitsWindow(StoreNHitsWindow);
-  G4cout << "\tNHits trigger window set to " << StoreNHitsWindow << G4endl;
+  WCSimTrigger->SetSaveFailuresTime(StoreSaveFailuresTime);
+  G4cout << "\tTrigger time for events which fail all triggers will be set to " << StoreSaveFailuresTime << G4endl;
+
+  WCSimTrigger->SetNHitsThreshold(StoreNHitsThreshold);
+  G4cout << "\tNHits trigger threshold set to " << StoreNHitsThreshold << G4endl;
   WCSimTrigger->SetNHitsAdjustForNoise(StoreNHitsAdjustForNoise);
   if(StoreNHitsAdjustForNoise)
     G4cout << "\tWill adjust NHits trigger threshold using average dark noise rate" << G4endl;
+  WCSimTrigger->SetNHitsWindow(StoreNHitsWindow);
+  G4cout << "\tNHits trigger window set to " << StoreNHitsWindow << G4endl;
 
   WCSimTrigger->SetITCRatioThreshold(StoreITCRatioTriggerThreshold);
   G4cout << "\tITC ratio threshold set to " << StoreITCRatioTriggerThreshold << G4endl;

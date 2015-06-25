@@ -26,15 +26,6 @@ WCSimDarkRateMessenger::WCSimDarkRateMessenger(WCSimWCAddDarkNoise* darkratepoin
   constructor = 1;
 }
 
-WCSimDarkRateMessenger::WCSimDarkRateMessenger(WCSimWCTriggerBase* darkratepoint)
-  : WCSimTrigger(darkratepoint)
-{
-  Initalise();
-  
-  //inform the DarkRateMessenger which constructor was called   
-  constructor = 2;
-}
-
 void WCSimDarkRateMessenger::Initalise()
 {
   WCSimDir = new G4UIdirectory("/DarkRate/");
@@ -108,10 +99,7 @@ void WCSimDarkRateMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
       WCSimDigitize->SetDarkRate(conversion_to_kHz * SetFrequency->GetNewDoubleValue(newValue));
     else if(constructor == 1)
       WCSimAddDarkNoise->SetDarkRate(conversion_to_kHz * SetFrequency->GetNewDoubleValue(newValue));
-    else if(constructor == 2)
-      WCSimTrigger->SetDarkRate(conversion_to_kHz * SetFrequency->GetNewDoubleValue(newValue));
-    printf("Setting Dark Rate %f\n",conversion_to_kHz * SetFrequency->GetNewDoubleValue(newValue));
-
+    G4cout << "Setting Dark Rate " << conversion_to_kHz * SetFrequency->GetNewDoubleValue(newValue) << G4endl;
   }
 
   if(command == SetConversionRate){
@@ -119,43 +107,47 @@ void WCSimDarkRateMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
       WCSimDigitize->SetConversion(SetConversionRate->GetNewDoubleValue(newValue));
     else if(constructor == 1)
       WCSimAddDarkNoise->SetConversion(SetConversionRate->GetNewDoubleValue(newValue));
-    printf("Setting conversion value %f\n",SetConversionRate->GetNewDoubleValue(newValue));
+    G4cout << "Setting conversion value " << SetConversionRate->GetNewDoubleValue(newValue) << G4endl;
   }
 
   if(command == SetDarkMode){
     if(constructor == 0){
       //      WCSimDigitize->SetDarkMode(SetDarkMode->GetNewDoubleValue(newValue));
       }
-    else if(constructor == 1)
+    else if(constructor == 1) {
       WCSimAddDarkNoise->SetDarkMode(SetDarkMode->GetNewIntValue(newValue));
-    //printf("Setting DarkMode value %f\n",SetDarkMode->GetNewDoubleValue(newValue));
+      G4cout << "Setting DarkMode value " << SetDarkMode->GetNewIntValue(newValue) << G4endl;
+    }
   }
 
   if(command == SetDarkLow){
     if(constructor == 0){
       //      WCSimDigitize->SetDarkLow(SetDarkLow->GetNewDoubleValue(newValue));
     }   
-    else if(constructor == 1)
+    else if(constructor == 1) {
       WCSimAddDarkNoise->SetDarkLow(SetDarkLow->GetNewDoubleValue(newValue));
-    //printf("Setting DarkLow value %f\n",SetDarkLow->GetNewDoubleValue(newValue));
+      G4cout << "Setting DarkLow value " << SetDarkLow->GetNewDoubleValue(newValue) << G4endl;
+    }
   }
 
   if(command == SetDarkHigh){
     if(constructor == 0) {
       //      WCSimDigitize->SetDarkHigh(SetDarkHigh->GetNewDoubleValue(newValue));
     }   
-    else if(constructor == 1)
+    else if(constructor == 1) {
       WCSimAddDarkNoise->SetDarkHigh(SetDarkHigh->GetNewDoubleValue(newValue));
-    //printf("Setting DarkHigh value %f\n",SetDarkHigh->GetNewDoubleValue(newValue));
+      G4cout << "Setting DarkHigh value " << SetDarkHigh->GetNewDoubleValue(newValue) << G4endl;
+    }
   }
 
   if(command == SetDarkWindow){
     if(constructor == 0){
       //      WCSimDigitize->SetDarkWidth(SetDarkWidth->GetNewDoubleValue(newValue));
       }
-    else if(constructor == 1)
+    else if(constructor == 1) {
       WCSimAddDarkNoise->SetDarkWindow(SetDarkWindow->GetNewDoubleValue(newValue));
-    //printf("Setting DarkWidth value %f\n",SetDarkWidth->GetNewDoubleValue(newValue));
+      G4cout << "Setting DarkWidth value " << SetDarkWindow->GetNewDoubleValue(newValue) << G4endl;
+    }
   }
 
 }
