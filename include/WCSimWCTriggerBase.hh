@@ -55,6 +55,9 @@ protected:
   void AlgNHits            (WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, bool test=false);
   void AlgNHitsThenITC     (WCSimWCDigitsCollection* WCDCPMT, bool remove_hits);
 
+  //modify the NHits threshold based on the dark noise rate
+  void AdjustNHitsThresholdForNoise();
+
   WCSimWCDigitsCollection*   DigitsCollection;
   std::map<int,int>          DigiHitMap; // need to check if a hit already exists..
 
@@ -65,13 +68,17 @@ protected:
   WCSimWCDAQMessenger*       DAQMessenger;
   WCSimDetectorConstruction* myDetector;
 
-private:
-
   G4int    saveFailuresMode;
   G4double saveFailuresTime;
   G4int    nhitsThreshold;
   G4int    nhitsWindow;
   G4bool   nhitsAdjustForNoise;
+
+  double PMTDarkRate;
+  bool   digitizeCalled;
+
+private:
+
   G4int    itcSmallWindow;
   G4int    itcLargeWindowLow;
   G4int    itcLargeWindowHigh;
@@ -86,8 +93,6 @@ private:
   static const double eventgatedown; // ns
   static const double LongTime; // ns
 
-  double PMTDarkRate;
-  bool   digitizeCalled;
 };
 
 #endif

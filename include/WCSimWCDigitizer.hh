@@ -35,7 +35,6 @@ public:
   void FindNumberOfGatesFast();
   void DigitizeGate(WCSimWCDigitsCollection* WCHC,G4int G);
   void Digitize();
-  void SetDarkRate(double idarkrate){ PMTDarkRate = idarkrate; }
   void SetConversion(double iconvrate){ ConvRate = iconvrate; }
   ////G4double GetTriggerTime(int i) { return TriggerTimes[i];}
   void SetPMTSize(G4float inputSize) {PMTSize = inputSize;}
@@ -82,7 +81,6 @@ private:
   static const double LongTime; // ns
   static const int GlobalThreshold; //number of hit PMTs within an <=200ns sliding window that decides the global trigger t0
   WCSimDarkRateMessenger *DarkRateMessenger;
-  double PMTDarkRate; // kHz
   double ConvRate; // kHz
 
   G4int triggerhisto[20000]; // for finding t0
