@@ -40,8 +40,9 @@ const double WCSimWCDigitizer::LongTime = 100000.0 ; // ns
 
 
 WCSimWCDigitizer::WCSimWCDigitizer(G4String name,
-				   WCSimDetectorConstruction* myDetector)
-  :WCSimWCTriggerBase(name, myDetector, 0)
+				   WCSimDetectorConstruction* myDetector,
+				   WCSimWCDAQMessenger* daqMessenger)
+  :WCSimWCTriggerBase(name, myDetector, daqMessenger)
 {
   G4String colName = "WCDigitizedCollection";
   this->myDetector = myDetector;
@@ -131,10 +132,6 @@ WCSimWCDigitizer::~WCSimWCDigitizer(){
 
 void WCSimWCDigitizer::Digitize()
 {
-  if(nhitsAdjustForNoise && !digitizeCalled) {
-    AdjustNHitsThresholdForNoise();
-    digitizeCalled = true;
-  }
 
   DigitsCollection = new WCSimWCDigitsCollection ("/WCSim/glassFaceWCPMT",collectionName[0]);
 

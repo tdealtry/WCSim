@@ -72,12 +72,12 @@ protected:
   G4double saveFailuresTime;
   G4int    nhitsThreshold;
   G4int    nhitsWindow;
-  G4bool   nhitsAdjustForNoise;
 
   double PMTDarkRate;
-  bool   digitizeCalled;
 
 private:
+
+  G4bool   nhitsAdjustForNoise;
 
   G4int    itcSmallWindow;
   G4int    itcLargeWindowLow;
@@ -93,6 +93,7 @@ private:
   static const double eventgatedown; // ns
   static const double LongTime; // ns
 
+  bool   digitizeCalled;
 };
 
 #endif

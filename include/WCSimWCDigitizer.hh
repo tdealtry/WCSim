@@ -2,6 +2,7 @@
 #define WCSimWCDigitizer_h 1
 
 #include "WCSimDarkRateMessenger.hh"
+#include "WCSimWCDAQMessenger.hh"
 #include "WCSimDetectorConstruction.hh"
 #include "WCSimWCTriggerBase.hh"
 #include "G4VDigitizerModule.hh"
@@ -17,7 +18,7 @@ class WCSimWCDigitizer : public WCSimWCTriggerBase
 {
 public:
   
-  WCSimWCDigitizer(G4String name, WCSimDetectorConstruction*);
+  WCSimWCDigitizer(G4String name, WCSimDetectorConstruction*, WCSimWCDAQMessenger*);
   ~WCSimWCDigitizer();
 
   // "////" indicates declerations that are no longer required due to WCSimWCTriggerBase inheritance

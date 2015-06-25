@@ -92,9 +92,9 @@ WCSimEventAction::WCSimEventAction(WCSimRunAction* myRun,
     }
   }//not SKI_SKDETSIM
   else {
-      //this is the old SKI joint dark noise, digitizer & trigger from SKDETSIM; buggy
-      WCSimWCDigitizer* WCTM = new WCSimWCDigitizer( "WCReadout", detectorConstructor);
-      DMman->AddNewModule(WCTM);
+    //this is the old SKI joint dark noise, digitizer & trigger from SKDETSIM; buggy
+    WCSimWCDigitizer* WCTM = new WCSimWCDigitizer( "WCReadout", detectorConstructor, DAQMessenger);
+    DMman->AddNewModule(WCTM);
   }
 
 }
