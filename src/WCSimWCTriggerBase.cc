@@ -294,9 +294,9 @@ void WCSimWCTriggerBase::AlgNHitsThenITC(WCSimWCDigitsCollection* WCDCPMT, bool 
     double itc_ratio = (double)n_digits_itc_small / (double)n_digits_itc_large;
     if(!triggerfound && itc_ratio > itcRatioThreshold) {
       ntrig++;
-      //The trigger time is the time of the first hit TEMPORARY
+      //The trigger time is the time of the last hit, in order to be close to the NHits trigger time (i.e. the first hit above the threshold)
       std::sort(digit_times.begin(), digit_times.end());
-      triggertime = digit_times[0];
+      triggertime = digit_times.back();
       triggertime -= (int)triggertime % 5;
       std::vector<Float_t> triggerinfo;
       triggerinfo.push_back(itc_ratio);
