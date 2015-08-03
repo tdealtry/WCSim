@@ -54,6 +54,14 @@ private:
   G4int                 StoreNHitsWindow;
   G4UIcmdWithABool*     NHitsTriggerAdjustForNoise;
   G4bool                StoreNHitsAdjustForNoise;
+
+  G4UIdirectory*        LocalNHitsTriggerDir;
+  G4UIcmdWithAnInteger* LocalNHitsTriggerNeighbours;
+  G4int                 StoreLocalNHitsNeighbours;
+  G4UIcmdWithAnInteger* LocalNHitsTriggerThreshold;
+  G4int                 StoreLocalNHitsThreshold;
+  G4UIcmdWithAnInteger* LocalNHitsTriggerWindow;
+  G4int                 StoreLocalNHitsWindow;
 };
 
 #endif

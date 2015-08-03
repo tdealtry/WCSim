@@ -6,9 +6,10 @@
 typedef enum ETriggerType {
   kTriggerUndefined = -1,
   kTriggerNHits,
+  kTriggerLocalNHits,
   kTriggerNHitsSKDETSIM,
   kTriggerNHitsTest,
-  kTriggerFailure
+  kTriggerFailure // this should always be the last entry (for looping)
 } TriggerType_t;
 
 class WCSimEnumerations
@@ -20,6 +21,9 @@ public:
     switch(t) {
     case (kTriggerNHits) :
       return "NHits";
+      break;
+    case (kTriggerLocalNHits) :
+      return "Local_NHits";
       break;
     case (kTriggerNHitsSKDETSIM) :
       return "NHits_SKDETSIM";

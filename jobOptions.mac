@@ -29,3 +29,9 @@
 /DAQ/TriggerNHits/Window 200
 #automatically adjust the NHits threshold depending on the average noise occupancy during the trigger window
 /DAQ/TriggerNHits/AdjustForNoise false
+# control the number of nearest neighbours to define "local" for the local NHits trigger
+/DAQ/TriggerLocalNHits/Neighbours 50
+# control the local NHits trigger threshold
+/DAQ/TriggerLocalNHits/Threshold 10
+# control the local NHits trigger window (ns)
+/DAQ/TriggerLocalNHits/Window 50

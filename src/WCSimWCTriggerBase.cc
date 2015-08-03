@@ -22,6 +22,9 @@
 #ifndef WCSIMWCTRIGGERBASE_VERBOSE
 //#define WCSIMWCTRIGGERBASE_VERBOSE
 #endif
+#ifndef WCSIMWCTRIGGERBASE_PMT_NEIGHBOURS_VERBOSE
+//#define WCSIMWCTRIGGERBASE_PMT_NEIGHBOURS_VERBOSE
+#endif
 
 const double WCSimWCTriggerBase::offset = 950.0 ; // ns. apply offset to the digit time
 const double WCSimWCTriggerBase::eventgateup = 950.0 ; // ns. save eventgateup ns after the trigger time
@@ -32,7 +35,7 @@ const double WCSimWCTriggerBase::LongTime = 100000.0 ; // ns = 0.1ms. event time
 WCSimWCTriggerBase::WCSimWCTriggerBase(G4String name,
 				       WCSimDetectorConstruction* inDetector,
 				       WCSimWCDAQMessenger* myMessenger)
-  :G4VDigitizerModule(name), myDetector(inDetector)
+  :G4VDigitizerModule(name), myDetector(inDetector), triggerClassName("")
 {
   G4String colName = "WCDigitizedCollection";
   collectionName.push_back(colName);
@@ -74,10 +77,14 @@ void WCSimWCTriggerBase::AdjustNHitsThresholdForNoise()
 
 void WCSimWCTriggerBase::Digitize()
 {
-  if(nhitsAdjustForNoise && !digitizeCalled) {
-    AdjustNHitsThresholdForNoise();
+  if(!digitizeCalled) {
+    if(nhitsAdjustForNoise)
+      AdjustNHitsThresholdForNoise();
+    if(triggerClassName.compare("NHitsThenLocalNHits") == 0)
+      FindAllPMTNearestNeighbours();
     digitizeCalled = true;
   }
+    
 
   //Input is collection of all digitized hits that passed the threshold
   //Output is all digitized hits which pass the trigger
@@ -205,6 +212,178 @@ void WCSimWCTriggerBase::AlgNHits(WCSimWCDigitsCollection* WCDCPMT, bool remove_
   //call FillDigitsCollection() whether any triggers are found or not
   // (what's saved depends on saveFailuresMode)
   FillDigitsCollection(WCDCPMT, remove_hits, this_triggerType);
+}
+
+std::vector<int> WCSimWCTriggerBase::FindPMTNearestNeighbours(int ipmt)
+{
+  if(myPMTs == NULL) {
+    myPMTs = myDetector->Get_Pmts();
+  }
+  WCSimPmtInfo * thisPMT = myPMTs->at(ipmt);
+  int thisTubeID = thisPMT->Get_tubeid();
+  double thisX   = thisPMT->Get_transx();
+  double thisY   = thisPMT->Get_transy();
+  double thisZ   = thisPMT->Get_transz();
+  //ipmt is the position in the vector. Runs 0->NPMTs-1
+  //tubeid is the actual ID of the PMT. Runs 1->NPMTs
+  if((ipmt + 1) != thisTubeID)
+    G4cerr << "PMT ID is not the expected one!"
+	   << " Vector position + 1 " << ipmt+1
+	   << " PMT ID " << thisTubeID << G4endl;
+
+  //loop over ALL the other PMTs & save the distance to the current PMT
+  std::vector< std::pair<double, int> > distances;
+  for(unsigned int i = 0; i < myPMTs->size(); i++) {
+    if(i == (unsigned int)ipmt) continue;
+    WCSimPmtInfo * PMT = myPMTs->at(i);
+    double X   = PMT->Get_transx();
+    double Y   = PMT->Get_transy();
+    double Z   = PMT->Get_transz();
+    double distance = sqrt(((thisX - X) * (thisX - X))
+			   + ((thisY - Y) * (thisY - Y))
+			   + ((thisZ - Z) * (thisZ - Z)));
+    distances.push_back(std::pair<double, int>(distance, PMT->Get_tubeid()));
+  }//ipmt
+
+  //sorts by pair.first -> have a vector of pairs ordered by distance
+  std::sort(distances.begin(), distances.end());
+
+  //get the N nearest neighbours
+  std::vector<int> thisNeighbours;
+  for(int i = 0; i < localNHitsNeighbours; i++) {
+    thisNeighbours.push_back(distances.at(i).second);
+  }
+  
+#ifdef WCSIMWCTRIGGERBASE_PMT_NEIGHBOURS_VERBOSE
+  G4cout << "PMT " << ipmt << " has ID " << thisTubeID
+	 << " position " 
+	 << thisX << " "
+	 << thisY << " "
+	 << thisZ << G4endl;
+#endif
+  return thisNeighbours;
+}
+
+void WCSimWCTriggerBase::FindAllPMTNearestNeighbours()
+{
+  if(myPMTs == NULL) {
+    myPMTs = myDetector->Get_Pmts();
+  }
+  unsigned int npmts = myPMTs->size();
+  for(unsigned int ipmt = 0; ipmt < npmts; ipmt++) {
+    if(ipmt % (npmts/20 + 1) == 0) {
+      G4cout << "WCSimWCTriggerBase::FindAllPMTNearestNeighbours at "
+	     << ipmt / (float)npmts * 100 << "%"
+	     << " (" << ipmt << " out of " << npmts << ")"
+	     << G4endl;
+    }
+    std::vector<int> neighbours = FindPMTNearestNeighbours(ipmt);
+    pmtNeighbours.push_back(neighbours);
+  }
+
+#ifdef WCSIMWCTRIGGERBASE_PMT_NEIGHBOURS_VERBOSE
+  for(unsigned int i = 0; i < pmtNeighbours.size(); i++) {
+    G4cout << "PMT ID " << i << " has neighbours";
+    for(unsigned int j = 0; j < pmtNeighbours.at(i).size(); j++) {
+      G4cout << " " << pmtNeighbours.at(i).at(j);
+    }//j
+    G4cout << G4endl;
+  }//i
+#endif
+}
+
+void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits)
+{
+  //Now we will try to find triggers
+  //loop over PMTs, and Digits in each PMT.  If nhits > Threshhold in a time window, then we have a trigger
+
+  int ntrig = 0;
+  int window_start_time = 0;
+  int window_end_time   = WCSimWCTriggerBase::LongTime - nhitsWindow;
+  int window_step_size  = 5; //step the search window along this amount if no trigger is found
+  float lasthit;
+  std::vector<int> digit_times;
+  bool first_loop = true;
+
+  G4cout << "WCSimWCTriggerBase::AlgNHitsThenLocalNHits. Number of entries in input digit collection: " << WCDCPMT->entries() << G4endl;
+#ifdef WCSIMWCTRIGGERBASE_VERBOSE
+  int temp_total_pe = 0;
+  for (G4int i = 0 ; i < WCDCPMT->entries() ; i++) {
+    temp_total_pe += (*WCDCPMT)[i]->GetTotalPe();
+  }
+  G4cout << "WCSimWCTriggerBase::AlgNHitsThenLocalNHits. " << temp_total_pe << " total p.e. input" << G4endl;
+#endif
+
+  // the upper time limit is set to the final possible full trigger window
+  while(window_start_time <= window_end_time) {
+    int n_digits = 0;
+    float triggertime; //save each digit time, because the trigger time is the time of the first hit above threshold
+    bool triggerfound = false;
+    digit_times.clear();
+    
+    //Loop over each PMT
+    for (G4int i = 0 ; i < WCDCPMT->entries() ; i++) {
+      //int tube=(*WCDCPMT)[i]->GetTubeID();
+      //Loop over each Digit in this PMT
+      for ( G4int ip = 0 ; ip < (*WCDCPMT)[i]->GetTotalPe() ; ip++) {
+	int digit_time = (*WCDCPMT)[i]->GetTime(ip);
+	//hit in trigger window?
+	if(digit_time >= window_start_time && digit_time <= (window_start_time + nhitsWindow)) {
+	  n_digits++;
+	  digit_times.push_back(digit_time);
+	}
+	//G4cout << digit_time << G4endl;
+	//get the time of the last hit (to make the loop shorter)
+	if(first_loop && (digit_time > lasthit))
+	  lasthit = digit_time;
+      }//loop over Digits
+    }//loop over PMTs
+
+    //if over threshold, issue trigger
+    if(n_digits > nhitsThreshold) {
+      ntrig++;
+      //The trigger time is the time of the first hit above threshold
+      std::sort(digit_times.begin(), digit_times.end());
+      triggertime = digit_times[nhitsThreshold];
+      triggertime -= (int)triggertime % 5;
+      TriggerTimes.push_back(triggertime);
+      TriggerTypes.push_back(kTriggerNHits);
+      TriggerInfos.push_back(std::vector<Float_t>(1, n_digits));
+      triggerfound = true;
+    }
+
+#ifdef WCSIMWCTRIGGERBASE_VERBOSE
+    if(n_digits)
+      G4cout << n_digits << " digits found in 200nsec trigger window ["
+	     << window_start_time << ", " << window_start_time + nhitsWindow
+	     << "]. Threshold is: " << nhitsThreshold << G4endl;
+#endif
+
+    //move onto the next go through the timing loop
+    if(triggerfound) {
+      window_start_time = triggertime + WCSimWCTriggerBase::eventgateup;
+    }//triggerfound
+    else {
+      window_start_time += window_step_size;
+    }
+
+    //shorten the loop using the time of the last hit
+    if(first_loop) {
+#ifdef WCSIMWCTRIGGERBASE_VERBOSE
+      G4cout << "Last hit found to be at " << lasthit
+	     << ". Changing window_end_time from " << window_end_time
+	     << " to " << lasthit - (nhitsWindow - 10)
+	     << G4endl;
+#endif
+      window_end_time = lasthit - (nhitsWindow - 10);
+      first_loop = false;
+    }
+  }
+  
+  G4cout << "Found " << ntrig << " NHit triggers" << G4endl;
+  //call FillDigitsCollection() whether any triggers are found or not
+  // (what's saved depends on saveFailuresMode)
+  FillDigitsCollection(WCDCPMT, remove_hits, kTriggerUndefined);
 }
 
 void WCSimWCTriggerBase::FillDigitsCollection(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, TriggerType_t save_triggerType)

@@ -61,6 +61,14 @@ public:
   ///Automatically adjust the NHits threshold based on the average noise occupancy?
   void SetNHitsAdjustForNoise    (G4bool adjust)      { nhitsAdjustForNoise = adjust; }
 
+  // Local NHits options
+  ///Set the number of nearest neighbours to use for 'local' in the Local NHits trigger
+  void SetLocalNHitsNeighbours(G4int neighbours) { localNHitsNeighbours = neighbours; }
+  ///Set the threshold for the Local NHits trigger
+  void SetLocalNHitsThreshold(G4int threshold) { localNHitsThreshold = threshold; }
+  ///Set the time window for the Local NHits trigger
+  void SetLocalNHitsWindow(G4int window) { localNHitsWindow = window; }
+
   // Save trigger failures options
   ///Set the mode for saving failed triggers (0:save only triggered events, 1:save both triggered events & failed events, 2:save only failed events)
   void SetSaveFailuresMode       (G4int mode )        { saveFailuresMode = mode; }
@@ -96,7 +104,30 @@ protected:
    * for testing purposes. Triggers issued in this mode have type kTriggerNHitsTest
    */
   void AlgNHits(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, bool test=false);
+  /**
+   * \brief An NHits then local NHits trigger algorithm
+   *
+   * Looks through the input WCSimWCDigitsCollection and integrates the number of hits in a (specified) time window
+   * If the integral passes above a (specified) threshold, a trigger is issued
+   * Else looks at cuts that are tighter in both (specified) time and (specified) space
+   * If the integral passes above a (specified) threshold, a trigger is issued
+   *
+   * The trigger type is kTriggerNHits or kTriggerLocalNHits
+   *
+   * The trigger time is the time of the first digit above threshold
+   *
+   * The trigger information is the number of hits in the time window (i.e. the number of hits that caused the trigger to fire) (NHits)
+   * and the seed PMT ID (local NHits)
+   */
+  void AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits);
 
+  ///Find the nearest neighbours of a PMT
+  std::vector<int> FindPMTNearestNeighbours(int i);
+  ///Find the nearest neighbours of all PMTs
+  void FindAllPMTNearestNeighbours();
+  std::vector<WCSimPmtInfo*> *    myPMTs;        ///< Vector with the position/orientation of every PMT in the geometry
+  std::vector< std::vector<int> > pmtNeighbours; ///< Vector of vectors that give the nearest neighbour for each PMT
+  
   WCSimWCDigitsCollection*   DigitsCollection; ///< The main output of the class - collection of digits in the trigger window
   std::map<int,int>          DigiHitMap; ///< Keeps track of the PMTs that have been added to the output WCSimWCDigitsCollection
 
@@ -122,9 +153,16 @@ protected:
   G4int  nhitsThreshold;      ///< The threshold for the NHits trigger
   G4int  nhitsWindow;         ///< The time window for the NHits trigger
   G4bool nhitsAdjustForNoise; ///< Automatically adjust the NHits trigger threshold based on the average dark noise rate?
+  //local NHits
+  G4int localNHitsNeighbours; ///< The number of nearest neighbours that defines 'local' in the Local NHits trigger
+  G4int localNHitsThreshold;  ///< The threshold for the Local NHits trigger
+  G4int localNHitsWindow;     ///< The time window for the Local NHits trigger
+
   //Save failures
   G4int    saveFailuresMode; ///< The mode for saving events which don't pass triggers
   G4double saveFailuresTime; ///< The dummy trigger time for failed events
+
+  G4String triggerClassName; ///< Save the name of the trigger class
 
 private:
   ///modify the NHits threshold based on the average dark noise rate

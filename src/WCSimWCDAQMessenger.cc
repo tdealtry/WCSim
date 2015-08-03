@@ -35,12 +35,14 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger()
   TriggerChoice->SetGuidance("Set the Trigger type");
   TriggerChoice->SetGuidance("Available choices are:\n"
 			     "NHits\n"
+			     "NHitsThenLocalNHits\n"
 			     "NHits2\n"
 			     "SKI_SKDETSIM (combined trigger & digitization (therefore ignores /DAQ/Digitization); buggy) \n"
 			     );
   TriggerChoice->SetParameterName("Trigger", false);
   TriggerChoice->SetCandidates(
 			       "NHits "
+			       "NHitsThenLocalNHits "
 			       "NHits2 "
 			       "SKI_SKDETSIM "
 			       );
@@ -83,6 +85,28 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger()
   NHitsTriggerAdjustForNoise->SetParameterName("NHitsAdjustForNoise",true);
   NHitsTriggerAdjustForNoise->SetDefaultValue(false);
   StoreNHitsAdjustForNoise = false;
+
+  //Local NHits trigger specifc options
+  LocalNHitsTriggerDir = new G4UIdirectory("/DAQ/TriggerLocalNHits/");
+  LocalNHitsTriggerDir->SetGuidance("Commands specific to the Local NHits trigger");
+  
+  LocalNHitsTriggerNeighbours = new G4UIcmdWithAnInteger("/DAQ/TriggerLocalNHits/Neighbours", this);
+  LocalNHitsTriggerNeighbours->SetGuidance("Set the Local NHits trigger locality definition - the number of nearest neighbours");
+  LocalNHitsTriggerNeighbours->SetParameterName("LocalNHitsNeighbours",false);
+  LocalNHitsTriggerNeighbours->SetDefaultValue(50);
+  StoreLocalNHitsNeighbours = 50;
+
+  LocalNHitsTriggerThreshold = new G4UIcmdWithAnInteger("/DAQ/TriggerLocalNHits/Threshold", this);
+  LocalNHitsTriggerThreshold->SetGuidance("Set the Local NHits trigger threshold");
+  LocalNHitsTriggerThreshold->SetParameterName("LocalNHitsThreshold",false);
+  LocalNHitsTriggerThreshold->SetDefaultValue(10);
+  StoreLocalNHitsThreshold = 10;
+
+  LocalNHitsTriggerWindow = new G4UIcmdWithAnInteger("/DAQ/TriggerLocalNHits/Window", this);
+  LocalNHitsTriggerWindow->SetGuidance("Set the Local NHits trigger window (in ns)");
+  LocalNHitsTriggerWindow->SetParameterName("LocalNHitsWindow",false);
+  LocalNHitsTriggerWindow->SetDefaultValue(50);
+  StoreLocalNHitsWindow = 50;
 }
 
 WCSimWCDAQMessenger::~WCSimWCDAQMessenger()
@@ -151,6 +175,20 @@ void WCSimWCDAQMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
     G4cout << "NHits trigger window set to " << newValue << G4endl;
     StoreNHitsWindow = NHitsTriggerWindow->GetNewIntValue(newValue);
   }
+
+  //Local NHits trigger
+  else if (command == LocalNHitsTriggerNeighbours) {
+    G4cout << "Local NHits trigger neighbours set to " << newValue << G4endl;
+    StoreLocalNHitsNeighbours = LocalNHitsTriggerNeighbours->GetNewIntValue(newValue);
+  }
+  else if (command == LocalNHitsTriggerThreshold) {
+    G4cout << "Local NHits trigger threshold set to " << newValue << G4endl;
+    StoreLocalNHitsThreshold = LocalNHitsTriggerThreshold->GetNewIntValue(newValue);
+  }
+  else if (command == LocalNHitsTriggerWindow) {
+    G4cout << "Local NHits trigger window set to " << newValue << G4endl;
+    StoreLocalNHitsWindow = LocalNHitsTriggerWindow->GetNewIntValue(newValue);
+  }
 }
 
 void WCSimWCDAQMessenger::SetEventActionOptions()
@@ -178,6 +216,7 @@ void WCSimWCDAQMessenger::SetTriggerOptions()
   WCSimTrigger->SetSaveFailuresTime(StoreSaveFailuresTime);
   G4cout << "\tTrigger time for events which fail all triggers will be set to " << StoreSaveFailuresTime << G4endl;
 
+  //NHits
   WCSimTrigger->SetNHitsThreshold(StoreNHitsThreshold);
   G4cout << "\tNHits trigger threshold set to " << StoreNHitsThreshold << G4endl;
   WCSimTrigger->SetNHitsAdjustForNoise(StoreNHitsAdjustForNoise);
@@ -185,6 +224,14 @@ void WCSimWCDAQMessenger::SetTriggerOptions()
     G4cout << "\tWill adjust NHits trigger threshold using average dark noise rate" << G4endl;
   WCSimTrigger->SetNHitsWindow(StoreNHitsWindow);
   G4cout << "\tNHits trigger window set to " << StoreNHitsWindow << G4endl;
+
+  //Local NHits
+  WCSimTrigger->SetLocalNHitsNeighbours(StoreLocalNHitsNeighbours);
+  G4cout << "\tLocalNHits trigger neighbours set to " << StoreLocalNHitsNeighbours << G4endl;
+  WCSimTrigger->SetLocalNHitsThreshold(StoreLocalNHitsThreshold);
+  G4cout << "\tLocalNHits trigger threshold set to " << StoreLocalNHitsThreshold << G4endl;
+  WCSimTrigger->SetLocalNHitsWindow(StoreLocalNHitsWindow);
+  G4cout << "\tLocalNHits trigger window set to " << StoreLocalNHitsWindow << G4endl;
 }
 
 void WCSimWCDAQMessenger::SetDigitizerOptions()
