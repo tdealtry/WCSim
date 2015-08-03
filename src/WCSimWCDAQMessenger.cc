@@ -70,13 +70,13 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger()
   
   NHitsTriggerThreshold = new G4UIcmdWithAnInteger("/DAQ/TriggerNHits/Threshold", this);
   NHitsTriggerThreshold->SetGuidance("Set the NHits trigger threshold");
-  NHitsTriggerThreshold->SetParameterName("NHitsThreshold",true);
+  NHitsTriggerThreshold->SetParameterName("NHitsThreshold",false);
   NHitsTriggerThreshold->SetDefaultValue(25);
   StoreNHitsThreshold = 25;
 
   NHitsTriggerWindow = new G4UIcmdWithAnInteger("/DAQ/TriggerNHits/Window", this);
   NHitsTriggerWindow->SetGuidance("Set the NHits trigger window (in ns)");
-  NHitsTriggerWindow->SetParameterName("NHitsWindow",true);
+  NHitsTriggerWindow->SetParameterName("NHitsWindow",false);
   NHitsTriggerWindow->SetDefaultValue(200);
   StoreNHitsWindow = 200;
 
@@ -206,7 +206,7 @@ void WCSimWCDAQMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
   }
 }
 
-void WCSimWCDAQMessenger::TellEventAction()
+void WCSimWCDAQMessenger::SetEventActionOptions()
 {
   G4cout << "Passing DAQ options to the event action class instance" << G4endl;
   WCSimEvent->SetDigitizerChoice(StoreDigitizerChoice);
@@ -215,7 +215,7 @@ void WCSimWCDAQMessenger::TellEventAction()
   G4cout << "\tTrigger choice set to " << StoreTriggerChoice << G4endl;
 }
 
-void WCSimWCDAQMessenger::TellTrigger()
+void WCSimWCDAQMessenger::SetTriggerOptions()
 {
   G4cout << "Passing Trigger options to the trigger class instance" << G4endl;
 
@@ -249,7 +249,7 @@ void WCSimWCDAQMessenger::TellTrigger()
   G4cout << "\tITC ratio large window high edge set to " << StoreITCRatioTriggerLargeWindowHigh << G4endl;
 }
 
-void WCSimWCDAQMessenger::TellDigitizer()
+void WCSimWCDAQMessenger::SetDigitizerOptions()
 {
   G4cout << "Passing Digitizer options to the digitizer class instance" << G4endl;
   WCSimDigitize->SKDigitizerType(StoreDigitizerChoice);

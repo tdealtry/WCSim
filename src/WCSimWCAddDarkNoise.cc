@@ -26,19 +26,22 @@
 #endif
 
 WCSimWCAddDarkNoise::WCSimWCAddDarkNoise(G4String name,
-                                   WCSimDetectorConstruction* myDetector)
-  :G4VDigitizerModule(name)
+					 WCSimDetectorConstruction* inDetector)
+  :G4VDigitizerModule(name), myDetector(inDetector)
 {
-  this->myDetector = myDetector;
-  DigiHitMap.clear();
   DarkRateMessenger = new WCSimDarkRateMessenger(this);
+  ReInitialize();
 }
 
 WCSimWCAddDarkNoise::~WCSimWCAddDarkNoise(){
+  delete DarkRateMessenger;
   DarkRateMessenger = 0;
 }
 
 void WCSimWCAddDarkNoise::AddDarkNoise(){
+  //clear the result and range vectors
+  ReInitialize();
+
   G4DigiManager* DigiMan = G4DigiManager::GetDMpointer();
   // Get the PMT collection ID                                                                                                                                             
   G4int WCHCID = DigiMan->GetDigiCollectionID("WCRawPMTSignalCollection");
@@ -46,7 +49,7 @@ void WCSimWCAddDarkNoise::AddDarkNoise(){
   WCSimWCDigitsCollection* WCHCPMT =
     (WCSimWCDigitsCollection*)(DigiMan->GetDigiCollection(WCHCID));
   
-  if (WCHCPMT && this->PMTDarkRate>1E-307) {
+  if ((WCHCPMT != NULL) && (this->PMTDarkRate > 1E-307)) {
     //Determine ranges for adding noise
     if(DarkMode == 1)
       FindDarkNoiseRanges(WCHCPMT,this->DarkWindow);
@@ -56,10 +59,8 @@ void WCSimWCAddDarkNoise::AddDarkNoise(){
     //Call routine to add dark noise here.
     //loop over pairs which represent ranges.
     //Add noise to those ranges
-    std::vector<std::pair<float, float> >::iterator it2 = result.begin();
-    while (it2 != result.end()){
+    for(std::vector<std::pair<float, float> >::iterator it2 = result.begin(); it2 != result.end(); it2++) {
       AddDarkNoiseBeforeDigi(WCHCPMT,it2->first,it2->second);
-      it2++;
     }
   }
 }
@@ -87,13 +88,10 @@ void WCSimWCAddDarkNoise::AddDarkNoiseBeforeDigi(WCSimWCDigitsCollection* WCHCPM
     for (int g=0; g<number_entries; g++){
       G4int tube = (*WCHCPMT)[g]->GetTubeID();
       //std::cout<<"totalpe "<<tube<<" "<<(*WCHCPMT)[g]->GetTotalPe()<<"\n";
-      for (int gp=0; gp<(*WCHCPMT)[g]->GetTotalPe(); gp++){
-	//should this be tube-1?
-	PMTindex[tube]++;
-	num_hit_b4++;
-	//	std::cout<<"TotalPe "<<(*WCHCPMT)[g]->GetTotalPe()<<" "<<PMTindex[tube]<<"\n";
-      }
-      
+      //should this be tube-1?
+      PMTindex[tube] += (*WCHCPMT)[g]->GetTotalPe();
+      num_hit_b4     += (*WCHCPMT)[g]->GetTotalPe();
+      //std::cout<<"TotalPe "<<(*WCHCPMT)[g]->GetTotalPe()<<" "<<PMTindex[tube]<<"\n";
     }
 
     // Get the info for pmt positions
@@ -235,20 +233,24 @@ void WCSimWCAddDarkNoise::FindDarkNoiseRanges(WCSimWCDigitsCollection* WCHCPMT, 
   
   //we need to ensure that the ranges found above are sorted first
   //for the algorithm below to work
-  //output are pairs stored in the result vector
   sort(ranges.begin(),ranges.end());
+
+  //the ranges vector contains overlapping ranges
+  //this loop removes overlaps
+  //output are pairs stored in the result vector
   std::vector<std::pair<float, float> >::iterator it = ranges.begin();
   std::pair<float, float> current = *(it)++;
-  while (it != ranges.end()){
+  for( ; it != ranges.end(); it++) {
     if (current.second >= it->first){
       current.second = std::max(current.second, it->second); 
-    } else {
+    }
+    else {
       result.push_back(current);
       current = *(it);
     }
-    it++;
   }
   result.push_back(current);
-  //now we should have a vector of range pairs to pass to the
+
+  //now we should have a vector of non-overlapping range pairs to pass to the
   //dark noise routine
 }

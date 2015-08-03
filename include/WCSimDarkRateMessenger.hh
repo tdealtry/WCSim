@@ -4,7 +4,6 @@
 
 #include "G4UImessenger.hh"
 
-
 class G4UIcommand;
 class G4UIdirectory;
 class G4UIcmdWithADoubleAndUnit;
@@ -24,7 +23,7 @@ public:
   void SetNewValue(G4UIcommand* command, G4String newValue);
 
 private:
-  void Initalise();
+  void Initialize();
 
   WCSimWCDigitizer* WCSimDigitize;
   WCSimWCAddDarkNoise* WCSimAddDarkNoise;
@@ -38,6 +37,7 @@ private:
   G4UIcmdWithADoubleAndUnit* SetDarkWindow;
   
   G4int constructor;
+  G4String initaliseString;
 };
 
 #endif

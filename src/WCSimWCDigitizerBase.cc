@@ -29,20 +29,24 @@
 //RawSignalHitCollection *collection = new RawSignalHitCollection;
 
 WCSimWCDigitizerBase::WCSimWCDigitizerBase(G4String name,
-					   WCSimDetectorConstruction* myDetector,
+					   WCSimDetectorConstruction* inDetector,
 					   WCSimWCDAQMessenger* myMessenger)
-  :G4VDigitizerModule(name)
+  :G4VDigitizerModule(name), myDetector(inDetector)
 {
   G4String colName = "WCDigitizedStoreCollection";
-  this->myDetector = myDetector;
   collectionName.push_back(colName);
-  DigiStoreHitMap.clear();
+  ReInitialize();
 
   //  DarkRateMessenger = new WCSimDarkRateMessenger(this);
-  if(myMessenger) {
+  if(myMessenger != NULL) {
     DAQMessenger = myMessenger;
     DAQMessenger->TellMeAboutTheDigitizer(this);
-    DAQMessenger->TellDigitizer();
+    DAQMessenger->SetDigitizerOptions();
+  }
+  else {
+    G4cerr << "WCSimWCDAQMessenger pointer is NULL when passed to WCSimWCDigitizerBase constructor. Exiting..." 
+	   << G4endl;
+    exit(-1);
   }
 }
 
@@ -52,9 +56,11 @@ WCSimWCDigitizerBase::~WCSimWCDigitizerBase(){
 
 void WCSimWCDigitizerBase::Digitize()
 {
+  //Clear the DigiStoreHitMap
+  ReInitialize();
+
   //Temporary Storage of Digitized hits which is passed to the trigger
   DigiStore = new WCSimWCDigitsCollection(collectionName[0],collectionName[0]);
-  DigiStoreHitMap.clear();
 
   //DigitsCollection = new WCSimWCDigitsCollection ("/WCSim/glassFaceWCPMT",collectionName[0]);
 

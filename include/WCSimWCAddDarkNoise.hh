@@ -19,9 +19,6 @@ public:
   WCSimWCAddDarkNoise(G4String name, WCSimDetectorConstruction*);
   ~WCSimWCAddDarkNoise();
   
-  void ReInitialize() { DigiHitMap.clear(); ranges.clear(); result.clear();}
-
-  
 public:
   void AddDarkNoise();
   void AddDarkNoiseBeforeDigi(WCSimWCDigitsCollection* WCHCPMT, float num1 ,float num2);
@@ -35,7 +32,10 @@ public:
   void SetDarkHigh(int idarkhigh){DarkHigh = idarkhigh;}
   void SetDarkLow(int idarklow){DarkLow = idarklow;}
   void SetDarkWindow(int idarkwindow){DarkWindow = idarkwindow;}
+
 private:
+  void ReInitialize() { ranges.clear(); result.clear();}
+
   WCSimDarkRateMessenger *DarkRateMessenger;
   double PMTDarkRate; // kHz
   double ConvRate; // kHz
@@ -46,10 +46,6 @@ private:
 
   WCSimDetectorConstruction* myDetector;
 
-protected:
-  WCSimWCDigitsCollection*  DigitsCollection;
-  std::map<int,int> DigiHitMap; // need to check if a hit already exists..
-  
   std::vector<std::pair<float, float> > ranges;
   std::vector<std::pair<float, float> > result;
   
