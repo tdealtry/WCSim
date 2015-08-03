@@ -202,8 +202,9 @@ void WCSimWCTriggerBase::AlgNHits(WCSimWCDigitsCollection* WCDCPMT, bool remove_
     }
   }
   
-  //call FillDigitsCollection() if at least one trigger was issued
   G4cout << "Found " << ntrig << " NHit triggers" << G4endl;
+  //call FillDigitsCollection() whether any triggers are found or not
+  // (what's saved depends on saveFailuresMode)
   FillDigitsCollection(WCDCPMT, remove_hits, this_triggerType);
 }
 
@@ -340,8 +341,9 @@ void WCSimWCTriggerBase::AlgNHitsThenITC(WCSimWCDigitsCollection* WCDCPMT, bool 
     }
   }
   
-  //call FillDigitsCollection() if at least one trigger was issued
   G4cout << "Found " << ntrig << " NHitThenITC triggers" << G4endl;
+  //call FillDigitsCollection() whether any triggers are found or not
+  // (what's saved depends on saveFailuresMode)
   FillDigitsCollection(WCDCPMT, remove_hits, kTriggerUndefined);
 }
 

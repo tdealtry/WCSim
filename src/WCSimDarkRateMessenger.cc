@@ -161,7 +161,7 @@ void WCSimDarkRateMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
       }
     else if(constructor == 1) {
       WCSimAddDarkNoise->SetDarkWindow(SetDarkWindow->GetNewDoubleValue(newValue));
-      G4cout << "Setting DarkWidth value " << SetDarkWindow->GetNewDoubleValue(newValue)
+      G4cout << "Setting DarkWindow value " << SetDarkWindow->GetNewDoubleValue(newValue)
 	     << initaliseString.c_str() << G4endl;
     }
   }
