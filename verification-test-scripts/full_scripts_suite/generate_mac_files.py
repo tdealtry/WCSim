@@ -25,9 +25,10 @@ import os
 delim_list = lambda s: list(set(s.split(',')))
 delim_list_str = lambda s: s.split(',') if len(s.split(',')) == 3 else s
 
-#DAQdigitizer_choices = ['SKIV', 'SKI', 'SKI_SKDETSIM']
-#DAQtrigger_choices = ['NHits', 'SKI_SKDETSIM', 'NHits2']
-#DAQtrigger_nhits_choices = ['NHits', 'SKI_SKDETSIM', 'NHits2']
+DAQdigitizer_choices = ['SKIV', 'SKI', 'SKI_SKDETSIM']
+DAQtrigger_choices = ['NHits', 'SKI_SKDETSIM', 'NHits2', 'NHitsThenLocalNHits']
+DAQtrigger_nhits_choices = ['NHits', 'SKI_SKDETSIM', 'NHits2', 'NHitsThenLocalNHits']
+DAQtrigger_localnhits_choices = ['NHitsThenLocalNHits']
 WCgeom_choices = ['HyperK', \
                       'HyperK_withHPD', \
                       'SuperK', \
@@ -54,26 +55,29 @@ parser = argparse.ArgumentParser(description='Run many WCSim jobs with different
 parser.add_argument('--onlycreatefiles', action='store_true', help="Do a test run where you create all the files, but don't run WCSim?")
 parser.add_argument('--batchmode', type=str, default='local', choices=BatchChoices, help='Where to submit the jobs.')
 parser.add_argument('--vis', action='store_true', help='Turn on the visulation? Not yet implemented')
-#parser.add_argument('--reusedaqfolder', action='store_true', help='Reuse the DAQ folders? (i.e. don\'t exit if mkdir fails)')
+parser.add_argument('--reusedaqfolder', action='store_true', help='Reuse the DAQ folders? (i.e. don\'t exit if mkdir fails)')
 #options for the .mac files
 # geometry
 parser.add_argument('--WCgeom', type=delim_list, default='SuperK', help='The water tank geometry. Specify multiple with comma separated list. Choices: '+ListAsString(WCgeom_choices))
 parser.add_argument('--HKwatertanklength', type=delim_list, default='49500', help='The size of a HyperK geometry (mm)')
-"""
 # trigger & digitization
 parser.add_argument('--DAQsavefailuresmode', type=delim_list, default='0', help='Save failed triggers mode. 0: save only events which pass the trigger. 1: save only events which fail the trigger. 2: save both')
 parser.add_argument('--DAQsavefailurestime', type=delim_list, default='200', help='For mode 1 & 2, give events which fail the trigger the trigger time')
 parser.add_argument('--DAQdigitizer', type=delim_list, default='SKI', help='Which digitizer class to use? Specify multiple with comma separated list. Choices: '+ListAsString(DAQdigitizer_choices))
 parser.add_argument('--DAQtrigger', type=delim_list, default='NHits', help='Which trigger class to use? Specify multiple with comma separated list. Choices: '+ListAsString(DAQtrigger_choices))
+#nhits trigger
 parser.add_argument('--DAQnhitsthreshold', type=delim_list, default='25', help='What value of the nhits trigger threshold should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
 parser.add_argument('--DAQnhitswindow', type=delim_list, default='200', help='What value of the nhits trigger window should be used (ns)? Specify multiple with comma separated list')
 parser.add_argument('--DAQnhitsignorenoise', action='store_true', help='Adjust the NHits threshold automatically for the dark noise rate?')
-"""
+#local nhits trigger
+parser.add_argument('--DAQlocalnhitsneighbours', type=delim_list, default='50', help='What value of the localnhits trigger neighbours should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
+parser.add_argument('--DAQlocalnhitsthreshold', type=delim_list, default='10', help='What value of the localnhits trigger threshold should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
+parser.add_argument('--DAQlocalnhitswindow', type=delim_list, default='50', help='What value of the localnhits trigger window should be used (ns)? Specify multiple with comma separated list')
 # dark noise
 parser.add_argument('--DarkNoiseRate', type=delim_list, default='4.2', help='Dark noise rate (kHz). Specify multiple with comma separated list')
 parser.add_argument('--DarkNoiseConvert', type=delim_list, default='1.367', help='Convert dark noise frequency before digitization to after digitization by setting suitable factor. Specify multiple with comma separated list')
-#parser.add_argument('--DarkNoiseMode', type=int, default=1, choices=[0,1], help='0: apply noise in a specified time window. 1: apply noise around hits. Choose exactly one')
-#parser.add_argument('--DarkNoiseWindow', type=delim_list, default='1500', help=' Mode 0: Apply dark noise in range x:y (use : as delimeter!). Mode 1: Apply dark noise in a window around each hit (+-window/2). Specify multiple (for the same mode) with a comma separated list')
+parser.add_argument('--DarkNoiseMode', type=int, default=1, choices=[0,1], help='0: apply noise in a specified time window. 1: apply noise around hits. Choose exactly one')
+parser.add_argument('--DarkNoiseWindow', type=delim_list, default='1500', help=' Mode 0: Apply dark noise in range x:y (use : as delimeter!). Mode 1: Apply dark noise in a window around each hit (+-window/2). Specify multiple (for the same mode) with a comma separated list')
 # pmt
 parser.add_argument('--PMTQEMethod', type=delim_list, default='Stacking_Only', help='How the QE is applied? Specify multiple with comma separated list. Choices: '+ListAsString(PMTQEMethod_choices))
 parser.add_argument('--PMTCollEff', type=delim_list, default='on', help='Turn on/off the PMT collection efficiency? Specify multiple with comma separated list. Choices: '+ListAsString(PMTCollEff_choices))
@@ -122,7 +126,6 @@ def main(args_to_parse = None):
 
     origdir = os.getcwd()
 
-    """
     #make the jobOptions.mac file(s)
     DAQfolders = []
     for DAQdigitizer in args.DAQdigitizer:
@@ -135,47 +138,58 @@ def main(args_to_parse = None):
                 for DAQnhitswindow in args.DAQnhitswindow:
                     for DAQsavefailuresmode in args.DAQsavefailuresmode:
                         for DAQsavefailurestime in args.DAQsavefailurestime:
-                                # go to the specific folder for this jobOptions
-                                foldername = DAQdigitizer + "_" + DAQtrigger + "_fails" + DAQsavefailuresmode + "_"
-                                if DAQsavefailuresmode:
-                                    foldername = foldername + DAQsavefailurestime + "_"
-                                if (DAQtrigger.find("NHits") != -1) or (DAQtrigger.find("SKI_SKDETSIM") == 0):
-                                    foldername = foldername + "NHits" + str(DAQnhitsthreshold) + "_" + str(DAQnhitswindow)
-                                os.chdir(origdir)
-                                try:
-                                    os.mkdir(foldername)
-                                except OSError:
-                                    print "Folder", foldername, "already exists"
-                                    if not args.reusedaqfolder:
-                                        print "Exiting..."
-                                        sys.exit(1)
-                                os.chdir(foldername)
-                                DAQfolders.append(foldername)
-                                noise_agnostic = 'true' if args.DAQnhitsignorenoise else 'false'
-                                #create the jopOptions.mac file
-                                text = "/WCSim/physics/list WCSim" + "\n" \
-                                    "/DAQ/Digitizer " + DAQdigitizer + "\n" \
-                                    "/DAQ/Trigger " + DAQtrigger + "\n" \
-                                    "/DAQ/TriggerSaveFailures/Mode " + DAQsavefailuresmode + "\n" \
-                                    "/DAQ/TriggerSaveFailures/TriggerTime " + DAQsavefailurestime + "\n"
-                                if DAQtrigger in DAQtrigger_nhits_choices:
-                                    text += "/DAQ/TriggerNHits/Threshold " + DAQnhitsthreshold + "\n" \
-                                        "/DAQ/TriggerNHits/Window " + DAQnhitswindow + "\n" \
-                                        "/DAQ/TriggerNHits/AdjustForNoise " + noise_agnostic + "\n"
-                                #create the file
-                                f = open('jobOptions.mac', 'w')
-                                f.write(text)
-                                f.close()
-    """
+                            for DAQlocalnhitsneighbours in args.DAQlocalnhitsneighbours:
+                                for DAQlocalnhitsthreshold in args.DAQlocalnhitsthreshold:
+                                    for DAQlocalnhitswindow in args.DAQlocalnhitswindow:
+                                        # go to the specific folder for this jobOptions
+                                        foldername = DAQdigitizer + "_" + DAQtrigger + "_fails" + DAQsavefailuresmode + "_"
+                                        if DAQsavefailuresmode:
+                                            foldername = foldername + DAQsavefailurestime + "_"
+                                        if DAQtrigger in DAQtrigger_nhits_choices:
+                                            foldername = foldername + "NHits" + str(DAQnhitsthreshold) + "_" + str(DAQnhitswindow)
+                                        if DAQtrigger in DAQtrigger_localnhits_choices:
+                                            foldername = (foldername + "LocalNHits" + str(DAQlocalnhitsneighbours)
+                                                          + "_" + str(DAQlocalnhitsthreshold)
+                                                          + "_" + str(DAQlocalnhitswindow))
+                                        os.chdir(origdir)
+                                        try:
+                                            os.mkdir(foldername)
+                                        except OSError:
+                                            print "Folder", foldername, "already exists"
+                                            if not args.reusedaqfolder:
+                                                print "Exiting..."
+                                                sys.exit(1)
+                                        os.chdir(foldername)
+                                        DAQfolders.append(foldername)
+                                        noise_agnostic = 'true' if args.DAQnhitsignorenoise else 'false'
+                                        #create the jopOptions.mac file
+                                        text = "/WCSim/physics/list WCSim" + "\n" \
+                                            "/DAQ/Digitizer " + DAQdigitizer + "\n" \
+                                            "/DAQ/Trigger " + DAQtrigger + "\n" \
+                                            "/DAQ/TriggerSaveFailures/Mode " + DAQsavefailuresmode + "\n" \
+                                            "/DAQ/TriggerSaveFailures/TriggerTime " + DAQsavefailurestime + "\n"
+                                        if DAQtrigger in DAQtrigger_nhits_choices:
+                                            text += "/DAQ/TriggerNHits/Threshold " + DAQnhitsthreshold + "\n" \
+                                                "/DAQ/TriggerNHits/Window " + DAQnhitswindow + "\n" \
+                                                "/DAQ/TriggerNHits/AdjustForNoise " + noise_agnostic + "\n"
+                                        if DAQtrigger in DAQtrigger_localnhits_choices:
+                                            text += "/DAQ/TriggerLocalNHits/Neighbours " + DAQlocalnhitsneighbours + "\n" \
+                                                "/DAQ/TriggerLocalNHits/Threshold " + DAQlocalnhitsthreshold + "\n" \
+                                                "/DAQ/TriggerLocalNHits/Window " + DAQlocalnhitswindow + "\n"
+                                        #create the file
+                                        f = open('jobOptions.mac', 'w')
+                                        f.write(text)
+                                        f.close()
 
-    #don't forget the other .mac files
-    shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/jobOptions.mac", "./")
-    shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/jobOptions2.mac", "./")
-    shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/tuning_parameters.mac", "./")
-    #and the exectuable
-    if args.batchmode == 'condor':
-        if not os.path.islink('WCSim'):
-            os.symlink(os.path.expandvars("$WCSIMDIR") + "/bin/" + os.path.expandvars("$G4SYSTEM") + "/WCSim", "WCSim")
+                                        #don't forget the other .mac files
+                                        shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/jobOptions2.mac", "./")
+                                        shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/tuning_parameters.mac", "./")
+                                        #and the exectuable
+                                        if args.batchmode == 'condor':
+                                            if not os.path.islink('WCSim'):
+                                                os.symlink(os.path.expandvars("$WCSIMDIR") + "/bin/" + os.path.expandvars("$G4SYSTEM") + "/WCSim", "WCSim")
+
+    #shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/jobOptions.mac", "./")
 
     #make the novis.mac analogue
     counter = 1
@@ -183,28 +197,26 @@ def main(args_to_parse = None):
         for HKwatertanklength in args.HKwatertanklength:
             for PMTQEMethod in args.PMTQEMethod:
                 for PMTCollEff in args.PMTCollEff:
-                    #for DAQfolder in DAQfolders:
+                    for DAQfolder in DAQfolders:
                         for DarkNoiseRate in args.DarkNoiseRate:
                             for DarkNoiseConvert in args.DarkNoiseConvert:
-                                #for DarkNoiseWindow in args.DarkNoiseWindow:
+                                for DarkNoiseWindow in args.DarkNoiseWindow:
                                     for GunEnergy in args.GunEnergy:
-                                        """
                                         os.chdir(origdir + "/" + DAQfolder)
                                         #DarkNoiseWindow should be treated specially, as it depends on DarkNoiseMode
-                                        darknoisewindow = 
+                                        darknoisewindow = ""
                                         if args.DarkNoiseMode == 1:
                                             try:
                                                 int(DarkNoiseWindow)
                                             except ValueError:
                                                 print "For DarkNoiseMode == 1, DarkNoiseWindow should be a single number (not colon separated)"
                                                 sys.exit(1)
-                                                darknoisewindow = "/DarkRate/SetDarkWindow " + DarkNoiseWindow + "\n"
+                                            darknoisewindow = "/DarkRate/SetDarkWindow " + DarkNoiseWindow + "\n"
                                         elif args.DarkNoiseMode == 0:
                                             darknoisewindow = "/DarkRate/SetDarkLow  " + DarkNoiseWindow.split(':')[0] + "\n" \
                                                 "/DarkRate/SetDarkHigh " + DarkNoiseWindow.split(':')[1] + "\n"
                                         else:
                                             sys.exit(1)
-                                        """
 
                                         if type(args.GunPosition) is str:
                                             #if GunPosition and GunDirection are string's
@@ -239,10 +251,8 @@ def main(args_to_parse = None):
                                             constructoptions += "/WCSim/Construct \n"
 
                                         #construct the filename
-                                        #filenamestub = "wcsim_" + GunEnergy + args.GunParticle + "_" + WCgeom + "_" + (HKwatertanklength if (WCgeom in HKwatertargetlength_choices) else "") + "_" + PMTQEMethod + "_PMTCollEff_" + PMTCollEff + ("_SavePi0" if args.SavePi0 else "") + "_DarkNoiseM" + str(args.DarkNoiseMode) + "R" + DarkNoiseRate + "W" + DarkNoiseWindow.strip()
-                                        filenamestub = "wcsim_" + GunEnergy + args.GunParticle + "_" + WCgeom + "_" + (HKwatertanklength if (WCgeom in HKwatertargetlength_choices) else "") + "_" + PMTQEMethod + "_PMTCollEff_" + PMTCollEff + ("_SavePi0" if args.SavePi0 else "") + "_DarkNoise" + DarkNoiseRate
+                                        filenamestub = "wcsim_" + GunEnergy + args.GunParticle + "_" + WCgeom + "_" + (HKwatertanklength if (WCgeom in HKwatertargetlength_choices) else "") + "_" + PMTQEMethod + "_PMTCollEff_" + PMTCollEff + ("_SavePi0" if args.SavePi0 else "") + "_DarkNoiseM" + str(args.DarkNoiseMode) + "R" + DarkNoiseRate + "W" + DarkNoiseWindow.strip()
                                         #make the text for the config file
-                                        darknoisewindow = '' ####TODO remove this line when the new dark noise options go in
                                         text = "/run/verbose 0 \n" \
                                             "/tracking/verbose 0 \n" \
                                             "/hits/verbose 0 \n" \
