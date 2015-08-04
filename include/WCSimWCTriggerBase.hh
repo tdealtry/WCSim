@@ -125,8 +125,8 @@ protected:
   std::vector<int> FindPMTNearestNeighbours(int i);
   ///Find the nearest neighbours of all PMTs
   void FindAllPMTNearestNeighbours();
-  std::vector<WCSimPmtInfo*> *    myPMTs;        ///< Vector with the position/orientation of every PMT in the geometry
-  std::vector< std::vector<int> > pmtNeighbours; ///< Vector of vectors that give the nearest neighbour for each PMT
+  std::vector<WCSimPmtInfo*> *    myPMTs;        ///< Vector with the position/orientation of every PMT in the geometry. myPMTs[i] is the PMT with tubeID=i+1
+  std::vector< std::vector<int> > pmtNeighbours; ///< Vector of vectors that give the nearest neighbour for each PMT. pmtNeighbours[i] contains the tubeIDs of the neighbours of the PMT with tubeID=i+1
   
   WCSimWCDigitsCollection*   DigitsCollection; ///< The main output of the class - collection of digits in the trigger window
   std::map<int,int>          DigiHitMap; ///< Keeps track of the PMTs that have been added to the output WCSimWCDigitsCollection
@@ -177,6 +177,9 @@ private:
   static const double LongTime;      ///< An arbitrary long time to use in loops (ns)
 
   bool   digitizeCalled; ///< Has Digitize() been called yet?
+  unsigned int nPMTs;    ///< Store the number of PMTs in the geometry
+
+  int * localNHitsHits; ///< Array to store the number of hits in a time window for each PMT tube id
 };
 
 #endif
