@@ -211,9 +211,9 @@ def main(args_to_parse = None):
                                             except ValueError:
                                                 print "For DarkNoiseMode == 1, DarkNoiseWindow should be a single number (not colon separated)"
                                                 sys.exit(1)
-                                            darknoisewindow = "/DarkRate/SetDarkWindow " + DarkNoiseWindow + "\n"
+                                            darknoisewindow += "/DarkRate/SetDarkWindow " + DarkNoiseWindow + "\n"
                                         elif args.DarkNoiseMode == 0:
-                                            darknoisewindow = "/DarkRate/SetDarkLow  " + DarkNoiseWindow.split(':')[0] + "\n" \
+                                            darknoisewindow += "/DarkRate/SetDarkLow  " + DarkNoiseWindow.split(':')[0] + "\n" \
                                                 "/DarkRate/SetDarkHigh " + DarkNoiseWindow.split(':')[1] + "\n"
                                         else:
                                             sys.exit(1)
@@ -261,6 +261,7 @@ def main(args_to_parse = None):
                                             "/WCSim/SavePi0 " + ("true" if args.SavePi0 else "false") + "\n" \
                                             "/DarkRate/SetDarkRate " + DarkNoiseRate + " kHz \n" \
                                             "/DarkRate/SetConvert " + DarkNoiseConvert + "\n" \
+                                            "/DarkRate/SetDarkMode " + str(args.DarkNoiseMode) + "\n" \
                                             "" + darknoisewindow + "" \
                                             "/mygen/generator normal " + "\n" \
                                             "" + gunoptions + "" \
@@ -295,6 +296,7 @@ def main(args_to_parse = None):
                                               'error          = ' + filenamestub + '.err \n' \
                                               'log            = ' + filenamestub + '.log \n' \
                                               'request_memory = 1000 \n' \
+                                              'getenv         = True \n' \
                                               'queue 1 \n'
                                             fcondor.write(condor)
                                             fcondor.close()

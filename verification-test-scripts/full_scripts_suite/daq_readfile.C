@@ -16,7 +16,7 @@
 #include <TLegend.h>
 #include <TROOT.h>
 
-//#define POST_NEW_DAQ_PULL_REQUEST
+#define POST_NEW_DAQ_PULL_REQUEST
 
 #if !defined(__CINT__) || defined(__MAKECINT__)
 #include "WCSimRootEvent.hh"
@@ -130,7 +130,7 @@ int daq_readfile(char *filename=NULL, bool verbose=false, Long64_t max_nevents =
 
   TH1I *h1triggertype = new TH1I("h1triggertype", "Trigger type;Trigger type;Entries", 10, 0, 10);
 #ifdef POST_NEW_DAQ_PULL_REQUEST
-  for(int i = -1; i <= kTriggerNHitsTest; i++)
+  for(int i = -1; i <= kTriggerFailure; i++)
     h1triggertype->GetXaxis()->SetBinLabel(i+2, WCSimEnumerations::EnumAsString((TriggerType_t)i).c_str());
 #endif
 
@@ -383,6 +383,10 @@ int daq_readfile(char *filename=NULL, bool verbose=false, Long64_t max_nevents =
 	  if((trigger_type == kTriggerNHits) || (trigger_type == kTriggerNHitsSKDETSIM) || (trigger_type == kTriggerNHitsTest))
 	    cout << " (" << trigger_info[0]
 		 << " in the 200nsec region)";
+	  else if(trigger_type == kTriggerNHitsThenLocalNHits)
+	    cout << " (PMT with tubeID " << trigger_info[1]
+		 << " fired the trigger with " << trigger_info[0]
+		 << " hits)";
 	}
 	cout << endl;
       }
