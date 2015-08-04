@@ -61,28 +61,36 @@ WCSimWCTriggerBase::~WCSimWCTriggerBase()
     delete localNHitsHits;
 }
 
-void WCSimWCTriggerBase::AdjustNHitsThresholdForNoise()
+int WCSimWCTriggerBase::CalculateAverageDarkNoiseOccupancy(int npmts, int window)
 {
-  double trigger_window_seconds = nhitsWindow * 1E-9;
+  double trigger_window_seconds = window * 1E-9;
   double dark_rate_Hz = PMTDarkRate * 1000;
-  double average_occupancy = dark_rate_Hz * trigger_window_seconds * nPMTs;
+  double average_occupancy = dark_rate_Hz * trigger_window_seconds * npmts;
   
-  G4cout << "Average number of PMTs in detector active in a " << nhitsWindow
+  G4cout << "Average number of PMTs active in a " << window
 	 << "ns window with a dark noise rate of " << PMTDarkRate
 	 << "kHz is " << average_occupancy
-	 << " (" << nPMTs << " total PMTs)"
-	 << G4endl
-	 << "Updating the NHits threshold, from " << nhitsThreshold
-	 << " to " << nhitsThreshold + round(average_occupancy) << G4endl;
-  nhitsThreshold += round(average_occupancy);
+	 << " (" << npmts << " total PMTs)"
+	 << G4endl;
+  return round(average_occupancy);
 }
 
 void WCSimWCTriggerBase::Digitize()
 {
   if(!digitizeCalled) {
     nPMTs = this->myDetector->GetTotalNumPmts();
-    if(nhitsAdjustForNoise)
-      AdjustNHitsThresholdForNoise();
+    if(nhitsAdjustForNoise) {
+      int nnoisehits = CalculateAverageDarkNoiseOccupancy(nPMTs, nhitsWindow);
+      G4cout << "Updating the NHits threshold, from " << nhitsThreshold
+	     << " to " << nhitsThreshold + nnoisehits << G4endl;
+      nhitsThreshold += nnoisehits;
+    }
+    if(localNHitsAdjustForNoise) {
+      int nnoisehits = CalculateAverageDarkNoiseOccupancy(localNHitsNeighbours + 1, localNHitsWindow);
+      G4cout << "Updating the NHits threshold, from " << localNHitsThreshold
+	     << " to " << localNHitsThreshold + nnoisehits << G4endl;
+      localNHitsThreshold += nnoisehits;
+    }
     if(triggerClassName.compare("NHitsThenLocalNHits") == 0) {
       FindAllPMTNearestNeighbours();
       //reserve an array to store the number of digits on each PMT
@@ -241,7 +249,7 @@ std::vector<int> WCSimWCTriggerBase::FindPMTNearestNeighbours(int ipmt)
 
   //loop over ALL the other PMTs & save the distance to the current PMT
   std::vector< std::pair<double, int> > distances;
-  for(unsigned int i = 0; i < myPMTs->size(); i++) {
+  for(unsigned int i = 0; i < nPMTs; i++) {
     if(i == (unsigned int)ipmt) continue;
     WCSimPmtInfo * PMT = myPMTs->at(i);
     double X   = PMT->Get_transx();
@@ -328,10 +336,12 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
     bool triggerfound = false;
     digit_times.clear();
     memset(localNHitsHits, 0, nPMTs);
+    std::vector<int> pmts_hit;
     
     //Loop over each PMT
     for (G4int i = 0 ; i < WCDCPMT->entries() ; i++) {
       int tubeid = (*WCDCPMT)[i]->GetTubeID();
+      bool tubeidsaved = false;
       //Loop over each Digit in this PMT
       for ( G4int ip = 0 ; ip < (*WCDCPMT)[i]->GetTotalPe() ; ip++) {
 	int digit_time = (*WCDCPMT)[i]->GetTime(ip);
@@ -346,6 +356,10 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
 	  if(digit_time <= (window_start_time + localNHitsWindow)) {
 	    local_n_digits++;
 	    localNHitsHits[tubeid-1]++; //tubeID goes from 1->nPMTs
+	    if(!tubeidsaved) {
+	      pmts_hit.push_back(tubeid);
+	      tubeidsaved = true;
+	    }
 	  }
 	}
 	//G4cout << digit_time << G4endl;
@@ -371,31 +385,31 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
     //NHits failed. Try local NHits
     //no point looking at all PMTs if there aren't enough hits in the time window
     if(local_n_digits > localNHitsThreshold) {
-      //loop over all PMTs and look for those with hits
-      for(unsigned int ip = 0; ip < nPMTs; ip++) {
-	if(localNHitsHits[ip]) {
-	  int nlocal = localNHitsHits[ip];
-	  std::vector<int> thisNeighbours = pmtNeighbours.at(ip);
-	  for(int in = 0; in < localNHitsNeighbours; in++) {
-	    nlocal += localNHitsHits[thisNeighbours[in-1]];
-	  }//in
-	  //if over threshold, issue trigger
-	  if(nlocal > localNHitsThreshold) {
-	    ntrig++;
-	    //The trigger time is the time in the middle of the local NHits trigger window
-	    //TODO potentially make this something dependant on digit times
-	    triggertime = window_start_time + ((double)localNHitsWindow / 2);
-	    triggertime -= (int)triggertime % 5;
-	    TriggerTimes.push_back(triggertime);
-	    TriggerTypes.push_back(kTriggerLocalNHits);
-	    std::vector<Float_t> local_info;
-	    local_info.push_back(nlocal); //the number of hits locally to the tube
-	    local_info.push_back(ip+1);   //the tube ID of the tube that fired the trigger
-	    TriggerInfos.push_back(std::vector<Float_t>(1, n_digits));
-	    triggerfound = true;
-	    break; //may want to continue loop & find all local triggers instead of breaking
-	  }//trigger found
-	}//if this PMT has been hit
+      //loop over all PMTs with hits
+      for(unsigned int ip = 0; ip < pmts_hit.size(); ip++) {
+	int this_pmtid = pmts_hit[ip];
+	int nlocal = localNHitsHits[this_pmtid - 1];
+	//add the neighbours hits
+	std::vector<int> thisNeighbours = pmtNeighbours.at(this_pmtid - 1);
+	for(int in = 0; in < localNHitsNeighbours; in++) {
+	  nlocal += localNHitsHits[thisNeighbours[in - 1]];
+	}//in
+	//if over threshold, issue trigger
+	if(nlocal > localNHitsThreshold) {
+	  ntrig++;
+	  //The trigger time is the time in the middle of the local NHits trigger window
+	  //TODO potentially make this something dependant on digit times
+	  triggertime = window_start_time + ((double)localNHitsWindow / 2);
+	  triggertime -= (int)triggertime % 5;
+	  TriggerTimes.push_back(triggertime);
+	  TriggerTypes.push_back(kTriggerLocalNHits);
+	  std::vector<Float_t> local_info;
+	  local_info.push_back(nlocal); //the number of hits locally to the tube
+	  local_info.push_back(ip+1);   //the tube ID of the tube that fired the trigger
+	  TriggerInfos.push_back(local_info);
+	  triggerfound = true;
+	  break; //may want to continue loop & find all local triggers instead of breaking
+	}//trigger found
       }//ip
     }//local NHits trigger
 

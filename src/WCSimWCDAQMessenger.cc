@@ -107,6 +107,12 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger()
   LocalNHitsTriggerWindow->SetParameterName("LocalNHitsWindow",false);
   LocalNHitsTriggerWindow->SetDefaultValue(50);
   StoreLocalNHitsWindow = 50;
+
+  LocalNHitsTriggerAdjustForNoise = new G4UIcmdWithABool("/DAQ/TriggerLocalNHits/AdjustForNoise", this);
+  LocalNHitsTriggerAdjustForNoise->SetGuidance("Adjust the Local NHits trigger threshold automatically dependent on the average noise rate");
+  LocalNHitsTriggerAdjustForNoise->SetParameterName("LocalNHitsAdjustForNoise",true);
+  LocalNHitsTriggerAdjustForNoise->SetDefaultValue(false);
+  StoreLocalNHitsAdjustForNoise = false;
 }
 
 WCSimWCDAQMessenger::~WCSimWCDAQMessenger()
@@ -119,6 +125,12 @@ WCSimWCDAQMessenger::~WCSimWCDAQMessenger()
   delete NHitsTriggerThreshold;
   delete NHitsTriggerWindow;
   delete NHitsTriggerAdjustForNoise;
+
+  delete LocalNHitsTriggerDir;
+  delete LocalNHitsTriggerNeighbours;
+  delete LocalNHitsTriggerThreshold;
+  delete LocalNHitsTriggerWindow;
+  delete LocalNHitsTriggerAdjustForNoise;
 
   delete DigitizerChoice;
   delete TriggerChoice;
@@ -165,7 +177,7 @@ void WCSimWCDAQMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
   else if (command == NHitsTriggerThreshold) {
     G4cout << "NHits trigger threshold set to " << newValue << G4endl;
     StoreNHitsThreshold = NHitsTriggerThreshold->GetNewIntValue(newValue);
-  }
+  } 
   else if (command == NHitsTriggerAdjustForNoise) {
     StoreNHitsAdjustForNoise = NHitsTriggerAdjustForNoise->GetNewBoolValue(newValue);
     if(StoreNHitsAdjustForNoise)
@@ -184,6 +196,11 @@ void WCSimWCDAQMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
   else if (command == LocalNHitsTriggerThreshold) {
     G4cout << "Local NHits trigger threshold set to " << newValue << G4endl;
     StoreLocalNHitsThreshold = LocalNHitsTriggerThreshold->GetNewIntValue(newValue);
+  }
+  else if (command == LocalNHitsTriggerAdjustForNoise) {
+    StoreLocalNHitsAdjustForNoise = LocalNHitsTriggerAdjustForNoise->GetNewBoolValue(newValue);
+    if(StoreLocalNHitsAdjustForNoise)
+      G4cout << "Will adjust Local NHits trigger threshold using average dark noise rate" << G4endl;
   }
   else if (command == LocalNHitsTriggerWindow) {
     G4cout << "Local NHits trigger window set to " << newValue << G4endl;
@@ -230,6 +247,9 @@ void WCSimWCDAQMessenger::SetTriggerOptions()
   G4cout << "\tLocalNHits trigger neighbours set to " << StoreLocalNHitsNeighbours << G4endl;
   WCSimTrigger->SetLocalNHitsThreshold(StoreLocalNHitsThreshold);
   G4cout << "\tLocalNHits trigger threshold set to " << StoreLocalNHitsThreshold << G4endl;
+  WCSimTrigger->SetLocalNHitsAdjustForNoise(StoreLocalNHitsAdjustForNoise);
+  if(StoreLocalNHitsAdjustForNoise)
+    G4cout << "\tWill adjust Local NHits trigger threshold using average dark noise rate" << G4endl;
   WCSimTrigger->SetLocalNHitsWindow(StoreLocalNHitsWindow);
   G4cout << "\tLocalNHits trigger window set to " << StoreLocalNHitsWindow << G4endl;
 }

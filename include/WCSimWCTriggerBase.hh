@@ -59,7 +59,7 @@ public:
   ///Set the time window for the NHits trigger
   void SetNHitsWindow(G4int window) { nhitsWindow = window; }
   ///Automatically adjust the NHits threshold based on the average noise occupancy?
-  void SetNHitsAdjustForNoise    (G4bool adjust)      { nhitsAdjustForNoise = adjust; }
+  void SetNHitsAdjustForNoise(G4bool adjust) { nhitsAdjustForNoise = adjust; }
 
   // Local NHits options
   ///Set the number of nearest neighbours to use for 'local' in the Local NHits trigger
@@ -68,6 +68,8 @@ public:
   void SetLocalNHitsThreshold(G4int threshold) { localNHitsThreshold = threshold; }
   ///Set the time window for the Local NHits trigger
   void SetLocalNHitsWindow(G4int window) { localNHitsWindow = window; }
+  ///Automatically adjust the NHits threshold based on the average noise occupancy?
+  void SetLocalNHitsAdjustForNoise(G4bool adjust) { localNHitsAdjustForNoise = adjust; }
 
   // Save trigger failures options
   ///Set the mode for saving failed triggers (0:save only triggered events, 1:save both triggered events & failed events, 2:save only failed events)
@@ -116,7 +118,7 @@ protected:
    *
    * The trigger time is the time of the first digit above threshold
    *
-   * The trigger information is the number of hits in the time window (i.e. the number of hits that caused the trigger to fire) (NHits)
+   * The trigger information is the number of hits in the time window (i.e. the number of hits that caused the trigger to fire) (NHits & local NHits)
    * and the seed PMT ID (local NHits)
    */
   void AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits);
@@ -154,9 +156,10 @@ protected:
   G4int  nhitsWindow;         ///< The time window for the NHits trigger
   G4bool nhitsAdjustForNoise; ///< Automatically adjust the NHits trigger threshold based on the average dark noise rate?
   //local NHits
-  G4int localNHitsNeighbours; ///< The number of nearest neighbours that defines 'local' in the Local NHits trigger
-  G4int localNHitsThreshold;  ///< The threshold for the Local NHits trigger
-  G4int localNHitsWindow;     ///< The time window for the Local NHits trigger
+  G4int localNHitsNeighbours;      ///< The number of nearest neighbours that defines 'local' in the Local NHits trigger
+  G4int localNHitsThreshold;       ///< The threshold for the Local NHits trigger
+  G4int localNHitsWindow;          ///< The time window for the Local NHits trigger
+  G4bool localNHitsAdjustForNoise; ///< Automatically adjust the Local NHits trigger threshold based on the average dark noise rate?
 
   //Save failures
   G4int    saveFailuresMode; ///< The mode for saving events which don't pass triggers
@@ -165,8 +168,8 @@ protected:
   G4String triggerClassName; ///< Save the name of the trigger class
 
 private:
-  ///modify the NHits threshold based on the average dark noise rate
-  void AdjustNHitsThresholdForNoise();
+  ///calculate the average dark noise occupancy (used to modify the NHits threshold)
+  int CalculateAverageDarkNoiseOccupancy(int npmts, int window);
 
   ///takes all trigger times, then loops over all Digits & fills the output DigitsCollection
   void FillDigitsCollection(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, TriggerType_t save_triggerType);
