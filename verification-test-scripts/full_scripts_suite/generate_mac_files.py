@@ -68,7 +68,7 @@ parser.add_argument('--DAQtrigger', type=delim_list, default='NHits', help='Whic
 #nhits trigger
 parser.add_argument('--DAQnhitsthreshold', type=delim_list, default='25', help='What value of the nhits trigger threshold should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
 parser.add_argument('--DAQnhitswindow', type=delim_list, default='200', help='What value of the nhits trigger window should be used (ns)? Specify multiple with comma separated list')
-parser.add_argument('--DAQnhitsignorenoise', action='store_true', help='Adjust the NHits threshold automatically for the dark noise rate?')
+parser.add_argument('--DAQnhitsignorenoise', action='store_true', help='Adjust the NHits and LocalNHits threshold automatically for the dark noise rate?')
 #local nhits trigger
 parser.add_argument('--DAQlocalnhitsneighbours', type=delim_list, default='50', help='What value of the localnhits trigger neighbours should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
 parser.add_argument('--DAQlocalnhitsthreshold', type=delim_list, default='10', help='What value of the localnhits trigger threshold should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
@@ -175,7 +175,8 @@ def main(args_to_parse = None):
                                         if DAQtrigger in DAQtrigger_localnhits_choices:
                                             text += "/DAQ/TriggerLocalNHits/Neighbours " + DAQlocalnhitsneighbours + "\n" \
                                                 "/DAQ/TriggerLocalNHits/Threshold " + DAQlocalnhitsthreshold + "\n" \
-                                                "/DAQ/TriggerLocalNHits/Window " + DAQlocalnhitswindow + "\n"
+                                                "/DAQ/TriggerLocalNHits/Window " + DAQlocalnhitswindow + "\n" \
+                                                "/DAQ/TriggerLocalNHits/AdjustForNoise " + noise_agnostic + "\n"
                                         #create the file
                                         f = open('jobOptions.mac', 'w')
                                         f.write(text)
