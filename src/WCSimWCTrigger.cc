@@ -28,8 +28,8 @@
 #ifndef WCSIMWCTRIGGER_VERBOSE
 //#define WCSIMWCTRIGGER_VERBOSE
 #endif
-#ifndef WCSIMWCTRIGGERBASE_PMT_NEIGHBOURS_VERBOSE
-//#define WCSIMWCTRIGGERBASE_PMT_NEIGHBOURS_VERBOSE
+#ifndef WCSIMWCTRIGGER_PMT_NEIGHBOURS_VERBOSE
+//#define WCSIMWCTRIGGER_PMT_NEIGHBOURS_VERBOSE
 #endif
 
 const double WCSimWCTriggerBase::offset = 950.0 ; // ns. apply offset to the digit time
@@ -102,7 +102,7 @@ void WCSimWCTriggerBase::Digitize()
       //reserve an array to store the number of digits on each PMT
       localNHitsHits = new int[nPMTs];
       //and fill it with 0s
-      memset(localNHitsHits, 0, nPMTs);
+      memset(localNHitsHits, 0, nPMTs * sizeof(int));
     }
     digitizeCalled = true;
   }
@@ -276,7 +276,7 @@ std::vector<int> WCSimWCTriggerBase::FindPMTNearestNeighbours(int ipmt)
     thisNeighbours.push_back(distances.at(i).second);
   }
   
-#ifdef WCSIMWCTRIGGERBASE_PMT_NEIGHBOURS_VERBOSE
+#ifdef WCSIMWCTRIGGER_PMT_NEIGHBOURS_VERBOSE
   G4cout << "PMT " << ipmt << " has ID " << thisTubeID
 	 << " position " 
 	 << thisX << " "
@@ -302,9 +302,9 @@ void WCSimWCTriggerBase::FindAllPMTNearestNeighbours()
     pmtNeighbours.push_back(neighbours);
   }
 
-#ifdef WCSIMWCTRIGGERBASE_PMT_NEIGHBOURS_VERBOSE
+#ifdef WCSIMWCTRIGGER_PMT_NEIGHBOURS_VERBOSE
   for(unsigned int i = 0; i < pmtNeighbours.size(); i++) {
-    G4cout << "PMT ID " << i << " has neighbours";
+    G4cout << "PMT ID " << i+1 << " has neighbours";
     for(unsigned int j = 0; j < pmtNeighbours.at(i).size(); j++) {
       G4cout << " " << pmtNeighbours.at(i).at(j);
     }//j
@@ -327,7 +327,7 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
   bool first_loop = true;
 
   G4cout << "WCSimWCTriggerBase::AlgNHitsThenLocalNHits. Number of entries in input digit collection: " << WCDCPMT->entries() << G4endl;
-#ifdef WCSIMWCTRIGGERBASE_VERBOSE
+#ifdef WCSIMWCTRIGGER_VERBOSE
   int temp_total_pe = 0;
   for (G4int i = 0 ; i < WCDCPMT->entries() ; i++) {
     temp_total_pe += (*WCDCPMT)[i]->GetTotalPe();
@@ -341,7 +341,12 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
     float triggertime; //save each digit time, because the trigger time is the time of the first hit above threshold
     bool triggerfound = false;
     digit_times.clear();
-    memset(localNHitsHits, 0, nPMTs);
+    memset(localNHitsHits, 0, nPMTs * sizeof(int));
+    /*
+    for(unsigned int i = 0; i < nPMTs; i++)
+      if(localNHitsHits[i] != 0)
+	G4cerr << "memset didn't work! " << i << " " << localNHitsHits[i] << G4endl;
+    */
     std::vector<int> pmts_hit;
     
     //Loop over each PMT
@@ -389,17 +394,26 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
     }//NHits trigger
 
     //NHits failed. Try local NHits
-    //no point looking at all PMTs if there aren't enough hits in the time window
+    //no point looking at all PMTs if there aren't enough hits in the whole detector in the time window
     if(local_n_digits > localNHitsThreshold) {
       //loop over all PMTs with hits
       for(unsigned int ip = 0; ip < pmts_hit.size(); ip++) {
 	int this_pmtid = pmts_hit[ip];
 	int nlocal = localNHitsHits[this_pmtid - 1];
+#ifdef WCSIMWCTRIGGER_VERBOSE
+	G4cout << "PMT ID " << this_pmtid << " has " << nlocal << " hits and neighbours";
+#endif
 	//add the neighbours hits
 	std::vector<int> thisNeighbours = pmtNeighbours.at(this_pmtid - 1);
 	for(int in = 0; in < localNHitsNeighbours; in++) {
-	  nlocal += localNHitsHits[thisNeighbours[in - 1]];
+	  nlocal += localNHitsHits[thisNeighbours[in] - 1];
+#ifdef WCSIMWCTRIGGER_VERBOSE
+	  G4cout << " " << thisNeighbours[in] << "(" << localNHitsHits[thisNeighbours[in] - 1] << ")";
+#endif
 	}//in
+#ifdef WCSIMWCTRIGGER_VERBOSE
+	G4cout << " total = " << nlocal  << G4endl;
+#endif
 	//if over threshold, issue trigger
 	if(nlocal > localNHitsThreshold) {
 	  ntrig++;
@@ -419,7 +433,13 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
       }//ip
     }//local NHits trigger
 
-#ifdef WCSIMWCTRIGGERBASE_VERBOSE
+    //Cheat sheet
+    // arrays/vectors that run from 0 to npmts-1
+    //pmts_hit, localNHitsHits, pmtNeighbours
+    // arrays/vectors that run from 1 to npmts
+    //thisNeighbours (an element of pmtNeighbours)
+
+#ifdef WCSIMWCTRIGGER_VERBOSE
     if(n_digits)
       G4cout << n_digits << " digits found in 200nsec trigger window ["
 	     << window_start_time << ", " << window_start_time + nhitsWindow
@@ -436,7 +456,7 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
 
     //shorten the loop using the time of the last hit
     if(first_loop) {
-#ifdef WCSIMWCTRIGGERBASE_VERBOSE
+#ifdef WCSIMWCTRIGGER_VERBOSE
       G4cout << "Last hit found to be at " << lasthit
 	     << ". Changing window_end_time from " << window_end_time
 	     << " to " << lasthit - (nhitsWindow - 10)
@@ -447,7 +467,7 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
     }
   }
   
-  G4cout << "Found " << ntrig << " NHit triggers" << G4endl;
+  G4cout << "Found " << ntrig << " NHit or LocalNHit triggers" << G4endl;
   //call FillDigitsCollection() whether any triggers are found or not
   // (what's saved depends on saveFailuresMode)
   FillDigitsCollection(WCDCPMT, remove_hits, kTriggerUndefined);
