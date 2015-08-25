@@ -591,7 +591,8 @@ WCSimWCTriggerNHits::~WCSimWCTriggerNHits()
 {
 }
 
-void WCSimWCTriggerNHits::DoTheWork(WCSimWCDigitsCollection* WCDCPMT) {
+void WCSimWCTriggerNHits::DoTheWork(WCSimWCDigitsCollection* WCDCPMT)
+{
   //Apply an NHits trigger
   bool remove_hits = false;
   AlgNHits(WCDCPMT, remove_hits);
@@ -611,11 +612,13 @@ WCSimWCTriggerNHits2::WCSimWCTriggerNHits2(G4String name,
   triggerClassName = "NHits2";
 }
 
-WCSimWCTriggerNHits2::~WCSimWCTriggerNHits2(){
+WCSimWCTriggerNHits2::~WCSimWCTriggerNHits2()
+{
 }
 
 
-void WCSimWCTriggerNHits2::DoTheWork(WCSimWCDigitsCollection* WCDCPMT) {
+void WCSimWCTriggerNHits2::DoTheWork(WCSimWCDigitsCollection* WCDCPMT)
+{
   //This calls 2 trigger algorithms; the second algorithm is called on hits that failed the first algorithm
   //(for a second trigger working on hits that passed a pretrigger, FillDigitsCollection() needs to have a new option)
 
@@ -630,4 +633,29 @@ void WCSimWCTriggerNHits2::DoTheWork(WCSimWCDigitsCollection* WCDCPMT) {
   remove_hits = false;
   bool nhits_test = true;
   AlgNHits(WCDCPMTCopy, remove_hits, nhits_test);
+}
+
+
+
+// *******************************************
+// DERIVED CLASS
+// *******************************************
+
+WCSimWCTriggerNHitsThenLocalNHits::WCSimWCTriggerNHitsThenLocalNHits(G4String name,
+								     WCSimDetectorConstruction* myDetector,
+								     WCSimWCDAQMessenger* myMessenger)
+  :WCSimWCTriggerBase(name, myDetector, myMessenger)
+{
+  triggerClassName = "NHitsThenLocalNHits";
+}
+
+WCSimWCTriggerNHitsThenLocalNHits::~WCSimWCTriggerNHitsThenLocalNHits()
+{
+}
+
+void WCSimWCTriggerNHitsThenLocalNHits::DoTheWork(WCSimWCDigitsCollection* WCDCPMT)
+{
+  //Apply an NHitsThenLocalNHits trigger
+  bool remove_hits = false;
+  AlgNHitsThenLocalNHits(WCDCPMT, remove_hits);
 }
