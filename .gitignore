@@ -8,6 +8,10 @@ make.result
 bin/
 tmp/
 
+#ignore compiled ROOT scripts
+*_C.d
+*_C.so
+
 #ignore run results
 wcsim.root
 geofile.txt
