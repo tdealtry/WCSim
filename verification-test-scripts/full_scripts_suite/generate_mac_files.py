@@ -5,15 +5,15 @@ Script to create and run a lot of WCSim .mac files
 
 Run examples:
 
-e.g. 10000 events per configuration  in the SK geometry, with the SKI digitizer, 25 NHits trigger (automatically adjusted for dark noise rate), 0 or 8.4 kHZ dark noise in a window 2000 ns (+/-1000ns) around hits, with 5,10,20,50 MeV electrons using a fixed position & direction
+e.g. 10000 events per configuration  in the SK geometry, with the SKI digitizer, 25 NDigits trigger (automatically adjusted for dark noise rate), 0 or 8.4 kHZ dark noise in a window 2000 ns (+/-1000ns) around hits, with 5,10,20,50 MeV electrons using a fixed position & direction
 (produces 8 files total)
 
-python generate_mac_files.py --batchmode local --WCgeom SuperK --HKwatertanklength 24750 --PMTQEMethod Stacking_Only --SavePi0 false --DAQdigitizer SKI --DAQtrigger NHits --DAQnhitsthreshold 25 --DAQnhitsignorenoise --DAQnhitswindow 200 --DAQsavefailuresmode 0 --DAQsavefailurestime 250 --DarkNoiseRate 0,8.4 --DarkNoiseConvert 1.367 --DarkNoiseMode 1 --DarkNoiseWindow 2000 --GunParticle e- --GunEnergy 5,10,20,50 --GunPosition 0,0,0 --GunDirection 1,0,0 --NEvents 10000
+python generate_mac_files.py --batchmode local --WCgeom SuperK --HKwatertanklength 24750 --PMTQEMethod Stacking_Only --SavePi0 false --DAQdigitizer SKI --DAQtrigger NDigits --DAQndigitsthreshold 25 --DAQndigitsignorenoise --DAQndigitswindow 200 --DAQsavefailuresmode 0 --DAQsavefailurestime 250 --DarkNoiseRate 0,8.4 --DarkNoiseConvert 1.367 --DarkNoiseMode 1 --DarkNoiseWindow 2000 --GunParticle e- --GunEnergy 5,10,20,50 --GunPosition 0,0,0 --GunDirection 1,0,0 --NEvents 10000
 
 e.g. the same, but producing the particles at random positions and directions
 (produces 8 files total)
 
-python generate_mac_files.py --batchmode local --WCgeom SuperK --HKwatertanklength 24750 --PMTQEMethod Stacking_Only --SavePi0 false --DAQdigitizer SKI --DAQtrigger NHits --DAQnhitsthreshold 25 --DAQnhitsignorenoise --DAQnhitswindow 200 --DAQsavefailuresmode 0 --DAQsavefailurestime 250 --DarkNoiseRate 0,8.4 --DarkNoiseConvert 1.367 --DarkNoiseMode 1 --DarkNoiseWindow 2000 --GunParticle e- --GunEnergy 5,10,20,50 --GunPosition random --GunDirection 4pi --NEvents 10000
+python generate_mac_files.py --batchmode local --WCgeom SuperK --HKwatertanklength 24750 --PMTQEMethod Stacking_Only --SavePi0 false --DAQdigitizer SKI --DAQtrigger NDigits --DAQndigitsthreshold 25 --DAQndigitsignorenoise --DAQndigitswindow 200 --DAQsavefailuresmode 0 --DAQsavefailurestime 250 --DarkNoiseRate 0,8.4 --DarkNoiseConvert 1.367 --DarkNoiseMode 1 --DarkNoiseWindow 2000 --GunParticle e- --GunEnergy 5,10,20,50 --GunPosition random --GunDirection 4pi --NEvents 10000
 
 """
 
@@ -26,10 +26,10 @@ import itertools
 delim_list = lambda s: list(set(s.split(',')))
 delim_list_str = lambda s: s.split(',') if len(s.split(',')) == 3 else s
 
-DAQdigitizer_choices = ['SKIV', 'SKI', 'SKI_SKDETSIM']
-DAQtrigger_choices = ['NHits', 'SKI_SKDETSIM', 'NHits2', 'NHitsThenLocalNHits']
-DAQtrigger_nhits_choices = ['NHits', 'SKI_SKDETSIM', 'NHits2', 'NHitsThenLocalNHits']
-DAQtrigger_localnhits_choices = ['NHitsThenLocalNHits']
+DAQdigitizer_choices = ['SKI', 'SKI_SKDETSIM']
+DAQtrigger_choices = ['NDigits', 'SKI_SKDETSIM', 'NDigits2', 'NDigitsThenLocalNDigits']
+DAQtrigger_ndigits_choices = ['NDigits', 'SKI_SKDETSIM', 'NDigits2', 'NDigitsThenLocalNDigits']
+DAQtrigger_localndigits_choices = ['NDigitsThenLocalNDigits']
 WCgeom_choices = ['HyperK', \
                       'HyperK_withHPD', \
                       'SuperK', \
@@ -65,15 +65,18 @@ parser.add_argument('--HKwatertanklength', type=delim_list, default='49500', hel
 parser.add_argument('--DAQsavefailuresmode', type=delim_list, default='0', help='Save failed triggers mode. 0: save only events which pass the trigger. 1: save only events which fail the trigger. 2: save both')
 parser.add_argument('--DAQsavefailurestime', type=delim_list, default='200', help='For mode 1 & 2, give events which fail the trigger the trigger time')
 parser.add_argument('--DAQdigitizer', type=delim_list, default='SKI', help='Which digitizer class to use? Specify multiple with comma separated list. Choices: '+ListAsString(DAQdigitizer_choices))
-parser.add_argument('--DAQtrigger', type=delim_list, default='NHits', help='Which trigger class to use? Specify multiple with comma separated list. Choices: '+ListAsString(DAQtrigger_choices))
-#nhits trigger
-parser.add_argument('--DAQnhitsthreshold', type=delim_list, default='25', help='What value of the nhits trigger threshold should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
-parser.add_argument('--DAQnhitswindow', type=delim_list, default='200', help='What value of the nhits trigger window should be used (ns)? Specify multiple with comma separated list')
-parser.add_argument('--DAQnhitsignorenoise', action='store_true', help='Adjust the NHits and LocalNHits threshold automatically for the dark noise rate?')
-#local nhits trigger
-parser.add_argument('--DAQlocalnhitsneighbours', type=delim_list, default='50', help='What value of the localnhits trigger neighbours should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
-parser.add_argument('--DAQlocalnhitsthreshold', type=delim_list, default='10', help='What value of the localnhits trigger threshold should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
-parser.add_argument('--DAQlocalnhitswindow', type=delim_list, default='50', help='What value of the localnhits trigger window should be used (ns)? Specify multiple with comma separated list')
+parser.add_argument('--DAQtrigger', type=delim_list, default='NDigits', help='Which trigger class to use? Specify multiple with comma separated list. Choices: '+ListAsString(DAQtrigger_choices))
+#generic digitizer options
+parser.add_argument('--DAQdigideadtime', type=delim_list, default='0', help='What value of the digitizer deadtime should be used (i.e. how long can the digitizer not create new digits)? Specify multiple with comma separated list')
+parser.add_argument('--DAQdigiintwindow', type=delim_list, default='200', help='What value of the digitizer integration window should be used (i.e. how long does the digitizer integrate for)? Specify multiple with comma separated list')
+#ndigits trigger
+parser.add_argument('--DAQndigitsthreshold', type=delim_list, default='25', help='What value of the ndigits trigger threshold should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
+parser.add_argument('--DAQndigitswindow', type=delim_list, default='200', help='What value of the ndigits trigger window should be used (ns)? Specify multiple with comma separated list')
+parser.add_argument('--DAQndigitsignorenoise', action='store_true', help='Adjust the NDigits and LocalNDigits threshold automatically for the dark noise rate?')
+#local ndigits trigger
+parser.add_argument('--DAQlocalndigitsneighbours', type=delim_list, default='50', help='What value of the localndigits trigger neighbours should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
+parser.add_argument('--DAQlocalndigitsthreshold', type=delim_list, default='10', help='What value of the localndigits trigger threshold should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
+parser.add_argument('--DAQlocalndigitswindow', type=delim_list, default='50', help='What value of the localndigits trigger window should be used (ns)? Specify multiple with comma separated list')
 # dark noise
 parser.add_argument('--DarkNoiseRate', type=delim_list, default='4.2', help='Dark noise rate (kHz). Specify multiple with comma separated list')
 parser.add_argument('--DarkNoiseConvert', type=delim_list, default='1.367', help='Convert dark noise frequency before digitization to after digitization by setting suitable factor. Specify multiple with comma separated list')
@@ -189,36 +192,42 @@ def main(args_to_parse = None):
                     continue
                 for DAQsavefailuresmode in args.DAQsavefailuresmode:
                     for DAQsavefailurestime in args.DAQsavefailurestime:
-                        for DAQnhitsthreshold in args.DAQnhitsthreshold:
-                            for DAQnhitswindow in args.DAQnhitswindow:
-                                for DAQlocalnhitsneighbours in args.DAQlocalnhitsneighbours:
-                                    for DAQlocalnhitsthreshold in args.DAQlocalnhitsthreshold:
-                                        for DAQlocalnhitswindow in args.DAQlocalnhitswindow:
-                                            filestub = DAQdigitizer + "_" + DAQtrigger + "_fails" + DAQsavefailuresmode
-                                            if DAQsavefailuresmode != '0':
-                                                filestub += "_" + DAQsavefailurestime
-                                            if DAQtrigger in DAQtrigger_nhits_choices:
-                                                filestub += "_NHits" + str(DAQnhitsthreshold) + "_" + str(DAQnhitswindow)
-                                            if DAQtrigger in DAQtrigger_localnhits_choices:
-                                                filestub += "_LocalNHits" + str(DAQlocalnhitsneighbours) + "_" \
-                                                                  + str(DAQlocalnhitsthreshold) + "_" \
-                                                                  + str(DAQlocalnhitswindow)
-                                            noise_agnostic = 'true' if args.DAQnhitsignorenoise else 'false'
-                                            daqoptions = "/DAQ/Digitizer " + DAQdigitizer + "\n" \
-                                                "/DAQ/Trigger " + DAQtrigger + "\n" \
-                                                "/DAQ/TriggerSaveFailures/Mode " + DAQsavefailuresmode + "\n" \
-                                                "/DAQ/TriggerSaveFailures/TriggerTime " + DAQsavefailurestime + "\n"
-                                            if DAQtrigger in DAQtrigger_nhits_choices:
-                                                daqoptions += "/DAQ/TriggerNHits/Threshold " + DAQnhitsthreshold + "\n" \
-                                                    "/DAQ/TriggerNHits/Window " + DAQnhitswindow + "\n" \
-                                                    "/DAQ/TriggerNHits/AdjustForNoise " + noise_agnostic + "\n"
-                                            if DAQtrigger in DAQtrigger_localnhits_choices:
-                                                daqoptions += "/DAQ/TriggerLocalNHits/Neighbours " + DAQlocalnhitsneighbours + "\n" \
-                                                    "/DAQ/TriggerLocalNHits/Threshold " + DAQlocalnhitsthreshold + "\n" \
-                                                    "/DAQ/TriggerLocalNHits/Window " + DAQlocalnhitswindow + "\n" \
-                                                    "/DAQ/TriggerLocalNHits/AdjustForNoise " + noise_agnostic + "\n"
-                                            daqs.append(daqoptions)
-                                            filestubs.append(filestub)
+                        for DAQdigideadtime in args.DAQdigideadtime:
+                            for DAQdigiintwindow in args.DAQdigiintwindow:
+                                for DAQndigitsthreshold in args.DAQndigitsthreshold:
+                                    for DAQndigitswindow in args.DAQndigitswindow:
+                                        for DAQlocalndigitsneighbours in args.DAQlocalndigitsneighbours:
+                                            for DAQlocalndigitsthreshold in args.DAQlocalndigitsthreshold:
+                                                for DAQlocalndigitswindow in args.DAQlocalndigitswindow:
+                                                    filestub = DAQdigitizer + "_" + DAQtrigger + "_fails" + DAQsavefailuresmode + '_digi' \
+                                                        DAQdigideadtime + '_' + DAQdigiintwindow
+                                                    if DAQsavefailuresmode != '0':
+                                                        filestub += "_" + DAQsavefailurestime
+                                                    if DAQtrigger in DAQtrigger_ndigits_choices:
+                                                        filestub += "_NDigits" + str(DAQndigitsthreshold) + "_" + str(DAQndigitswindow)
+                                                    if DAQtrigger in DAQtrigger_localndigits_choices:
+                                                        filestub += "_LocalNDigits" + str(DAQlocalndigitsneighbours) + "_" \
+                                                                          + str(DAQlocalndigitsthreshold) + "_" \
+                                                                          + str(DAQlocalndigitswindow)
+                                                    noise_agnostic = 'true' if args.DAQndigitsignorenoise else 'false'
+                                                    daqoptions = "/DAQ/Digitizer " + DAQdigitizer + "\n" \
+                                                        "/DAQ/Trigger " + DAQtrigger + "\n" \
+                                                        "/DAQ/DigitizerOpt/DeadTime " + DAQdigideadtime + "\n" \
+                                                        "/DAQ/DigitizerOpt/IntegrationWindow " + DAQdigiintwindow + "\n" \
+                                                        "/DAQ/TriggerSaveFailures/Mode " + DAQsavefailuresmode + "\n" \
+                                                        "/DAQ/TriggerSaveFailures/TriggerTime " + DAQsavefailurestime + "\n"
+                                                    if DAQtrigger in DAQtrigger_ndigits_choices:
+                                                        daqoptions += "/DAQ/TriggerNDigits/Threshold " + DAQndigitsthreshold + "\n" \
+                                                            "/DAQ/TriggerNDigits/Window " + DAQndigitswindow + "\n" \
+                                                            "/DAQ/TriggerNDigits/AdjustForNoise " + noise_agnostic + "\n"
+                                                    if DAQtrigger in DAQtrigger_localndigits_choices:
+                                                        daqoptions += "/DAQ/TriggerLocalNDigits/Neighbours " + DAQlocalndigitsneighbours + "\n" \
+                                                            "/DAQ/TriggerLocalNDigits/Threshold " + DAQlocalndigitsthreshold + "\n" \
+                                                            "/DAQ/TriggerLocalNDigits/Window " + DAQlocalndigitswindow + "\n" \
+                                                            "/DAQ/TriggerLocalNDigits/AdjustForNoise " + noise_agnostic + "\n"
+                                                    daqoptions += '/DAQ/Construct \n'
+                                                    daqs.append(daqoptions)
+                                                    filestubs.append(filestub)
         return [daqs, filestubs]
 
 
