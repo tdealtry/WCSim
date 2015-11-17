@@ -68,7 +68,7 @@ template <typename T> T StringToNumber(std::string &Text)
 }
 
 // Simple example of reading a generated Root file
-int cherrypick(char *filename=NULL, string cuts = "", bool verbose=false, Long64_t max_nevents = 999999999999)
+int cherrypick(char *filename=NULL, bool verbose=false, string cuts = "", Long64_t max_nevents = 999999999999)
 {
 #if !defined(__MAKECINT__)
   // Load the library with class dictionary info

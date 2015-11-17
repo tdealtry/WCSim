@@ -6,22 +6,40 @@
 
 typedef enum ETriggerType {
   kTriggerUndefined = -1,
-  kTriggerNHits,
-  kTriggerLocalNHits,
+  kTriggerNDigits,
   kTriggerNHitsSKDETSIM,
-  kTriggerNHitsTest,
+  kTriggerNDigitsTest,
+  kTriggerLocalNDigits,
   kTriggerFailure // this should always be the last entry (for looping)
 } TriggerType_t;
+
+typedef enum EDigitizerType {
+  kDigitizerUndefined = -1,
+  kDigitizerSKI
+} DigitizerType_t;
 
 class WCSimEnumerations
 {
 public:
 
+  static std::string EnumAsString(DigitizerType_t d)
+  {
+    switch(d) {
+    case (kDigitizerSKI) :
+      return "SKI";
+      break;
+    default:
+      return "";
+      break;
+    }
+    return "";
+  }
+
   static std::string EnumAsString(TriggerType_t t)
   {
     switch(t) {
-    case (kTriggerNHits) :
-      return "NHits";
+    case (kTriggerNDigits) :
+      return "NDigits";
       break;
     case (kTriggerLocalNHits) :
       return "Local_NHits";
@@ -29,8 +47,8 @@ public:
     case (kTriggerNHitsSKDETSIM) :
       return "NHits_SKDETSIM";
       break;
-    case (kTriggerNHitsTest) :
-      return "NHits_TEST";
+    case (kTriggerNDigitsTest) :
+      return "NDigits_TEST";
       break;
     case (kTriggerFailure) :
       return "No_trigger_passed";

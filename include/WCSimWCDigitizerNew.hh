@@ -4,6 +4,7 @@
 #include "WCSimDarkRateMessenger.hh"
 #include "WCSimWCDAQMessenger.hh"
 #include "WCSimDetectorConstruction.hh"
+#include "WCSimEnumerations.hh"
 #include "G4VDigitizerModule.hh"
 #include "WCSimWCDigi.hh"
 #include "WCSimWCHit.hh"
@@ -22,30 +23,39 @@ class WCSimWCDigitizerBase : public G4VDigitizerModule
 {
 public:
   
-  WCSimWCDigitizerBase(G4String name, WCSimDetectorConstruction*, WCSimWCDAQMessenger*);
+  WCSimWCDigitizerBase(G4String name, WCSimDetectorConstruction*, WCSimWCDAQMessenger*, DigitizerType_t);
   virtual ~WCSimWCDigitizerBase();
   
-  void AddNewDigit(int tube, int gate, float digihittime, float peSmeared, std::vector< std::pair<int,int> > digi_comp);
+  bool AddNewDigit(int tube, int gate, float digihittime, float peSmeared, std::vector< std::pair<int,int> > digi_comp);
   virtual void DigitizeHits(WCSimWCDigitsCollection* WCHCPMT) = 0;
   void DigitizeGate(WCSimWCDigitsCollection* WCHC,G4int G);
   void Digitize();
 
   //.mac file option setting methods
-  void SKDigitizerType(G4String); 
+  void SetDigitizerDeadTime         (int deadtime) { DigitizerDeadTime = deadtime;         }; ///< Override the default digitizer deadtime (ns)
+  void SetDigitizerIntegrationWindow(int inttime ) { DigitizerIntegrationWindow = inttime; }; ///< Override the default digitizer integration window (ns)
 
 protected:
   void ReInitialize() { DigiStoreHitMap.clear(); }
-  
+
   G4double peSmeared;
 
-  WCSimDetectorConstruction* myDetector;
-  WCSimWCDAQMessenger* DAQMessenger;
+  WCSimDetectorConstruction* myDetector; ///< Get the geometry information
+  WCSimWCDAQMessenger* DAQMessenger;     ///< Get the /DAQ/ .mac options
 
   WCSimWCDigitsCollection*  DigiStore;
-  std::map<int,int> DigiStoreHitMap; // need to check if a hit already exists..
+  std::map<int,int> DigiStoreHitMap;   ///< Used to check if a digit has already been created on a PMT
 
-  bool SKDeadTime;
+  //generic digitizer properties. Defaults set with the GetDefault*() methods. Overidden by .mac options
+  int DigitizerDeadTime;          ///< Digitizer deadtime (ns)
+  int DigitizerIntegrationWindow; ///< Digitizer integration window (ns)
 
+  DigitizerType_t DigitizerType; ///< Enumeration to say which digitizer we've constructed
+
+  virtual int GetDefaultDeadTime() = 0;          ///< Set the default digitizer-specific deadtime (in ns) (overridden by .mac)
+  virtual int GetDefaultIntegrationWindow() = 0; ///< Set the default digitizer-specific integration window (in ns) (overridden by .mac)
+
+  void GetVariables(); ///< Get the default deadtime, etc. from the derived class, and override with read from the .mac file
 };
 
 
@@ -56,16 +66,19 @@ protected:
 
 
 // SKI-based digitizer class
-class WCSimWCDigitizerSK : public WCSimWCDigitizerBase 
+class WCSimWCDigitizerSKI : public WCSimWCDigitizerBase 
 {
 public:
   
-  WCSimWCDigitizerSK(G4String name, WCSimDetectorConstruction*, WCSimWCDAQMessenger*);
-  ~WCSimWCDigitizerSK();
+  WCSimWCDigitizerSKI(G4String name, WCSimDetectorConstruction*, WCSimWCDAQMessenger*);
+  ~WCSimWCDigitizerSKI();
 
   void DigitizeHits(WCSimWCDigitsCollection* WCHCPMT);
 
 private:
+  int GetDefaultDeadTime()          { return 0; }   ///< SKI digitizer deadtime is 0 ns
+  int GetDefaultIntegrationWindow() { return 200; } ///< 
+
   static void Threshold(double& pe,int& iflag){
     //   CLHEP::HepRandom::setTheSeed(pe+2014);
     double x = pe+0.1; iflag=0;
@@ -88,8 +101,6 @@ private:
       pe = pe+err;
     }
   }
-
-  static const double pmtgate; // ns  
 };
 
 

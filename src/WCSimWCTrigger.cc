@@ -32,32 +32,26 @@
 //#define WCSIMWCTRIGGER_PMT_NEIGHBOURS_VERBOSE
 #endif
 
-const double WCSimWCTriggerBase::offset = 950.0 ; // ns. apply offset to the digit time
-const double WCSimWCTriggerBase::eventgateup = 950.0 ; // ns. save eventgateup ns after the trigger time
-const double WCSimWCTriggerBase::eventgatedown = -400.0 ; // ns. save eventgateup ns before the trigger time
-const double WCSimWCTriggerBase::LongTime = 100000.0 ; // ns = 0.1ms. event time
+const double WCSimWCTriggerBase::offset = 950.0; // ns. apply offset to the digit time
+const double WCSimWCTriggerBase::LongTime = 1E6; // ns = 1ms. event time
 
 
 WCSimWCTriggerBase::WCSimWCTriggerBase(G4String name,
 				       WCSimDetectorConstruction* inDetector,
 				       WCSimWCDAQMessenger* myMessenger)
-  :G4VDigitizerModule(name), myDetector(inDetector), triggerClassName("")
+  :G4VDigitizerModule(name), DAQMessenger(myMessenger), myDetector(inDetector), triggerClassName("")
 {
   G4String colName = "WCDigitizedCollection";
   collectionName.push_back(colName);
 
   ReInitialize();
 
-  if(myMessenger != NULL) {
-    DAQMessenger = myMessenger;
-    DAQMessenger->TellMeAboutTheTrigger(this);
-    DAQMessenger->SetTriggerOptions();
-  }
-  else {
+  if(DAQMessenger == NULL) {
     G4cerr << "WCSimWCDAQMessenger pointer is NULL when passed to WCSimWCTriggerBase constructor. Exiting..."
            << G4endl;
     exit(-1);
   }
+
   digitizeCalled = false;
 }
 
@@ -67,9 +61,79 @@ WCSimWCTriggerBase::~WCSimWCTriggerBase()
     delete localNHitsHits;
 }
 
-int WCSimWCTriggerBase::CalculateAverageDarkNoiseOccupancy(int npmts, int window)
+void WCSimWCTriggerBase::GetVariables()
 {
-  double trigger_window_seconds = window * 1E-9;
+  //set the options to class-specific defaults
+  multiDigitsPerTrigger    = GetDefaultMultiDigitsPerTrigger();
+  ndigitsThreshold         = GetDefaultNDigitsThreshold();
+  ndigitsWindow            = GetDefaultNDigitsWindow();
+  ndigitsPreTriggerWindow  = GetDefaultNDigitsPreTriggerWindow();
+  ndigitsPostTriggerWindow = GetDefaultNDigitsPostTriggerWindow();
+
+  //read the .mac file to override them
+  if(DAQMessenger != NULL) {
+    DAQMessenger->TellMeAboutTheTrigger(this);
+    DAQMessenger->SetTriggerOptions();
+  }
+  else {
+    G4cerr << "WCSimWCDAQMessenger pointer is NULL when used in WCSimWCTriggerBase::GetVariables(). Exiting..." 
+	   << G4endl;
+    exit(-1);
+  }
+
+  G4cout << (multiDigitsPerTrigger ? "Using mutiple digits per PMT per trigger" : "Using a maximum of 1 digit per PMT per trigger" ) << G4endl
+	 << "Using NDigits threshold " << ndigitsThreshold
+	 << (ndigitsAdjustForNoise ? " (will be adjusted for noise)" : "") << G4endl
+	 << "Using NDigits trigger window " << ndigitsWindow << " ns" << G4endl
+	 << "Using NDigits event pretrigger window " << ndigitsPreTriggerWindow << " ns" << G4endl
+	 << "Using NDigits event posttrigger window " << ndigitsPostTriggerWindow << " ns" << G4endl
+	 << "Using SaveFailures event pretrigger window " << saveFailuresPreTriggerWindow << " ns" << G4endl
+	 << "Using SaveFailures event posttrigger window " << saveFailuresPostTriggerWindow << " ns" << G4endl;
+}
+
+int WCSimWCTriggerBase::GetPreTriggerWindow(TriggerType_t t)
+{
+  switch(t) {
+  case kTriggerNDigits:
+  case kTriggerNDigitsTest:
+  case kTriggerNHitsSKDETSIM:
+  case kTriggerNHitsThenLocalNHits;
+    return ndigitsPreTriggerWindow;
+    break;
+  case kTriggerFailure:
+    return saveFailuresPreTriggerWindow;
+    break;
+  default:
+    G4cerr << "WCSimWCTriggerBase::GetPreTriggerWindow() Unknown trigger type " << t
+	   << "\t" << WCSimEnumerations::EnumAsString(t) << G4endl;
+    exit(-1);
+    break;
+  }
+}
+
+int WCSimWCTriggerBase::GetPostTriggerWindow(TriggerType_t t)
+{
+  switch(t) {
+  case kTriggerNDigits:
+  case kTriggerNDigitsTest:
+  case kTriggerNHitsSKDETSIM:
+  case kTriggerNHitsThenLocalNHits;
+    return ndigitsPostTriggerWindow;
+    break;
+  case kTriggerFailure:
+    return saveFailuresPostTriggerWindow;
+    break;
+  default:
+    G4cerr << "WCSimWCTriggerBase::GetPostTriggerWindow() Unknown trigger type " << t
+	   << "\t" << WCSimEnumerations::EnumAsString(t) << G4endl;
+    exit(-1);
+    break;
+  }
+}
+
+int WCSimWCTriggerBase::CalculateAverageDarkNoiseOccupancy(int npmts, int window_ns)
+{
+  double trigger_window_seconds = window_ns * 1E-9;
   double dark_rate_Hz = PMTDarkRate * 1000;
   double average_occupancy = dark_rate_Hz * trigger_window_seconds * npmts;
   
@@ -81,23 +145,32 @@ int WCSimWCTriggerBase::CalculateAverageDarkNoiseOccupancy(int npmts, int window
   return round(average_occupancy);
 }
 
+void WCSimWCTriggerBase::AdjustNDigitsThresholdForNoise()
+{
+  int npmts = this->myDetector->GetTotalNumPmts();
+  double average_occupancy = CalculateAverageDarkNoiseOccupancy(npmts, ndigitsWindow);
+  G4cout << "Updating the NDigits threshold, from " << ndigitsThreshold
+	 << " to " << ndigitsThreshold + round(average_occupancy) << G4endl;
+  ndigitsThreshold += round(average_occupancy);
+}
+
+void WCSimWCTriggerBase::AdjustNDigitsThresholdForNoise()
+{
+  int npmts = localNHitsNeighbours;
+  double average_occupancy = CalculateAverageDarkNoiseOccupancy(npmts, localNHitsWindow);
+  G4cout << "Updating the LocalNDigits threshold, from " << localNHitsThreshold
+         << " to " << localNHitsThreshold + round(average_occupancy) << G4endl;
+  localNHitsThreshold += round(average_occupancy);
+}
+
 void WCSimWCTriggerBase::Digitize()
 {
   if(!digitizeCalled) {
-    nPMTs = this->myDetector->GetTotalNumPmts();
-    if(nhitsAdjustForNoise) {
-      int nnoisehits = CalculateAverageDarkNoiseOccupancy(nPMTs, nhitsWindow);
-      G4cout << "Updating the NHits threshold, from " << nhitsThreshold
-	     << " to " << nhitsThreshold + nnoisehits << G4endl;
-      nhitsThreshold += nnoisehits;
-    }
-    if(localNHitsAdjustForNoise) {
-      int nnoisehits = CalculateAverageDarkNoiseOccupancy(localNHitsNeighbours + 1, localNHitsWindow);
-      G4cout << "Updating the NHits threshold, from " << localNHitsThreshold
-	     << " to " << localNHitsThreshold + nnoisehits << G4endl;
-      localNHitsThreshold += nnoisehits;
-    }
+    if(ndigitsAdjustForNoise)
+      AdjustNDigitsThresholdForNoise();
     if(triggerClassName.compare("NHitsThenLocalNHits") == 0) {
+      if(localNHitsAdjustForNoise)
+	AdjustLocalNDigitsThresholdForNoise();
       FindAllPMTNearestNeighbours();
       //reserve an array to store the number of digits on each PMT
       localNHitsHits = new int[nPMTs];
@@ -105,8 +178,7 @@ void WCSimWCTriggerBase::Digitize()
       memset(localNHitsHits, 0, nPMTs * sizeof(int));
     }
     digitizeCalled = true;
-  }
-    
+  }    
 
   //Input is collection of all digitized hits that passed the threshold
   //Output is all digitized hits which pass the trigger
@@ -114,7 +186,7 @@ void WCSimWCTriggerBase::Digitize()
   ReInitialize();
 
   //This is the output digit collection
-  DigitsCollection = new WCSimWCDigitsCollection ("/WCSim/glassFaceWCPMT",collectionName[0]);
+  DigitsCollection = new WCSimWCTriggeredDigitsCollection ("/WCSim/glassFaceWCPMT",collectionName[0]);
 
   G4DigiManager* DigiMan = G4DigiManager::GetDMpointer();
 
@@ -132,36 +204,36 @@ void WCSimWCTriggerBase::Digitize()
   StoreDigiCollection(DigitsCollection);
 }
 
-void WCSimWCTriggerBase::AlgNHits(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, bool test)
+void WCSimWCTriggerBase::AlgNDigits(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, bool test)
 {
 
-  //if test is true, we run the algorithm with 1/2 the threshold, and kTriggerNHitsTest
+  //if test is true, we run the algorithm with 1/2 the threshold, and kTriggerNDigitsTest
   //for testing multiple trigger algorithms at once
-  int this_nhitsThreshold = nhitsThreshold;
-  TriggerType_t this_triggerType = kTriggerNHits;
+  int this_ndigitsThreshold = ndigitsThreshold;
+  TriggerType_t this_triggerType = kTriggerNDigits;
   if(test) {
-    this_nhitsThreshold /= 2;
-    this_triggerType = kTriggerNHitsTest;
+    this_ndigitsThreshold /= 2;
+    this_triggerType = kTriggerNDigitsTest;
   }
 
   //Now we will try to find triggers
-  //loop over PMTs, and Digits in each PMT.  If nhits > Threshhold in a time window, then we have a trigger
+  //loop over PMTs, and Digits in each PMT.  If ndigits > Threshhold in a time window, then we have a trigger
 
   int ntrig = 0;
   int window_start_time = 0;
-  int window_end_time   = WCSimWCTriggerBase::LongTime - nhitsWindow;
+  int window_end_time   = WCSimWCTriggerBase::LongTime - ndigitsWindow;
   int window_step_size  = 5; //step the search window along this amount if no trigger is found
   float lasthit;
   std::vector<int> digit_times;
   bool first_loop = true;
 
-  G4cout << "WCSimWCTriggerBase::AlgNHits. Number of entries in input digit collection: " << WCDCPMT->entries() << G4endl;
+  G4cout << "WCSimWCTriggerBase::AlgNDigits. Number of entries in input digit collection: " << WCDCPMT->entries() << G4endl;
 #ifdef WCSIMWCTRIGGER_VERBOSE
   int temp_total_pe = 0;
   for (G4int i = 0 ; i < WCDCPMT->entries() ; i++) {
     temp_total_pe += (*WCDCPMT)[i]->GetTotalPe();
   }
-  G4cout << "WCSimWCTriggerBase::AlgNHits. " << temp_total_pe << " total p.e. input" << G4endl;
+  G4cout << "WCSimWCTriggerBase::AlgNDigits. " << temp_total_pe << " total p.e. input" << G4endl;
 #endif
 
   // the upper time limit is set to the final possible full trigger window
@@ -178,7 +250,7 @@ void WCSimWCTriggerBase::AlgNHits(WCSimWCDigitsCollection* WCDCPMT, bool remove_
       for ( G4int ip = 0 ; ip < (*WCDCPMT)[i]->GetTotalPe() ; ip++) {
 	int digit_time = (*WCDCPMT)[i]->GetTime(ip);
 	//hit in trigger window?
-	if(digit_time >= window_start_time && digit_time <= (window_start_time + nhitsWindow)) {
+	if(digit_time >= window_start_time && digit_time <= (window_start_time + ndigitsWindow)) {
 	  n_digits++;
 	  digit_times.push_back(digit_time);
 	}
@@ -190,11 +262,11 @@ void WCSimWCTriggerBase::AlgNHits(WCSimWCDigitsCollection* WCDCPMT, bool remove_
     }//loop over PMTs
 
     //if over threshold, issue trigger
-    if(n_digits > this_nhitsThreshold) {
+    if(n_digits > this_ndigitsThreshold) {
       ntrig++;
       //The trigger time is the time of the first hit above threshold
       std::sort(digit_times.begin(), digit_times.end());
-      triggertime = digit_times[this_nhitsThreshold];
+      triggertime = digit_times[this_ndigitsThreshold];
       triggertime -= (int)triggertime % 5;
       TriggerTimes.push_back(triggertime);
       TriggerTypes.push_back(this_triggerType);
@@ -205,13 +277,13 @@ void WCSimWCTriggerBase::AlgNHits(WCSimWCDigitsCollection* WCDCPMT, bool remove_
 #ifdef WCSIMWCTRIGGER_VERBOSE
     if(n_digits)
       G4cout << n_digits << " digits found in 200nsec trigger window ["
-	     << window_start_time << ", " << window_start_time + nhitsWindow
-	     << "]. Threshold is: " << this_nhitsThreshold << G4endl;
+	     << window_start_time << ", " << window_start_time + ndigitsWindow
+	     << "]. Threshold is: " << this_ndigitsThreshold << G4endl;
 #endif
 
     //move onto the next go through the timing loop
     if(triggerfound) {
-      window_start_time = triggertime + WCSimWCTriggerBase::eventgateup;
+      window_start_time = triggertime + GetPostTriggerWindow(TriggerTypes.back());
     }//triggerfound
     else {
       window_start_time += window_step_size;
@@ -222,10 +294,10 @@ void WCSimWCTriggerBase::AlgNHits(WCSimWCDigitsCollection* WCDCPMT, bool remove_
 #ifdef WCSIMWCTRIGGER_VERBOSE
       G4cout << "Last hit found to be at " << lasthit
 	     << ". Changing window_end_time from " << window_end_time
-	     << " to " << lasthit - (nhitsWindow - 10)
+	     << " to " << lasthit - (ndigitsWindow - 10)
 	     << G4endl;
 #endif
-      window_end_time = lasthit - (nhitsWindow - 10);
+      window_end_time = lasthit - (ndigitsWindow - 10);
       first_loop = false;
     }
   }
@@ -448,7 +520,7 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
 
     //move onto the next go through the timing loop
     if(triggerfound) {
-      window_start_time = triggertime + WCSimWCTriggerBase::eventgateup;
+      window_start_time = triggertime + GetPostTriggerWindow(TriggerTypes.back());
     }//triggerfound
     else {
       window_start_time += window_step_size;
@@ -512,8 +584,8 @@ void WCSimWCTriggerBase::FillDigitsCollection(WCSimWCDigitsCollection* WCDCPMT, 
     std::vector<Float_t> triggerinfo = TriggerInfos[itrigger];
 
     //these are the boundary of the trigger gate: we want to add all digits within these bounds to the output collection
-    float lowerbound = triggertime + WCSimWCTriggerBase::eventgatedown;
-    float upperbound = triggertime + WCSimWCTriggerBase::eventgateup;
+    float lowerbound = triggertime + GetPreTriggerWindow(triggertype);
+    float upperbound = triggertime + GetPostTriggerWindow(triggertype);
 
 #ifdef WCSIMWCTRIGGER_VERBOSE
     G4cout << "Saving trigger " << itrigger << " of type " << WCSimEnumerations::EnumAsString(triggertype)
@@ -545,45 +617,57 @@ void WCSimWCTriggerBase::FillDigitsCollection(WCSimWCDigitsCollection* WCDCPMT, 
 	  if(digihittime < 0)
 	    continue;
 
-	  //int parentID    = (*WCDCPMT)[i]->GetParentID(ip);
-
 	  //get the composition information for the triggered digit
 	  //WCDCPMT stores this information in pairs of (digit id, photon id)
 	  //need to loop to ensure we get all the photons associated with the current digit (digit ip)
 	  std::vector< std::pair<int,int> > digitized_composition = (*WCDCPMT)[i]->GetDigiCompositionInfo();
-	  std::vector< std::pair<int,int> > triggered_composition;
+	  std::vector<int> triggered_composition;
 	  for(std::vector< std::pair<int,int> >::iterator it = digitized_composition.begin(); it != digitized_composition.end(); ++it) {
 	    if((*it).first == ip) {
-	      triggered_composition.push_back(std::make_pair(itrigger, (*it).second));
+	      triggered_composition.push_back((*it).second);
 	    }
 	    else if ((*it).first > ip)
 	      break;
 	  }//loop over digitized_composition
 
+#ifdef WCSIMWCTRIGGER_VERBOSE
+	  G4cout << "Saving digit on PMT " << tube
+		 << " time " << digihittime
+		 << " pe "   << peSmeared
+		 << " digicomp";
+	  for(unsigned int iv = 0; iv < triggered_composition.size(); iv++)
+	    G4cout << " " << triggered_composition[iv];
+	  G4cout << G4endl;
+#endif
+	  assert(triggered_composition.size());
+
 	  //add hit
 	  if ( DigiHitMap[tube] == 0) {
-	    //this PMT has no digits saved yet; create a new WCSimWCDigi
-	    WCSimWCDigi* Digi = new WCSimWCDigi();
+	    //this PMT has no digits saved yet; create a new WCSimWCDigiTrigger
+	    WCSimWCDigiTrigger* Digi = new WCSimWCDigiTrigger();
 	    Digi->SetTubeID(tube);
-	    //Digi->AddParentID(parentID);
-	    Digi->AddGate  (itrigger,triggertime);
+	    Digi->AddGate  (itrigger);
 	    Digi->SetTime  (itrigger,digihittime);
 	    Digi->SetPe    (itrigger,peSmeared);
-	    Digi->AddPe    (digihittime);
-	    Digi->AddDigiCompositionInfo(triggered_composition);
+	    Digi->AddPe    ();
+	    Digi->AddDigiCompositionInfo(itrigger,triggered_composition);
 	    DigiHitMap[tube] = DigitsCollection->insert(Digi);
 	  }
 	  else {
-	    //this PMT has digits saved already; add information to the WCSimWCDigi
-	    //(*DigitsCollection)[DigiHitMap[tube]-1]->AddParentID(parentID);
-	    (*DigitsCollection)[DigiHitMap[tube]-1]->AddGate(itrigger, triggertime);
+	    //this PMT has digits saved already; add information to the WCSimWCDigiTrigger
+	    (*DigitsCollection)[DigiHitMap[tube]-1]->AddGate(itrigger);
 	    (*DigitsCollection)[DigiHitMap[tube]-1]->SetTime(itrigger, digihittime);
 	    (*DigitsCollection)[DigiHitMap[tube]-1]->SetPe  (itrigger, peSmeared);
-	    (*DigitsCollection)[DigiHitMap[tube]-1]->AddPe  (digihittime);
-	    (*DigitsCollection)[DigiHitMap[tube]-1]->AddDigiCompositionInfo(triggered_composition);
+	    (*DigitsCollection)[DigiHitMap[tube]-1]->AddPe  ();
+	    (*DigitsCollection)[DigiHitMap[tube]-1]->AddDigiCompositionInfo(itrigger,triggered_composition);
 	  }
 	  if(remove_hits)
 	    (*WCDCPMT)[i]->RemoveDigitizedGate(ip);
+
+	  //we've found a digit on this PMT. If we're restricting to just 1 digit per trigger window (e.g. SKI)
+	  // then ignore later digits and break. This takes us to the next PMT
+	  if(!multiDigitsPerTrigger)
+	    break;
 	}//digits within trigger window
       }//loop over Digits
     }//loop over PMTs
@@ -596,63 +680,122 @@ void WCSimWCTriggerBase::FillDigitsCollection(WCSimWCDigitsCollection* WCDCPMT, 
 
 
 // *******************************************
+// CONTAINER CLASS
+// *******************************************
+
+G4Allocator<WCSimWCDigiTrigger> WCSimWCDigiTriggerAllocator;
+
+WCSimWCDigiTrigger::WCSimWCDigiTrigger()
+{
+  Gates.clear();
+  tubeID = 0;
+  pe.clear();
+  time.clear();
+  fDigiComp.clear();
+  totalPe = 0;
+}
+
+WCSimWCDigiTrigger::~WCSimWCDigiTrigger(){;}
+
+WCSimWCDigiTrigger::WCSimWCDigiTrigger(const WCSimWCDigiTrigger& right)
+  :G4VDigi()
+{
+  // in principle assignment = is defined for containers...
+  Gates = right.Gates;
+  tubeID = right.tubeID;
+  pe     = right.pe;
+  time   = right.time;
+  fDigiComp = right.fDigiComp;
+  totalPe = right.totalPe;
+}
+
+const WCSimWCDigiTrigger& WCSimWCDigiTrigger::operator=(const WCSimWCDigiTrigger& right)
+{
+  Gates = right.Gates;
+  tubeID = right.tubeID;
+  pe     = right.pe;
+  time   = right.time;
+  fDigiComp = right.fDigiComp;
+  totalPe = right.totalPe;
+  return *this;
+}
+
+void WCSimWCDigiTrigger::Print()
+{
+  G4cout << "TubeID: " << tubeID
+         << ", Number of Gates: " << NumberOfGates()
+	 << G4endl;
+  std::multimap<int,float>::iterator it_pe   = pe.begin();
+  std::multimap<int,float>::iterator it_time = time.begin();
+  for( ; it_pe != pe.end(), it_time != time.end(); ++it_pe, ++it_time) {
+    if(it_pe->first != it_time->first) {
+      G4cerr << "WCSimWCDigiTrigger::Print() pe and time gate counters disagree!" << G4endl;
+      exit(-1);
+    }
+    G4cout  << "Gate = " << it_pe->first
+            << " PE: "   << it_pe->second
+            << " Time: " << it_time->second
+	    << G4endl;
+  }
+}
+
+
+
+// *******************************************
 // DERIVED CLASS
 // *******************************************
 
-WCSimWCTriggerNHits::WCSimWCTriggerNHits(G4String name,
+WCSimWCTriggerNDigits::WCSimWCTriggerNDigits(G4String name,
 					 WCSimDetectorConstruction* myDetector,
 					 WCSimWCDAQMessenger* myMessenger)
   :WCSimWCTriggerBase(name, myDetector, myMessenger)
 {
-  triggerClassName = "NHits";
+  triggerClassName = "NDigits";
+  GetVariables();
 }
 
-WCSimWCTriggerNHits::~WCSimWCTriggerNHits()
+WCSimWCTriggerNDigits::~WCSimWCTriggerNDigits()
 {
 }
 
-void WCSimWCTriggerNHits::DoTheWork(WCSimWCDigitsCollection* WCDCPMT)
-{
-  //Apply an NHits trigger
+void WCSimWCTriggerNDigits::DoTheWork(WCSimWCDigitsCollection* WCDCPMT) {
+  //Apply an NDigits trigger
   bool remove_hits = false;
-  AlgNHits(WCDCPMT, remove_hits);
+  AlgNDigits(WCDCPMT, remove_hits);
 }
-
-
 
 // *******************************************
 // DERIVED CLASS
 // *******************************************
 
-WCSimWCTriggerNHits2::WCSimWCTriggerNHits2(G4String name,
+WCSimWCTriggerNDigits2::WCSimWCTriggerNDigits2(G4String name,
 					 WCSimDetectorConstruction* myDetector,
 					 WCSimWCDAQMessenger* myMessenger)
   :WCSimWCTriggerBase(name, myDetector, myMessenger)
 {
-  triggerClassName = "NHits2";
+  triggerClassName = "NDigits2";
+  GetVariables();
 }
 
-WCSimWCTriggerNHits2::~WCSimWCTriggerNHits2()
-{
+WCSimWCTriggerNDigits2::~WCSimWCTriggerNDigits2(){
 }
 
 
-void WCSimWCTriggerNHits2::DoTheWork(WCSimWCDigitsCollection* WCDCPMT)
-{
+void WCSimWCTriggerNDigits2::DoTheWork(WCSimWCDigitsCollection* WCDCPMT) {
   //This calls 2 trigger algorithms; the second algorithm is called on hits that failed the first algorithm
   //(for a second trigger working on hits that passed a pretrigger, FillDigitsCollection() needs to have a new option)
 
   //Make a copy of the input DigitsCollection, so we can remove hits from the copy
   WCSimWCDigitsCollection* WCDCPMTCopy = new WCSimWCDigitsCollection(*WCDCPMT);
   
-  //Apply an NHits trigger
+  //Apply an NDigits trigger
   bool remove_hits = true;
-  AlgNHits(WCDCPMTCopy, remove_hits);
+  AlgNDigits(WCDCPMTCopy, remove_hits);
 
-  //Apply an NHits trigger with a lower threshold & different saved trigger type
+  //Apply an NDigits trigger with a lower threshold & different saved trigger type
   remove_hits = false;
-  bool nhits_test = true;
-  AlgNHits(WCDCPMTCopy, remove_hits, nhits_test);
+  bool ndigits_test = true;
+  AlgNDigits(WCDCPMTCopy, remove_hits, ndigits_test);
 }
 
 
