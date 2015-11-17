@@ -16,14 +16,10 @@
 #include <TLegend.h>
 #include <TROOT.h>
 
-#define POST_NEW_DAQ_PULL_REQUEST
-
 #if !defined(__CINT__) || defined(__MAKECINT__)
 #include "WCSimRootEvent.hh"
 #include "WCSimRootGeom.hh"
-#ifdef POST_NEW_DAQ_PULL_REQUEST
 #include "WCSimEnumerations.hh"
-#endif
 #endif
 
 using namespace std;
@@ -36,34 +32,8 @@ TString create_filename(const char * prefix, TString& filename_string)
   return outfilename;
 }
 
-int GLOBALTIME = 0;
-int GLOBALTIMEWINDOW = 200;
-
-bool IsInRange(int i) {
-  return (i >= GLOBALTIME && i < GLOBALTIME + GLOBALTIMEWINDOW);
-}
-
-void integrate_digit_times(vector<double> & digit_times, TH1F * h) {
-  if(!digit_times.size())
-    return;
-  //sort the digit hit times
-  std::sort(digit_times.begin(), digit_times.end());
-  //the max 'itime' in the loop is the time of the last hit - 200
-  // (use -199 to ensure we actually go through the loop at -200)
-  int max = digit_times[digit_times.size()-1];
-  max -= max % 5;
-  max -= 199;
-  GLOBALTIMEWINDOW = 200;
-  for(int itime = 0; itime < max; itime += 5) {
-    GLOBALTIME = itime;
-    int counter = std::count_if(digit_times.begin(), digit_times.end(), IsInRange);
-    h->Fill(counter);
-  }
-}
-
-
 // Simple example of reading a generated Root file
-int daq_readfile(char *filename=NULL, bool verbose=false, Long64_t max_nevents = 999999999999, bool create_pdfs = false, bool hists_per_event = false)
+int daq_readfile(char *filename=NULL, bool verbose=false, Long64_t max_nevents = 999999999999, int max_ntriggers = -1, bool create_pdfs = false, bool hists_per_event = false)
 {
 #if !defined(__MAKECINT__)
   // Load the library with class dictionary info
@@ -112,7 +82,7 @@ int daq_readfile(char *filename=NULL, bool verbose=false, Long64_t max_nevents =
   WCSimRootGeom *geo = 0; 
   geotree->SetBranchAddress("wcsimrootgeom", &geo);
   if(verbose) std::cout << "Geotree has " << geotree->GetEntries() << " entries" << std::endl;
-  if (geotree->GetEntries() == 0) {
+  if(geotree->GetEntries() == 0) {
     cout << "geotree not found!" << endl;
       exit(9);
   }
@@ -121,61 +91,61 @@ int daq_readfile(char *filename=NULL, bool verbose=false, Long64_t max_nevents =
   // start with the main "subevent", as it contains most of the info
   // and always exists.
   WCSimRootTrigger* wcsimrootevent;
+  //The 0th trigger contains:
+  // - track information
+  // - raw hit information
+  // - digit information (for trigger 0)
+  //Subsequent triggers contain:
+  // - digit information (for that trigger) only
+  //Therefore if you want to do truth matching on trigger >= 1,
+  // you need to keep a copy of trigger 0 to read the track/hit info
+  // Store it here
+  WCSimRootTrigger* wcsimroottrigger0;
 
   //book histograms
-  TH1F *h1 = new TH1F("h1", "PMT Hits", 8000, 0, 8000);
-  TH1F *hvtx0 = new TH1F("hvtx0", "Event VTX0", 200, -1500, 1500);
-  TH1F *hvtx1 = new TH1F("hvtx1", "Event VTX1", 200, -1500, 1500);
-  TH1F *hvtx2 = new TH1F("hvtx2", "Event VTX2", 200, -1500, 1500);
+  TH1F *h1vtx0 = new TH1F("h1vtx0", "Event VTX0", 200, -1500, 1500);
+  TH1F *h1vtx1 = new TH1F("h1vtx1", "Event VTX1", 200, -1500, 1500);
+  TH1F *h1vtx2 = new TH1F("h1vtx2", "Event VTX2", 200, -1500, 1500);
 
   TH1I *h1triggertype = new TH1I("h1triggertype", "Trigger type;Trigger type;Entries", 10, 0, 10);
-#ifdef POST_NEW_DAQ_PULL_REQUEST
-  for(int i = -1; i <= kTriggerFailure; i++)
-    h1triggertype->GetXaxis()->SetBinLabel(i+2, WCSimEnumerations::EnumAsString((TriggerType_t)i).c_str());
-#endif
+  for(int i = -1; i <= kTriggerFailure; i++) {
+    TriggerType_t ttype = (TriggerType_t)i;
+    h1triggertype->GetXaxis()->SetBinLabel(i+2, WCSimEnumerations::EnumAsString(ttype).c_str());
+  }
 
-  TH2I *h2nhits = new TH2I("h2nhits", "NDigits from subevent window vs NDigits from 200nsec trigger window;NDigits saved in subevent;NDigits in 200nsec window", 1001, -0.5, 10000.5, 1001, -0.5, 10000.5);
-  TH1I *h1nhits = new TH1I("h1nhits", "NDigits in the subevent window;NDigits;Entries", 10001, -0.5, 10000.5);
-  TH1I *h1nhitstrigger = new TH1I("h1nhitstrigger", "NDigits in the trigger window;NDigits;Entries", 10001, -0.5, 10000.5);
-  TH1F *h1pe = new TH1F("h1pe", "Total p.e. in the subevent window;Total p.e.;Entries", 20001, -0.5, 20000.5);
-  TH1F *h1time = new TH1F("h1time", "Digit time;Digit time (ns);Entries", 18000, -3000, 15000);
-  TH1F *h1time_noise = new TH1F("h1time_noise", "Digit time (digits from noise hits only);Digit time (ns);Entries", 18000, -3000, 15000);
-  TH1F *h1time_photon = new TH1F("h1time_photon", "Digit time (digits from photon hits only);Digit time (ns);Entries", 18000, -3000, 15000);
-  TH1F *h1time_mix = new TH1F("h1time_mix", "Digit time (digits from a mix of noise and photon hits);Digit time (ns);Entries", 18000, -3000, 15000);
-  THStack *hStime = new THStack("hStime", "Digit time;Digits time (ns);Entries");
-  h1time_noise->SetLineColor(kBlack);
-  h1time_photon->SetLineColor(kRed);
-  h1time_mix->SetLineColor(kCyan);
-  hStime->Add(h1time_noise);
-  hStime->Add(h1time_photon);
-  hStime->Add(h1time_mix);
-  TH1F *h1time2 = new TH1F("h1time2", "Digit time + trigger time;Digit time + trigger time (ns);Entries", 18000, -3000, 15000);
-  TH1F *h1peperdigi = new TH1F("h1peperdigi", "Total p.e. in the subevent window;Total p.e. / NDigits;Entries", 1000, 0, 50);
-  TH1F *h1timeperdigi = new TH1F("h1timeperdigi", "Hit time (relative to trigger time);(Hit time - trigger time) / NDigits (ns);Entries", 18000, -3000, 15000);
+  TH1I *h1ndigihits = new TH1I("h1ndigihits", "NDigits in the subevent window;NDigits;Entries", 10001, -0.5, 10000.5);
+  TH1I *h1nrawhits = new TH1I("h1nrawhits", "NHits in the subevent window;NHits;Entries", 10001, -0.5, 10000.5);
+  TH1I *h1ntubeshitraw  = new TH1I("h1ntubeshitraw",  "Number of PMTs with raw hit in the subevent window;NPMTs with raw hits;Entries", 10001, -0.5, 10000.5);
+  TH1I *h1ntubeshitdigi = new TH1I("h1ntubeshitdigi", "Number of PMTs with digits in the subevent window;NPMTs with digits;Entries", 10001, -0.5, 10000.5);
+  TH1I *h1ndigihitstrigger = new TH1I("h1ndigihitstrigger", "NDigits in the trigger window;NDigits;Entries", 10001, -0.5, 10000.5);
+
+  TH1F *h1digipe = new TH1F("h1digipe", "Total p.e. in the subevent window;Total p.e.;Entries", 100001, -0.5, 100000.5);
+
+  TH1F *h1digitime = new TH1F("h1digitime", "Digit time;Digit time (ns);Entries", 18000, -3000, 15000);
+  TH1F *h1digitime_noise = new TH1F("h1digitime_noise", "Digit time (digits from noise hits only);Digit time (ns);Entries", 18000, -3000, 15000);
+  TH1F *h1digitime_photon = new TH1F("h1digitime_photon", "Digit time (digits from photon hits only);Digit time (ns);Entries", 18000, -3000, 15000);
+  TH1F *h1digitime_mix = new TH1F("h1digitime_mix", "Digit time (digits from a mix of noise and photon hits);Digit time (ns);Entries", 18000, -3000, 15000);
+  THStack *hSdigitime = new THStack("hSdigitime", "Digit time;Digits time (ns);Entries");
+  h1digitime_noise->SetLineColor(kBlack);
+  h1digitime_photon->SetLineColor(kRed);
+  h1digitime_mix->SetLineColor(kCyan);
+  hSdigitime->Add(h1digitime_noise);
+  hSdigitime->Add(h1digitime_photon);
+  hSdigitime->Add(h1digitime_mix);
+  TH1F *h1digiplustriggertime = new TH1F("h1digiplustriggertime", "Digit time + trigger time;Digit time + trigger time (ns);Entries", 18000, -3000, 15000);
+  TH1F *h1triggertime = new TH1F("h1triggertime", "Time of trigger;Trigger time;Entries", 10000,0,10000);
+
+  TH1F *h1digipeperdigi = new TH1F("h1digipeperdigi", "Total p.e. in the subevent window;Total p.e. / NDigits;Entries", 1000, 0, 50);
+  TH1F *h1digitimeperdigi = new TH1F("h1digitimeperdigi", "Hit time (relative to trigger time);(Hit time - trigger time) / NDigits (ns);Entries", 18000, -3000, 15000);
 
   TH2F *h2nhits_sep = new TH2F("h2nhits_sep", "NDigits from subevent window vs fraction that are noise;NDigits;Noise fraction", 1001, -0.5, 10000.5, 100, 0, 1);
   TH2F *h2nhitstrigger_sep = new TH2F("h2nhitstrigger_sep", "NDigits from 200ns trigger window vs fraction that are noise;NDigits;Noise fraction", 1001, -0.5, 10000.5, 100, 0, 1);
-  TH1F *h1noisefrac = new TH1F("h1noisefrac", "Fraction of hits in this digi that are noise;Noise fraction;Entries", 110,0,1.1);
-  TH1F *h1noisefrac_trigger = new TH1F("h1noisefrac_trigger", "Fraction of hits in this trigger that are noise;Noise fraction;Entries", 110,0,1.1);
-  TH1F *h1triggertime = new TH1F("h1triggertime", "Time of trigger;Trigger time;Entries", 10000,0,10000);
-  TH1F *h1inttime = new TH1F("h1inttime", "Number of digits in a sliding 200nsec window;NDigits in 200nsec window;Entries", 10000,0,10000);
-  TH1F *h1inttimenoise = new TH1F("h1inttimenoise", "Number of noise digits in a sliding 200nsec window;NDigits in 200nsec window;Entries", 10000,0,10000);
-  TH1F *h1inttimephoton = new TH1F("h1inttimephoton", "Number of photon digits in a sliding 200nsec window;NDigits in 200nsec window;Entries", 10000,0,10000);
-  TH1F *h1inttimemix = new TH1F("h1inttimemix", "Number of mixed (noise+photon) digits in a sliding 200nsec window;NDigits in 200nsec window;Entries", 10000,0,10000);
+  TH1F *h1diginoisefrac = new TH1F("h1diginoisefrac", "Fraction of hits in this digi that are noise;Noise fraction;Entries", 110,0,1.1);
+  TH1F *h1diginoisefrac_trigger = new TH1F("h1diginoisefrac_trigger", "Fraction of hits in this trigger that are noise;Noise fraction;Entries", 110,0,1.1);
 
   TH1F *h1hittime = new TH1F("h1hittime", "Raw hit time;Hit time (ns);Entries",    20000, -10000, 10000);
   TH1F *h1hittime_photon = new TH1F("h1hittime_photon", "Raw hit time (photons);Hit time (ns);Entries",    20000, -10000, 10000);
   TH1F *h1hittime_noise  = new TH1F("h1hittime_noise",  "Raw hit time (dark noise);Hit time (ns);Entries",    20000, -10000, 10000);
-  TH1F *h1eventALL_hittime[2];
-  h1eventALL_hittime[0] = new TH1F("h1eventALL_hittime_photon", "Raw hit time for photons in digits, event ALL;Hit time (ns);Entries",    10000, 0, 10000);
-  h1eventALL_hittime[1] = new TH1F("h1eventALL_hittime_noise",  "Raw hit time for dark noise in digits, event ALL;Hit time (ns);Entries", 10000, -10000, 10000);
-  h1eventALL_hittime[0]->SetLineColor(kBlue);
-  //h1eventALL_hittime[0]->SetFillColor(kBlue);
-  h1eventALL_hittime[1]->SetLineColor(kRed);
-  //h1eventALL_hittime[1]->SetFillColor(kRed);
-  THStack *hSeventALL_hittime = new THStack("hSeventALL_hittime", "Raw hit time in digits, event ALL;Hit time (ns);Entries");
-  hSeventALL_hittime->Add(h1eventALL_hittime[1]);
-  hSeventALL_hittime->Add(h1eventALL_hittime[0]);
 
   //hit times per event
   TH1F *h1event_hittime[nevent][2];
@@ -212,18 +182,93 @@ int daq_readfile(char *filename=NULL, bool verbose=false, Long64_t max_nevents =
     }//ev
   }
 
+  //create output file for storing histograms and tree
+  TString filenameout(filename);
+  TFile * fout = new TFile(create_filename("analysed_", filenameout).Data(), "RECREATE");
+  fout->cd();
+
+  //create tree to save information on an event-by-event basis
+  TTree * tout = new TTree("validation_per_event", "Event by event validation variables");
+  TTree * tout_trig = new TTree("validation_per_trigger", "Trigger by trigger validation variables");
+  //event id variables
+  int teventnumber, ttriggernumber;
+  tout->Branch("eventnumber", &teventnumber);
+  tout_trig->Branch("eventnumber", &teventnumber);
+  tout_trig->Branch("triggernumber", &ttriggernumber);
+  //per event variables
+  double tvtx0, tvtx1, tvtx2;
+  int    tntriggers, tntracks, tnrawhits, tntubeshitraw;
+  vector<double> tvhittime, tvhittime_noise, tvhittime_photon;
+  tout->Branch("vtx0", &tvtx0);
+  tout->Branch("vtx1", &tvtx1);
+  tout->Branch("vtx2", &tvtx2);
+  tout->Branch("ntriggers", &tntriggers);
+  tout->Branch("ntracks", &tntracks);
+  tout->Branch("nrawhits", &tnrawhits);
+  tout->Branch("ntubeshitraw", &tntubeshitraw);
+  tout->Branch("hittime", &tvhittime);
+  tout->Branch("hittime_noise", &tvhittime_noise);
+  tout->Branch("hittime_photon", &tvhittime_photon);
+  //per trigger variables
+  int ttriggertype;
+  int tndigihits, tntubeshitdigi, tndigihitstrigger;
+  double ttriggertime;
+  double tdigipeperdigi, tdigitimeperdigi;
+  double ttotaldigipe;
+  double ttotaldiginoisefrac;
+  vector<double> tvdigipe;
+  vector<double> tvdigitime, tvdigitime_noise, tvdigitime_photon, tvdigitime_mix;
+  vector<double> tvdigiplustriggertime;
+  vector<double> tvdiginoisefrac;
+  tout_trig->Branch("triggertype", &ttriggertype);
+  tout_trig->Branch("ndigihits", &tndigihits);
+  tout_trig->Branch("ntubeshitdigi", &tntubeshitdigi);
+  tout_trig->Branch("ndigihitstrigger", &tndigihitstrigger);
+  tout_trig->Branch("triggertime", &ttriggertime);
+  tout_trig->Branch("digipeperdigi", &tdigipeperdigi);
+  tout_trig->Branch("digitimeperdigi", &tdigitimeperdigi);
+  tout_trig->Branch("totaldigipe", &ttotaldigipe);
+  tout_trig->Branch("totaldiginoisefrac", &ttotaldiginoisefrac);
+  tout_trig->Branch("digipe", &tvdigipe);
+  tout_trig->Branch("digitime", &tvdigitime);
+  tout_trig->Branch("digitime_noise", &tvdigitime_noise);
+  tout_trig->Branch("digitime_photon", &tvdigitime_photon);
+  tout_trig->Branch("digitime_mix", &tvdigitime_mix);
+  tout_trig->Branch("digiplustriggertime", &tvdigiplustriggertime);
+  tout_trig->Branch("diginoisefrac", &tvdiginoisefrac);
+
   int num_trig = 0;
   
   // Now loop over events
   for (int ev=0; ev<nevent; ev++)
   {
+    teventnumber = ev;
+
+    //Reset per event tree variables
+    tvtx0                 = -999999;
+    tvtx1                 = -999999;
+    tvtx2                 = -999999;
+    tntriggers            = -1;
+    tntracks              = -1;
+    tnrawhits             = -1;
+    tntubeshitraw         = -1;
+    tvhittime.clear();
+    tvhittime_noise.clear();
+    tvhittime_photon.clear();
+
     // Read the event from the tree into the WCSimRootEvent instance
     tree->GetEntry(ev);
     wcsimrootevent = wcsimrootsuperevent->GetTrigger(0);
 
-    if(verbose || ((ev % 100) == 0))
-      cout << "Event " << ev << " of " << nevent << " has " << wcsimrootsuperevent->GetNumberOfEvents() << " triggers" << endl;
+    const int ntriggers = wcsimrootsuperevent->GetNumberOfEvents();
+    tntriggers = ntriggers;
 
+    if(verbose || ((ev % 100) == 0))
+      cout << "Event " << ev << " of " << nevent << " has " << ntriggers << " triggers" << endl;
+
+    const double vtx0 = wcsimrootevent->GetVtx(0);
+    const double vtx1 = wcsimrootevent->GetVtx(1);
+    const double vtx2 = wcsimrootevent->GetVtx(2);
     if(verbose){
       printf("********************************************************");
       printf("Evt, date %d %d\n", wcsimrootevent->GetHeader()->GetEvtNum(),
@@ -233,148 +278,170 @@ int daq_readfile(char *filename=NULL, bool verbose=false, Long64_t max_nevents =
 	     wcsimrootsuperevent->GetNumberOfSubEvents());
       
       printf("Vtxvol %d\n", wcsimrootevent->GetVtxvol());
-      printf("Vtx %f %f %f\n", wcsimrootevent->GetVtx(0),
-	     wcsimrootevent->GetVtx(1),wcsimrootevent->GetVtx(2));
+      printf("Vtx %f %f %f\n", vtx0, vtx1, vtx2);
     }
-    hvtx0->Fill(wcsimrootevent->GetVtx(0));
-    hvtx1->Fill(wcsimrootevent->GetVtx(1));
-    hvtx2->Fill(wcsimrootevent->GetVtx(2));
+    h1vtx0->Fill(vtx0);
+    h1vtx1->Fill(vtx1);
+    h1vtx2->Fill(vtx2);
+    tvtx0 = vtx0;
+    tvtx1 = vtx1;
+    tvtx2 = vtx2;
 
     if(verbose){
       printf("Jmu %d\n", wcsimrootevent->GetJmu());
       printf("Npar %d\n", wcsimrootevent->GetNpar());
-      printf("Ntrack %d\n", wcsimrootevent->GetNtrack());
     }
     // Now read the tracks in the event
     
     // Get the number of tracks
-    int ntrack = wcsimrootevent->GetNtrack();
-    if(verbose) printf("ntracks=%d\n",ntrack);
+    const int ntracks = wcsimrootevent->GetNtrack();
+    if(verbose) printf("ntracks=%d\n",ntracks);
+    tntracks = ntracks;
     
-    int i;
     // Loop through elements in the TClonesArray of WCSimTracks
-    for (i=0; i<ntrack; i++)
+    for (int itrack = 0; itrack < ntracks; itrack++)
     {
-      TObject *element = (wcsimrootevent->GetTracks())->At(i);      
+      TObject *element = (wcsimrootevent->GetTracks())->At(itrack);      
       WCSimRootTrack *wcsimroottrack = dynamic_cast<WCSimRootTrack*>(element);
       if(verbose){
 	printf("Track ipnu: %d\n",wcsimroottrack->GetIpnu());
 	printf("Track parent ID: %d\n",wcsimroottrack->GetParenttype());
 	for (int j=0; j<3; j++)
-	  printf("Track dir: %d %f\n",j, wcsimroottrack->GetDir(j));
+	  printf("Track dir: %d %f\n", j, wcsimroottrack->GetDir(j));
       }
-    }  // End of loop over tracks
+    }  //itrack // End of loop over tracks
     
-    // Now look at the Cherenkov hits
-    
-    // Get the number of Cherenkov hits.
-    // Note... this is *NOT* the number of photons that hit tubes.
-    // It is the number of tubes hit with Cherenkov photons.
-    // The number of digitized tubes will be smaller because of the threshold.
-    // Each hit "raw" tube has several photon hits.  The times are recorded.
-    // See http://nwg.phy.bnl.gov/DDRD/cgi-bin/private/ShowDocument?docid=245
-    // for more information on the structure of the root file.
-    //  
-    // The following code prints out the hit times for the first 10 tubes and also
-    // adds up the total pe.
-    // 
-    // For digitized info (one time/charge tube after a trigger) use
-    // the digitized information.
-    //
-
-    int ncherenkovhits     = wcsimrootevent->GetNcherenkovhits();
-#ifdef POST_NEW_DAQ_PULL_REQUEST
-    int ncherenkovhittimes = wcsimrootevent->GetNcherenkovhittimes();
-#endif
-    int ncherenkovdigihits = wcsimrootevent->GetNcherenkovdigihits(); 
-    
-    h1->Fill(ncherenkovdigihits);
+    //get number of hits and digits
+    const int ncherenkovhits      = wcsimrootevent->GetNcherenkovhits();
+    const int ncherenkovhittimes  = wcsimrootevent->GetNcherenkovhittimes();
+    const int ntubeshit           = wcsimrootevent->GetNumTubesHit();
+    const int ncherenkovdigihits0 = wcsimrootevent->GetNcherenkovdigihits(); 
+    const int ntubesdigihit0      = wcsimrootevent->GetNumDigiTubesHit();
     if(verbose){
       printf("node id: %i\n", ev);
       printf("Ncherenkovhits (unique PMTs with hits)  %d\n", ncherenkovhits);
-#ifdef POST_NEW_DAQ_PULL_REQUEST
       printf("Ncherenkovhittimes (number of raw hits) %d\n", ncherenkovhittimes);
-#endif
-      printf("Ncherenkovdigihits (number of digits)   %d\n", ncherenkovdigihits);
+      printf("Ncherenkovdigihits (number of digits) in trigger 0   %d\n", ncherenkovdigihits0);
       printf("NumTubesHit       %d\n", wcsimrootevent->GetNumTubesHit());
-      printf("NumDigitizedTubes %d\n", wcsimrootevent->GetNumDigiTubesHit());
-      cout << "RAW HITS:" << endl;
+      printf("NumDigitizedTubes in trigger 0 %d\n", wcsimrootevent->GetNumDigiTubesHit());
     }
+    h1nrawhits->Fill(ncherenkovhittimes);
+    h1ntubeshitraw->Fill(ntubeshit);
+    tnrawhits     = ncherenkovhittimes;
+    tntubeshitraw = ntubeshit;
+
+    //
+    // Now look at the raw Cherenkov+noise hits
+    //
+    if(verbose)
+      cout << "RAW HITS:" << endl;
 
     // Grab the big arrays of times and parent IDs
     TClonesArray *timeArray = wcsimrootevent->GetCherenkovHitTimes();
     
+    //calculate total p.e. in event
     int totalPe = 0;
     // Loop through elements in the TClonesArray of WCSimRootCherenkovHits
-    for (i=0; i< ncherenkovhits; i++)
-    {
-      TObject *Hit = (wcsimrootevent->GetCherenkovHits())->At(i);
-      WCSimRootCherenkovHit *wcsimrootcherenkovhit = 
+    for(int ipmt = 0; ipmt < ncherenkovhits; ipmt++) {
+      TObject * Hit = (wcsimrootevent->GetCherenkovHits())->At(ipmt);
+      WCSimRootCherenkovHit * wcsimrootcherenkovhit =
 	dynamic_cast<WCSimRootCherenkovHit*>(Hit);
-
-      int tubeNumber     = wcsimrootcherenkovhit->GetTubeID();
       int timeArrayIndex = wcsimrootcherenkovhit->GetTotalPe(0);
       int peForTube      = wcsimrootcherenkovhit->GetTotalPe(1);
+      int tubeNumber     = wcsimrootcherenkovhit->GetTubeID();
       WCSimRootPMT pmt   = geo->GetPMT(tubeNumber-1);
       totalPe += peForTube;
-
-     
-      //if ( i < 10 ) // Only print first XX=10 tubes
-      {
-	if(verbose) printf("Total pe for tube %d: %d times( ", tubeNumber, peForTube);
-	for (int j = timeArrayIndex; j < timeArrayIndex + peForTube; j++)
-	{
-
-	  TObject *element = (wcsimrootevent->GetCherenkovHitTimes())->At(j);
-	  WCSimRootCherenkovHitTime* HitTime = 
-	    dynamic_cast<WCSimRootCherenkovHitTime*>(element);
-	  
-	  if(verbose) printf("%6.2f ", HitTime->GetTruetime() );	     
+      if(verbose)
+	printf("Total pe for tube %d: %d times( ", tubeNumber, peForTube);
+      for(int irawhit = 0; irawhit < peForTube; irawhit++) {
+	TObject * HitTime = (wcsimrootevent->GetCherenkovHitTimes())->At(timeArrayIndex + irawhit);
+	WCSimRootCherenkovHitTime * wcsimrootcherenkovhittime =
+	  dynamic_cast<WCSimRootCherenkovHitTime*>(HitTime);
+	double truetime = wcsimrootcherenkovhittime->GetTruetime();
+	if(verbose)
+	  printf("%6.2f ", truetime);
+	h1hittime->Fill(truetime);
+	tvhittime.push_back(truetime);
+	if(wcsimrootcherenkovhittime->GetParentID() == -1) {
+	  h1hittime_noise->Fill(truetime);
+	  tvhittime_noise.push_back(truetime);
+	  if(hists_per_event)
+	    h1event_hittime[ev][1]->Fill(truetime);
 	}
-	if(verbose) cout << ")" << endl;
-      }
+	else {
+	  h1hittime_photon->Fill(truetime);
+	  tvhittime_photon.push_back(truetime);
+	  if(hists_per_event)
+	    h1event_hittime[ev][0]->Fill(truetime);
+	}
+      }//irawhit
+      if(verbose)
+	cout << ")" << endl;
+    }//ipmt
+    if(verbose)
+      cout << "Total Pe : " << totalPe << endl;
 
-    } // End of loop over Cherenkov hits
-    if(verbose) cout << "Total Pe : " << totalPe << endl;
-    
-    // Look at digitized hit info
+    //    
+    // Now look at digitized hit info
+    //
+    if(verbose)
+      cout << "DIGITIZED HITS:" << endl;
 
-    //Store the digit times of pure noise or pure photon digits
-    // to make NHits in 200nsec window plots
-    vector<double> digit_times;
-    vector<double> digit_times_noise;
-    vector<double> digit_times_photon;
-    vector<double> digit_times_mix;
+    //
+    // Digi hits are arranged in subevents, so loop over these first
+    //
+    const int ntriggers_loop = max_ntriggers > 0 ? TMath::Min(max_ntriggers, ntriggers) : ntriggers;
 
-    // Get the number of digitized hits
-    // Loop over sub events
-   
-    if(verbose) cout << "DIGITIZED HITS:" << endl;
-    for (int index = 0 ; index < 1; index++) //wcsimrootsuperevent->GetNumberOfEvents(); index++) 
-    {
+    //save a pointer to the 0th WCSimRootTrigger, so can access track/hit information in triggers >= 1
+    wcsimroottrigger0 = wcsimrootevent;
+    for (int itrigger = 0 ; itrigger < ntriggers_loop; itrigger++) {
+
+      ttriggernumber = itrigger;
+
+      //Reset per trigger tree variables
+      ttriggertype          = -1;
+      tndigihits            = -1;
+      tntubeshitdigi        = -1;
+      tndigihitstrigger     = -1;
+      ttriggertime          = -999999;
+      tdigipeperdigi        = -1;
+      tdigitimeperdigi      = -999999;
+      ttotaldigipe          = -1;
+      ttotaldiginoisefrac   = -1;
+      tvdigipe.clear();
+      tvdigitime.clear();
+      tvdigitime_noise.clear();
+      tvdigitime_photon.clear();
+      tvdigitime_mix.clear();
+      tvdigiplustriggertime.clear();
+      tvdiginoisefrac.clear();
+
+      //count the number of noise/photon hits making up all the digits in this trigger
       int n_noise_hits_total = 0, n_photon_hits_total = 0;
-      wcsimrootevent = wcsimrootsuperevent->GetTrigger(index);
-      if(verbose) cout << "Sub event number = " << index << "\n";
 
-      int ncherenkovdigihits = wcsimrootevent->GetNcherenkovdigihits();
-      if(verbose) printf("Ncherenkovdigihits %d\n", ncherenkovdigihits);
+      wcsimrootevent = wcsimrootsuperevent->GetTrigger(itrigger);
+      if(verbose)
+	cout << "Sub event number = " << itrigger << "\n";
 
-      int trigger_time = wcsimrootevent->GetHeader()->GetDate();
-#ifdef POST_NEW_DAQ_PULL_REQUEST
-      TriggerType_t trigger_type = wcsimrootevent->GetTriggerType();
+      const int ncherenkovdigihits = wcsimrootevent->GetNcherenkovdigihits();
+      const int ntubeshitdigi      = wcsimrootevent->GetNumDigiTubesHit();
+      if(verbose)
+	printf("Ncherenkovdigihits %d\n", ncherenkovdigihits);
+
+      const int            trigger_time = wcsimrootevent->GetHeader()->GetDate();
+      const TriggerType_t  trigger_type = wcsimrootevent->GetTriggerType();
       std::vector<Float_t> trigger_info = wcsimrootevent->GetTriggerInfo();
 
       h1triggertime->Fill(trigger_time);
       if(trigger_info.size() > 0) {
-	if((trigger_type == kTriggerNHits) || (trigger_type == kTriggerNHitsSKDETSIM) || (trigger_type == kTriggerNHitsTest)) {
-	  h2nhits->Fill(ncherenkovdigihits, trigger_info[0]);
-	  h1nhitstrigger->Fill(trigger_info[0]);
+	if((trigger_type == kTriggerNDigits) || (trigger_type == kTriggerNDigitsTest)) {
+	  h1ndigihitstrigger->Fill(trigger_info[0]);
 	}
+	tndigihitstrigger = trigger_info[0];
       }
-#endif
-      h1nhits->Fill(ncherenkovdigihits);
+      h1ndigihits->Fill(ncherenkovdigihits);
+      h1ntubeshitdigi->Fill(ntubeshitdigi);
 
-#ifdef POST_NEW_DAQ_PULL_REQUEST
       h1triggertype->Fill(WCSimEnumerations::EnumAsString(trigger_type).c_str(), 1);
       if(verbose) {
 	cout << "Passed trigger "
@@ -383,7 +450,7 @@ int daq_readfile(char *filename=NULL, bool verbose=false, Long64_t max_nevents =
 	     << " and " << ncherenkovdigihits
 	     << " hits in the saved subevent region";
 	if(trigger_info.size() > 0) {
-	  if((trigger_type == kTriggerNHits) || (trigger_type == kTriggerNHitsSKDETSIM) || (trigger_type == kTriggerNHitsTest))
+	  if((trigger_type == kTriggerNDigits) || (trigger_type == kTriggerNHitsSKDETSIM) || (trigger_type == kTriggerNDigitsTest))
 	    cout << " (" << trigger_info[0]
 		 << " in the 200nsec region)";
 	  else if(trigger_type == kTriggerNHitsThenLocalNHits)
@@ -393,38 +460,21 @@ int daq_readfile(char *filename=NULL, bool verbose=false, Long64_t max_nevents =
 	}
 	cout << endl;
       }
-#endif
+      ttriggertype   = (int)trigger_type;
+      tndigihits     = ncherenkovdigihits;
+      tntubeshitdigi = ntubeshitdigi;
+      ttriggertime   = trigger_time;
 
-      if(ncherenkovdigihits>0)
+      if(ncherenkovdigihits > 0)
 	num_trig++;
 
-
-      // Loop through elements in the TClonesArray of WCSimRootCherenkovHits
-      for (int ipmt = 0; ipmt < ncherenkovhits; ipmt++) {
-	TObject * Hit = (wcsimrootevent->GetCherenkovHits())->At(ipmt);
-	WCSimRootCherenkovHit * wcsimrootcherenkovhit =
-	  dynamic_cast<WCSimRootCherenkovHit*>(Hit);
-	int timeArrayIndex = wcsimrootcherenkovhit->GetTotalPe(0);
-	int peForTube      = wcsimrootcherenkovhit->GetTotalPe(1);
-	for(int iphoton = 0; iphoton < peForTube; iphoton++) {
-	  TObject * HitTime = (wcsimrootevent->GetCherenkovHitTimes())->At(timeArrayIndex + iphoton);
-	  WCSimRootCherenkovHitTime * wcsimrootcherenkovhittime =
-	    dynamic_cast<WCSimRootCherenkovHitTime*>(HitTime);
-	  h1hittime->Fill(wcsimrootcherenkovhittime->GetTruetime());
-	  if(wcsimrootcherenkovhittime->GetParentID() == -1)
-	    h1hittime_noise->Fill(wcsimrootcherenkovhittime->GetTruetime());
-	  else
-	    h1hittime_photon->Fill(wcsimrootcherenkovhittime->GetTruetime());
-	}//iphoton
-      }//ipmt
-
       // Loop through elements in the TClonesArray of WCSimRootCherenkovDigHits
-      float totalpe = 0, totaltime = 0;
-      for (i=0;i<ncherenkovdigihits;i++) {
+      float totaldigipe = 0, totaldigitime = 0;
+      for(int idigipmt = 0; idigipmt < ncherenkovdigihits; idigipmt++) {
 	//get the digit
 	if(verbose)
-	  cout << "Getting digit " << i << endl;
-	TObject *element = (wcsimrootevent->GetCherenkovDigiHits())->At(i);
+	  cout << "Getting digit " << idigipmt << endl;
+	TObject *element = (wcsimrootevent->GetCherenkovDigiHits())->At(idigipmt);
     	WCSimRootCherenkovDigiHit *wcsimrootcherenkovdigihit = 
     	  dynamic_cast<WCSimRootCherenkovDigiHit*>(element);
 	
@@ -436,7 +486,7 @@ int daq_readfile(char *filename=NULL, bool verbose=false, Long64_t max_nevents =
 	for(int ipmt = 0; ipmt < ncherenkovhits; ipmt++) {
 	  if(verbose)
 	    cout << "Getting hit " << ipmt << " of " << ncherenkovhits << endl;
-	  TObject *Hit = (wcsimrootevent->GetCherenkovHits())->At(ipmt);
+	  TObject *Hit = (wcsimroottrigger0->GetCherenkovHits())->At(ipmt);
 	  WCSimRootCherenkovHit *wcsimrootcherenkovhit =
 	    dynamic_cast<WCSimRootCherenkovHit*>(Hit);
 	  int tubeNumber     = wcsimrootcherenkovhit->GetTubeID();
@@ -449,148 +499,158 @@ int daq_readfile(char *filename=NULL, bool verbose=false, Long64_t max_nevents =
 	int n_noise_hits = 0, n_photon_hits = 0, n_unknown_hits = 0;
 	if(timeArrayIndex == -1) {
 	  if(verbose)
-	    cout << "No PMT hits found for digit " << i << " with tube ID " << tube_id << endl;
+	    cout << "No PMT hits found for digit " << idigipmt << " with tube ID " << tube_id << endl;
 	}
 	else {
 	  if(verbose)
-	    cout << peForTube << " PMT hits found for digit " << i << " with tube ID " << tube_id << endl;
-#ifdef POST_NEW_DAQ_PULL_REQUEST
-	  //loop over the photons ids of hits that made up the digit
-	  vector<int> photon_ids = wcsimrootcherenkovdigihit->GetPhotonIds();
+	    cout << peForTube << " PMT hits found for digit " << idigipmt << " with tube ID " << tube_id << endl;
+	  //loop over the rawhits ids of hits that made up the digit
+	  vector<int> rawhit_ids = wcsimrootcherenkovdigihit->GetPhotonIds();
 	  if(verbose)
-	    cout << photon_ids.size() << " photons made up this digit" << endl;
-	  for(unsigned int iphoton = 0; iphoton < photon_ids.size(); iphoton++) {
-	    int this_photon = photon_ids[iphoton];
+	    cout << rawhit_ids.size() << " rawhits made up this digit" << endl;
+	  for(unsigned int irawhit = 0; irawhit < rawhit_ids.size(); irawhit++) {
+	    int this_rawhit = rawhit_ids[irawhit];
 	    if(verbose)
-	      cout << "Attempting to look for photon " << this_photon+1 << " in WCSimRootCherenkovHitTime array...";
-	    if(this_photon >= peForTube) {
+	      cout << "Attempting to look for rawhit " << this_rawhit+1 << " in WCSimRootCherenkovHitTime array...";
+	    if(this_rawhit >= peForTube) {
 	      //if(verbose)
-	      cerr << " There are only " << peForTube << " photons in this PMT" << endl;
+	      cerr << " There are only " << peForTube << " rawhits in this PMT" << endl;
 	      continue;
 	    }
 	    //now look in the WCSimRootCherenkovHitTime array to count the number of photon / dark noise hits
-	    TObject *Hit = (wcsimrootevent->GetCherenkovHitTimes())->At(timeArrayIndex + this_photon);
+	    TObject *Hit = (wcsimroottrigger0->GetCherenkovHitTimes())->At(timeArrayIndex + this_rawhit);
 	    WCSimRootCherenkovHitTime *wcsimrootcherenkovhittime =
 	      dynamic_cast<WCSimRootCherenkovHitTime*>(Hit);
+	    const double hittime  = wcsimrootcherenkovhittime->GetTruetime();
+	    const int    parentid = wcsimrootcherenkovhittime->GetParentID();
 	    if(verbose)
-	      cout << " hit time " << wcsimrootcherenkovhittime->GetTruetime() << " " << wcsimrootcherenkovhittime->GetParentID() << endl;
-	    if(wcsimrootcherenkovhittime->GetParentID() == -1) {
+	      cout << " hit time " << hittime << " " << parentid << endl;
+	    if(parentid == -1) {
 	      n_noise_hits++;
-	      if(hists_per_event)
-		h1event_hittime[ev][1]->Fill(wcsimrootcherenkovhittime->GetTruetime());
-	      h1eventALL_hittime[1]->Fill(wcsimrootcherenkovhittime->GetTruetime());
 	    }
-	    else if(wcsimrootcherenkovhittime->GetParentID() < 0) {
+	    else if(parentid < 0) {
 	      n_unknown_hits++;
-	      cout << "HIT PARENT UNKNOWN " << wcsimrootcherenkovhittime->GetParentID() << endl;
 	    }
 	    else {
 	      n_photon_hits++;
-	      if(hists_per_event)
-		h1event_hittime[ev][0]->Fill(wcsimrootcherenkovhittime->GetTruetime());
-	      h1eventALL_hittime[0]->Fill(wcsimrootcherenkovhittime->GetTruetime());
 	    }
-	  }//iphoton
-#endif
+	  }//irawhit
 	}//hits in this PMT found
-#ifdef POST_NEW_DAQ_PULL_REQUEST
 	if(hists_per_event) {
 	  hSevent_hittime[ev]->SetTitle(TString::Format("Raw hit time, event %d, %s;Hit time (ns);Entries", ev, WCSimEnumerations::EnumAsString(trigger_type).c_str()));
 	  hSevent_digittime[ev]->SetTitle(TString::Format("Digit time, event %d, %s;Digit time (ns);Entries", ev, WCSimEnumerations::EnumAsString(trigger_type).c_str()));
 	}
-#endif
+
+	const double digitime = wcsimrootcherenkovdigihit->GetT();
+	const double digipe   = wcsimrootcherenkovdigihit->GetQ();
+	tvdigipe.push_back(digipe);
+	tvdigitime.push_back(digitime);
+	tvdigiplustriggertime.push_back(digitime + trigger_time);
 
 	if(verbose){
-	  //if ( i < 10 ) // Only print first XX=10 tubes
-	    printf("q, t, tubeid, nphotonhits, nnoisehits, nunknownhits: %f %f %d  %d %d %d\n",
-		   wcsimrootcherenkovdigihit->GetQ(),
-		   wcsimrootcherenkovdigihit->GetT(),
-		   wcsimrootcherenkovdigihit->GetTubeId(),
-		   n_photon_hits,
-		   n_noise_hits,
-		   n_unknown_hits);
+	  printf("q, t, tubeid, nphotonhits, nnoisehits, nunknownhits: %f %f %d  %d %d %d\n",
+		 digipe,
+		 digitime,
+		 wcsimrootcherenkovdigihit->GetTubeId(),
+		 n_photon_hits,
+		 n_noise_hits,
+		 n_unknown_hits);
 	}
 	if(n_noise_hits && !n_photon_hits) {
-	  digit_times_noise.push_back(wcsimrootcherenkovdigihit->GetT());
-	  h1time_noise->Fill(wcsimrootcherenkovdigihit->GetT());
+	  h1digitime_noise->Fill(digitime);
 	  if(hists_per_event)
-	    h1event_digittime[ev][1]->Fill(wcsimrootcherenkovdigihit->GetT());
+	    h1event_digittime[ev][1]->Fill(digitime);
+	  tvdigitime_noise.push_back(digitime);
 	}
 	else if(!n_noise_hits && n_photon_hits) {
-	  digit_times_photon.push_back(wcsimrootcherenkovdigihit->GetT());
-	  h1time_photon->Fill(wcsimrootcherenkovdigihit->GetT());
+	  h1digitime_photon->Fill(digitime);
 	  if(hists_per_event)
-	    h1event_digittime[ev][0]->Fill(wcsimrootcherenkovdigihit->GetT());
+	    h1event_digittime[ev][0]->Fill(digitime);
+	  tvdigitime_photon.push_back(digitime);
 	}
 	else {
-	  digit_times_mix.push_back(wcsimrootcherenkovdigihit->GetT());
-	  h1time_mix->Fill(wcsimrootcherenkovdigihit->GetT());
+	  h1digitime_mix->Fill(digitime);
 	  if(hists_per_event)
-	    h1event_digittime[ev][2]->Fill(wcsimrootcherenkovdigihit->GetT());
+	    h1event_digittime[ev][2]->Fill(digitime);
+	  tvdigitime_mix.push_back(digitime);
 	}
-	digit_times.push_back(wcsimrootcherenkovdigihit->GetT());
-	totalpe   += wcsimrootcherenkovdigihit->GetQ();
-	totaltime += wcsimrootcherenkovdigihit->GetT();
-	h1time->Fill(wcsimrootcherenkovdigihit->GetT());
-	h1time2->Fill(wcsimrootcherenkovdigihit->GetT() + trigger_time);
+	totaldigipe   += digipe;
+	totaldigitime += digitime;
+	h1digitime->Fill(digitime);
+	h1digiplustriggertime->Fill(digitime + trigger_time);
 	float noise_fraction = (float)n_noise_hits / (float)(n_noise_hits + n_photon_hits);
-	h1noisefrac->Fill(noise_fraction);
+	h1diginoisefrac->Fill(noise_fraction);
 	h2nhits_sep->Fill(ncherenkovdigihits, noise_fraction);
-#ifdef POST_NEW_DAQ_PULL_REQUEST
-	if(trigger_info.size() > 0)
-	  h2nhitstrigger_sep->Fill(trigger_info[0], noise_fraction);
-#endif
+	tvdiginoisefrac.push_back(noise_fraction);
+	if(trigger_info.size() > 0) {
+	  if((trigger_type == kTriggerNDigits) || (trigger_type == kTriggerNDigitsTest)) {
+	    h2nhitstrigger_sep->Fill(trigger_info[0], noise_fraction);
+	  }
+	}
 	n_noise_hits_total += n_noise_hits;
 	n_photon_hits_total += n_photon_hits;
-      }//i // End of loop over Cherenkov digihits
-      h1pe->Fill(totalpe);
+      }//idigipmt // End of loop over Cherenkov digihits
+      h1digipe->Fill(totaldigipe);
+      ttotaldigipe = totaldigipe;
       if(ncherenkovdigihits) {
-	h1peperdigi->Fill(totalpe / ncherenkovdigihits);
-	h1timeperdigi->Fill((totaltime) / ncherenkovdigihits);
-	integrate_digit_times(digit_times, h1inttime);
-	integrate_digit_times(digit_times_noise, h1inttimenoise);
-	integrate_digit_times(digit_times_photon, h1inttimephoton);
-	integrate_digit_times(digit_times_mix, h1inttimemix);
+	double peperdigi   = totaldigipe   / ncherenkovdigihits;
+	double timeperdigi = totaldigitime / ncherenkovdigihits;
+	h1digipeperdigi->Fill(peperdigi);
+	h1digitimeperdigi->Fill(timeperdigi);
+	tdigipeperdigi   = peperdigi;
+	tdigitimeperdigi = timeperdigi;
       }
       float noise_fraction_total = (float)n_noise_hits_total / (float)(n_noise_hits_total + n_photon_hits_total);
-      h1noisefrac_trigger->Fill(noise_fraction_total);
-    }//index // End of loop over triggers
-    
+      h1diginoisefrac_trigger->Fill(noise_fraction_total);
+      ttotaldiginoisefrac = noise_fraction_total;
+
+      //fill the per trigger output tree
+      tout_trig->Fill();
+    }//itrigger // End of loop over triggers
+
+    wcsimroottrigger0 = 0;
+
     // reinitialize super event between loops.
     wcsimrootsuperevent->ReInitialize();
-    
+
+    //fill the per event output tree
+    tout->Fill();
   }//ev // End of loop over events
-  std::cout<<"num_trig "<<num_trig<<"\n";
+
+  cout << "---------------------------------" << endl
+       << "Run summary" << endl
+       << "nevent (run over) " << nevent << endl
+       << "num_trig (run over) " << num_trig << endl;
+
+  //write the trees
+  fout->cd();
+  tout->Write();
+  tout_trig->Write();
 
   //save histograms in .root file
-  TString filenameout(filename);
-  TFile * fout = new TFile(create_filename("analysed_", filenameout).Data(), "RECREATE");
   fout->cd();
-  hvtx0->Write();
-  hvtx1->Write();
-  hvtx2->Write();
-  h1->Write();
-  h2nhits->Write();
-  h1noisefrac->Write();
-  h1noisefrac_trigger->Write();
+  h1vtx0->Write();
+  h1vtx1->Write();
+  h1vtx2->Write();
+  h1diginoisefrac->Write();
+  h1diginoisefrac_trigger->Write();
   h2nhits_sep->Write();
   h2nhitstrigger_sep->Write();
-  h1nhits->Write();
-  h1nhitstrigger->Write();
-  h1pe->Write();
-  h1time->Write();
-  h1time_photon->Write();
-  h1time_noise->Write();
-  h1time_mix->Write();
-  hStime->Write();
-  h1time2->Write();
+  h1ndigihits->Write();
+  h1nrawhits->Write();
+  h1ntubeshitraw->Write();
+  h1ntubeshitdigi->Write();
+  h1ndigihitstrigger->Write();
+  h1digipe->Write();
+  h1digitime->Write();
+  h1digitime_photon->Write();
+  h1digitime_noise->Write();
+  h1digitime_mix->Write();
+  hSdigitime->Write();
+  h1digiplustriggertime->Write();
   h1triggertime->Write();
-  h1peperdigi->Write();
-  h1timeperdigi->Write();
-  h1inttime->Write();
-  h1inttimenoise->Write();
-  h1inttimephoton->Write();
-  h1inttimemix->Write();
+  h1digipeperdigi->Write();
+  h1digitimeperdigi->Write();
   if(hists_per_event) {
     for (int ev=0; ev<nevent; ev++) {
       h1event_hittime[ev][0]->Write();
@@ -601,9 +661,6 @@ int daq_readfile(char *filename=NULL, bool verbose=false, Long64_t max_nevents =
   h1hittime->Write();
   h1hittime_photon->Write();
   h1hittime_noise->Write();
-  h1eventALL_hittime[0]->Write();
-  h1eventALL_hittime[1]->Write();
-  hSeventALL_hittime->Write();
   if(hists_per_event) {
     for (int ev=0; ev<nevent; ev++) {
       h1event_digittime[ev][0]->Write();
@@ -624,49 +681,40 @@ int daq_readfile(char *filename=NULL, bool verbose=false, Long64_t max_nevents =
     c2->SetLeftMargin(0.15);
 
     c2->cd();
-    h2nhits->Draw("COLZ");
-    c2->SaveAs(create_filename("h2nhits_", filenameout).Data());
-    h1nhits->Draw();
-    c2->SaveAs(create_filename("h1nhits_", filenameout).Data());
-    h1nhitstrigger->Draw();
-    c2->SaveAs(create_filename("h1nhitstrigger_", filenameout).Data());
-    h1pe->Draw();
-    c2->SaveAs(create_filename("h1pe_", filenameout).Data());
-    h1time->Draw();
-    c2->SaveAs(create_filename("h1time_", filenameout).Data());
-    hStime->Draw();
+    h1ndigihits->Draw();
+    c2->SaveAs(create_filename("h1ndigihits_", filenameout).Data());
+    h1nrawhits->Draw();
+    c2->SaveAs(create_filename("h1nrawhits_", filenameout).Data());
+    h1ndigihitstrigger->Draw();
+    c2->SaveAs(create_filename("h1ndigihitstrigger_", filenameout).Data());
+    h1digipe->Draw();
+    c2->SaveAs(create_filename("h1digipe_", filenameout).Data());
+    h1digitime->Draw();
+    c2->SaveAs(create_filename("h1digitime_", filenameout).Data());
+    hSdigitime->Draw();
     TLegend * l = new TLegend(0.4,0.9,0.9,1.0);
     l->SetTextSize(0.042);
     l->SetTextFont(132);
-    l->AddEntry(h1time_photon, "Photon", "l");
-    l->AddEntry(h1time_noise, "Noise",  "l");
-    l->AddEntry(h1time_mix, "Mixed",  "l");
+    l->AddEntry(h1digitime_photon, "Photon", "l");
+    l->AddEntry(h1digitime_noise, "Noise",  "l");
+    l->AddEntry(h1digitime_mix, "Mixed",  "l");
     l->Draw();
-    c2->SaveAs(create_filename("hStime_", filenameout).Data());
-    h1time2->Draw();
-    c2->SaveAs(create_filename("h1time2_", filenameout).Data());
-    h1peperdigi->Draw();
-    c2->SaveAs(create_filename("h1peperdigi_", filenameout).Data());
-    h1timeperdigi->Draw();
-    c2->SaveAs(create_filename("h1timeperdigi_", filenameout).Data());
-    h1noisefrac->Draw();
-    c2->SaveAs(create_filename("h1noisefrac_", filenameout).Data());
-    h1noisefrac_trigger->Draw();
-    c2->SaveAs(create_filename("h1noisefrac_trigger_", filenameout).Data());
+    c2->SaveAs(create_filename("hSdigitime_", filenameout).Data());
+    h1digiplustriggertime->Draw();
+    c2->SaveAs(create_filename("h1digiplustriggertime_", filenameout).Data());
+    h1digipeperdigi->Draw();
+    c2->SaveAs(create_filename("h1digipeperdigi_", filenameout).Data());
+    h1digitimeperdigi->Draw();
+    c2->SaveAs(create_filename("h1digitimeperdigi_", filenameout).Data());
+    h1diginoisefrac->Draw();
+    c2->SaveAs(create_filename("h1diginoisefrac_", filenameout).Data());
+    h1diginoisefrac_trigger->Draw();
+    c2->SaveAs(create_filename("h1diginoisefrac_trigger_", filenameout).Data());
 
     h2nhits_sep->Draw("COLZ");
     c2->SaveAs(create_filename("h2nhits_sep_", filenameout).Data());
     h2nhitstrigger_sep->Draw("COLZ");
     c2->SaveAs(create_filename("h2nhitstrigger_sep_", filenameout).Data());
-
-    hSeventALL_hittime->Draw();
-    l = new TLegend(0.4,0.9,0.9,1.0);
-    l->SetTextSize(0.042);
-    l->SetTextFont(132);
-    l->AddEntry(h1eventALL_hittime[0], "Photon", "l");
-    l->AddEntry(h1eventALL_hittime[1], "Noise",  "l");
-    l->Draw();
-    c2->SaveAs(create_filename("hSeventALL_hittime_", filenameout).Data());
 
     h1triggertype->Draw();
     c2->SaveAs(create_filename("h1triggertype_", filenameout).Data());
