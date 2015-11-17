@@ -9,7 +9,7 @@ typedef enum ETriggerType {
   kTriggerNDigits,
   kTriggerNHitsSKDETSIM,
   kTriggerNDigitsTest,
-  kTriggerLocalNDigits,
+  kTriggerLocalNHits,
   kTriggerFailure // this should always be the last entry (for looping)
 } TriggerType_t;
 

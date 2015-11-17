@@ -217,6 +217,8 @@ private:
   int CalculateAverageDarkNoiseOccupancy(int npmts, int window);
   ///modify the NDigits threshold based on the average dark noise rate
   void AdjustNDigitsThresholdForNoise();
+  ///modify the LocalNDigits threshold based on the average dark noise rate
+  void AdjustLocalNDigitsThresholdForNoise();
 
   ///takes all trigger times, then loops over all Digits & fills the output DigitsCollection
   void FillDigitsCollection(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, TriggerType_t save_triggerType);

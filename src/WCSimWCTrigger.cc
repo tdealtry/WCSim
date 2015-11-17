@@ -97,7 +97,7 @@ int WCSimWCTriggerBase::GetPreTriggerWindow(TriggerType_t t)
   case kTriggerNDigits:
   case kTriggerNDigitsTest:
   case kTriggerNHitsSKDETSIM:
-  case kTriggerNHitsThenLocalNHits;
+  case kTriggerLocalNHits:
     return ndigitsPreTriggerWindow;
     break;
   case kTriggerFailure:
@@ -117,7 +117,7 @@ int WCSimWCTriggerBase::GetPostTriggerWindow(TriggerType_t t)
   case kTriggerNDigits:
   case kTriggerNDigitsTest:
   case kTriggerNHitsSKDETSIM:
-  case kTriggerNHitsThenLocalNHits;
+  case kTriggerLocalNHits:
     return ndigitsPostTriggerWindow;
     break;
   case kTriggerFailure:
@@ -137,7 +137,7 @@ int WCSimWCTriggerBase::CalculateAverageDarkNoiseOccupancy(int npmts, int window
   double dark_rate_Hz = PMTDarkRate * 1000;
   double average_occupancy = dark_rate_Hz * trigger_window_seconds * npmts;
   
-  G4cout << "Average number of PMTs active in a " << window
+  G4cout << "Average number of PMTs active in a " << window_ns
 	 << "ns window with a dark noise rate of " << PMTDarkRate
 	 << "kHz is " << average_occupancy
 	 << " (" << npmts << " total PMTs)"
@@ -154,7 +154,7 @@ void WCSimWCTriggerBase::AdjustNDigitsThresholdForNoise()
   ndigitsThreshold += round(average_occupancy);
 }
 
-void WCSimWCTriggerBase::AdjustNDigitsThresholdForNoise()
+void WCSimWCTriggerBase::AdjustLocalNDigitsThresholdForNoise()
 {
   int npmts = localNHitsNeighbours;
   double average_occupancy = CalculateAverageDarkNoiseOccupancy(npmts, localNHitsWindow);
@@ -392,7 +392,7 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
 
   int ntrig = 0;
   int window_start_time = 0;
-  int window_end_time   = WCSimWCTriggerBase::LongTime - nhitsWindow;
+  int window_end_time   = WCSimWCTriggerBase::LongTime - ndigitsWindow;
   int window_step_size  = 5; //step the search window along this amount if no trigger is found
   float lasthit;
   std::vector<int> digit_times;
@@ -431,7 +431,7 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
 	//hit in trigger window?
 	if(digit_time >= window_start_time) {
 	  //count the digits for the NHits
-	  if(digit_time <= (window_start_time + nhitsWindow)) {
+	  if(digit_time <= (window_start_time + ndigitsWindow)) {
 	    n_digits++;
 	    digit_times.push_back(digit_time);
 	  }
@@ -453,14 +453,14 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
     }//loop over PMTs
 
     //if over threshold, issue trigger
-    if(n_digits > nhitsThreshold) {
+    if(n_digits > ndigitsThreshold) {
       ntrig++;
       //The trigger time is the time of the first hit above threshold
       std::sort(digit_times.begin(), digit_times.end());
-      triggertime = digit_times[nhitsThreshold];
+      triggertime = digit_times[ndigitsThreshold];
       triggertime -= (int)triggertime % 5;
       TriggerTimes.push_back(triggertime);
-      TriggerTypes.push_back(kTriggerNHits);
+      TriggerTypes.push_back(kTriggerNDigits);
       TriggerInfos.push_back(std::vector<Float_t>(1, n_digits));
       triggerfound = true;
     }//NHits trigger
@@ -514,8 +514,8 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
 #ifdef WCSIMWCTRIGGER_VERBOSE
     if(n_digits)
       G4cout << n_digits << " digits found in 200nsec trigger window ["
-	     << window_start_time << ", " << window_start_time + nhitsWindow
-	     << "]. Threshold is: " << nhitsThreshold << G4endl;
+	     << window_start_time << ", " << window_start_time + ndigitsWindow
+	     << "]. Threshold is: " << ndigitsThreshold << G4endl;
 #endif
 
     //move onto the next go through the timing loop
@@ -531,10 +531,10 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
 #ifdef WCSIMWCTRIGGER_VERBOSE
       G4cout << "Last hit found to be at " << lasthit
 	     << ". Changing window_end_time from " << window_end_time
-	     << " to " << lasthit - (nhitsWindow - 10)
+	     << " to " << lasthit - (ndigitsWindow - 10)
 	     << G4endl;
 #endif
-      window_end_time = lasthit - (nhitsWindow - 10);
+      window_end_time = lasthit - (ndigitsWindow - 10);
       first_loop = false;
     }
   }

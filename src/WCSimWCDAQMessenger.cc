@@ -355,7 +355,6 @@ void WCSimWCDAQMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
     G4cout << "Local NHits trigger window set to " << newValue << G4endl;
     StoreLocalNHitsWindow = LocalNHitsTriggerWindow->GetNewIntValue(newValue);
   }
-}
 
   //TODO remove this
   else if(command == DAQConstruct) {
