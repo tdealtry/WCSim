@@ -70,7 +70,8 @@
 # set at least one of the following two options (both /DAQ/Digitizer and /DAQ/Trigger to be clear) to SKI_SKDETSIM if you want to use the old combined Digitization & Trigger class (WCSimWCDigitizer)
 # note that only one of the two set to SKI_SKDETSIM will only use WCSimWCDigitizer for everything (i.e. you can't use the SKI Digitizer with the old trigger)
 /DAQ/Digitizer SKI
-/DAQ/Trigger NDigits
+/DAQ/Trigger NHitsThenLocalNHits
+#/DAQ/Trigger NDigits
 
 #generic digitizer options (defaults are class-specific. Can be overridden here)
 # how long is the digitizer dead before a new hit on the same PMT can be recorded (ns)?
@@ -105,11 +106,11 @@
 #/DAQ/TriggerNDigits/PostTriggerWindow +950
 
 # control the number of nearest neighbours to define "local" for the local NHits trigger
-/DAQ/TriggerLocalNHits/Neighbours 50
+/DAQ/TriggerLocalNHits/Neighbours 500
 # control the local NHits trigger threshold
 /DAQ/TriggerLocalNHits/Threshold 10
 # control the local NHits trigger window (ns)
-/DAQ/TriggerLocalNHits/Window 50
+/DAQ/TriggerLocalNHits/Window 100
 #automatically adjust the Local NHits threshold depending on the average noise occupancy during the trigger window
 /DAQ/TriggerLocalNHits/AdjustForNoise false
 
@@ -125,7 +126,7 @@
 
 
 # default dark noise frequency is 0 kHz
-/DarkRate/SetDarkRate 4.2 kHz #This is the value for SKI set in SKDETSIM.
+#/DarkRate/SetDarkRate 4.2 kHz #This is the value for SKI set in SKDETSIM.
 #/DarkRate/SetDarkRate 8.4 kHz #For 20 inch HPDs and Box and Line PMTs, based on High QE 20" R3600 dark rate from EGADS nov 2014
 #/DarkRate/SetDarkRate 3.0 kHz #For 12 inch HPDs and Box and Line PMTs, based on High QE 20" R3600 dark rate from EGADS nov 2014
 
@@ -150,7 +151,7 @@
 /mygen/generator normal
 /gun/particle e-
 #/gun/particle pi0
-/gun/energy 500 MeV
+/gun/energy 5 MeV
 /gun/direction 1 0 0 
 /gun/position 0 0 0  
 
@@ -158,5 +159,5 @@
 
 /WCSimIO/RootFile wcsim.root
 
-/run/beamOn 10
+/run/beamOn 1000
 #exit
