@@ -211,6 +211,10 @@ protected:
 
   G4String triggerClassName; ///< Save the name of the trigger class
 
+  unsigned int nPMTs;    ///< Store the number of PMTs in the geometry
+
+  int * localNHitsHits; ///< Array to store the number of hits in a time window for each PMT tube id
+
 private:
 
   ///calculate the average dark noise occupancy (used to modify the NHits threshold)
@@ -227,9 +231,6 @@ private:
   static const double LongTime;      ///< An arbitrary long time to use in loops (ns)
 
   bool   digitizeCalled; ///< Has Digitize() been called yet?
-  unsigned int nPMTs;    ///< Store the number of PMTs in the geometry
-
-  int * localNHitsHits; ///< Array to store the number of hits in a time window for each PMT tube id
 };
 
 // *******************************************

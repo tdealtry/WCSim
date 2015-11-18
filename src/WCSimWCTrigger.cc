@@ -14,6 +14,8 @@
 #include "WCSimPmtInfo.hh"
 #include "WCSimDarkRateMessenger.hh"
 
+#include "TMath.h"
+
 #include <vector>
 // for memset
 #include <cstring>
@@ -39,7 +41,7 @@ const double WCSimWCTriggerBase::LongTime = 1E6; // ns = 1ms. event time
 WCSimWCTriggerBase::WCSimWCTriggerBase(G4String name,
 				       WCSimDetectorConstruction* inDetector,
 				       WCSimWCDAQMessenger* myMessenger)
-  :G4VDigitizerModule(name), DAQMessenger(myMessenger), myDetector(inDetector), triggerClassName("")
+  :G4VDigitizerModule(name), DAQMessenger(myMessenger), myDetector(inDetector), triggerClassName(""), myPMTs(NULL)
 {
   G4String colName = "WCDigitizedCollection";
   collectionName.push_back(colName);
@@ -53,6 +55,8 @@ WCSimWCTriggerBase::WCSimWCTriggerBase(G4String name,
   }
 
   digitizeCalled = false;
+
+  nPMTs = myDetector->GetTotalNumPmts();
 }
 
 WCSimWCTriggerBase::~WCSimWCTriggerBase()
@@ -87,6 +91,10 @@ void WCSimWCTriggerBase::GetVariables()
 	 << "Using NDigits trigger window " << ndigitsWindow << " ns" << G4endl
 	 << "Using NDigits event pretrigger window " << ndigitsPreTriggerWindow << " ns" << G4endl
 	 << "Using NDigits event posttrigger window " << ndigitsPostTriggerWindow << " ns" << G4endl
+	 << "Using LocalNDigits neighbours " << localNHitsNeighbours << G4endl
+	 << "Using LocalNDigits threshold " << localNHitsThreshold
+	 << (localNHitsAdjustForNoise ? " (will be adjusted for noise)" : "") << G4endl
+	 << "Using LocalNDigits window " << localNHitsWindow << " ns" << G4endl
 	 << "Using SaveFailures event pretrigger window " << saveFailuresPreTriggerWindow << " ns" << G4endl
 	 << "Using SaveFailures event posttrigger window " << saveFailuresPostTriggerWindow << " ns" << G4endl;
 }
@@ -147,8 +155,7 @@ int WCSimWCTriggerBase::CalculateAverageDarkNoiseOccupancy(int npmts, int window
 
 void WCSimWCTriggerBase::AdjustNDigitsThresholdForNoise()
 {
-  int npmts = this->myDetector->GetTotalNumPmts();
-  double average_occupancy = CalculateAverageDarkNoiseOccupancy(npmts, ndigitsWindow);
+  double average_occupancy = CalculateAverageDarkNoiseOccupancy(nPMTs, ndigitsWindow);
   G4cout << "Updating the NDigits threshold, from " << ndigitsThreshold
 	 << " to " << ndigitsThreshold + round(average_occupancy) << G4endl;
   ndigitsThreshold += round(average_occupancy);
@@ -171,14 +178,9 @@ void WCSimWCTriggerBase::Digitize()
     if(triggerClassName.compare("NHitsThenLocalNHits") == 0) {
       if(localNHitsAdjustForNoise)
 	AdjustLocalNDigitsThresholdForNoise();
-      FindAllPMTNearestNeighbours();
-      //reserve an array to store the number of digits on each PMT
-      localNHitsHits = new int[nPMTs];
-      //and fill it with 0s
-      memset(localNHitsHits, 0, nPMTs * sizeof(int));
     }
     digitizeCalled = true;
-  }    
+  }
 
   //Input is collection of all digitized hits that passed the threshold
   //Output is all digitized hits which pass the trigger
@@ -291,18 +293,19 @@ void WCSimWCTriggerBase::AlgNDigits(WCSimWCDigitsCollection* WCDCPMT, bool remov
 
     //shorten the loop using the time of the last hit
     if(first_loop) {
+      int newend = TMath::Max((float)0, lasthit - ((ndigitsWindow - 10)));
 #ifdef WCSIMWCTRIGGER_VERBOSE
       G4cout << "Last hit found to be at " << lasthit
 	     << ". Changing window_end_time from " << window_end_time
-	     << " to " << lasthit - (ndigitsWindow - 10)
+	     << " to " << newend
 	     << G4endl;
 #endif
-      window_end_time = lasthit - (ndigitsWindow - 10);
+      window_end_time = newend;
       first_loop = false;
     }
   }
   
-  G4cout << "Found " << ntrig << " NHit triggers" << G4endl;
+  G4cout << "Found " << ntrig << " NDigit triggers" << G4endl;
   //call FillDigitsCollection() whether any triggers are found or not
   // (what's saved depends on saveFailuresMode)
   FillDigitsCollection(WCDCPMT, remove_hits, this_triggerType);
@@ -328,7 +331,8 @@ std::vector<int> WCSimWCTriggerBase::FindPMTNearestNeighbours(int ipmt)
   //loop over ALL the other PMTs & save the distance to the current PMT
   std::vector< std::pair<double, int> > distances;
   for(unsigned int i = 0; i < nPMTs; i++) {
-    if(i == (unsigned int)ipmt) continue;
+    if(i == (unsigned int)ipmt)
+      continue;
     WCSimPmtInfo * PMT = myPMTs->at(i);
     double X   = PMT->Get_transx();
     double Y   = PMT->Get_transy();
@@ -463,11 +467,16 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
       TriggerTypes.push_back(kTriggerNDigits);
       TriggerInfos.push_back(std::vector<Float_t>(1, n_digits));
       triggerfound = true;
+      G4cout << "Found NDigits trigger with " << n_digits
+	     << " digits in the " << ndigitsWindow
+	     << " ns trigger decision window" << G4endl;
     }//NHits trigger
 
     //NHits failed. Try local NHits
     //no point looking at all PMTs if there aren't enough hits in the whole detector in the time window
-    if(local_n_digits > localNHitsThreshold) {
+    else if(local_n_digits > localNHitsThreshold) {
+      std::vector<Float_t> local_info;
+
       //loop over all PMTs with hits
       for(unsigned int ip = 0; ip < pmts_hit.size(); ip++) {
 	int this_pmtid = pmts_hit[ip];
@@ -488,21 +497,27 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
 #endif
 	//if over threshold, issue trigger
 	if(nlocal > localNHitsThreshold) {
-	  ntrig++;
-	  //The trigger time is the time in the middle of the local NHits trigger window
-	  //TODO potentially make this something dependant on digit times
-	  triggertime = window_start_time + ((double)localNHitsWindow / 2);
-	  triggertime -= (int)triggertime % 5;
-	  TriggerTimes.push_back(triggertime);
-	  TriggerTypes.push_back(kTriggerLocalNHits);
-	  std::vector<Float_t> local_info;
 	  local_info.push_back(nlocal); //the number of hits locally to the tube
 	  local_info.push_back(ip+1);   //the tube ID of the tube that fired the trigger
-	  TriggerInfos.push_back(local_info);
 	  triggerfound = true;
-	  break; //may want to continue loop & find all local triggers instead of breaking
-	}//trigger found
+	  G4cout << "Found LocalNDigits trigger with " << nlocal
+		 << " neighbours of PMT " << this_pmtid
+		 << " with digits in the " << localNHitsWindow
+		 << " ns trigger decision window" << G4endl;
+	}//trigger found on a specific PMT
       }//ip
+
+      if(local_info.size()) {
+	ntrig++;
+	//The trigger time is the time in the middle of the local NHits trigger window                                                                                                                                                         
+	//TODO potentially make this something dependant on digit times                                                                                                                                                                        
+	triggertime = window_start_time + ((double)localNHitsWindow / 2);
+	triggertime -= (int)triggertime % 5;
+	TriggerTimes.push_back(triggertime);
+	TriggerTypes.push_back(kTriggerLocalNHits);
+	TriggerInfos.push_back(local_info);
+	triggerfound = true;
+      }//trigger(s) found on any PMT
     }//local NHits trigger
 
     //Cheat sheet
@@ -528,13 +543,14 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
 
     //shorten the loop using the time of the last hit
     if(first_loop) {
+      int newend = TMath::Max((float)0, lasthit - ((ndigitsWindow - 10)));
 #ifdef WCSIMWCTRIGGER_VERBOSE
       G4cout << "Last hit found to be at " << lasthit
 	     << ". Changing window_end_time from " << window_end_time
-	     << " to " << lasthit - (ndigitsWindow - 10)
+	     << " to " << newend
 	     << G4endl;
 #endif
-      window_end_time = lasthit - (ndigitsWindow - 10);
+      window_end_time = newend;
       first_loop = false;
     }
   }
@@ -810,6 +826,13 @@ WCSimWCTriggerNHitsThenLocalNHits::WCSimWCTriggerNHitsThenLocalNHits(G4String na
   :WCSimWCTriggerBase(name, myDetector, myMessenger)
 {
   triggerClassName = "NHitsThenLocalNHits";
+  GetVariables();
+
+  FindAllPMTNearestNeighbours();
+  //reserve an array to store the number of digits on each PMT
+  localNHitsHits = new int[nPMTs];
+  //and fill it with 0s
+  memset(localNHitsHits, 0, nPMTs * sizeof(int));
 }
 
 WCSimWCTriggerNHitsThenLocalNHits::~WCSimWCTriggerNHitsThenLocalNHits()
