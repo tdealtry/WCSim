@@ -97,6 +97,8 @@ private:
   ////WCSimWCDigitsCollection*  DigitsCollection;  
   ////WCSimDetectorConstruction* myDetector;
 
+  void WriteGeomInfo() {};
+  void ReadGeomInfo() {};
 };
 
 #endif

@@ -15,12 +15,19 @@
 #include "WCSimDarkRateMessenger.hh"
 
 #include "TMath.h"
+#include "TVector3.h"
 
 #include <vector>
 // for memset
 #include <cstring>
 #include <iostream>
+#include <fstream>
 
+#define WCSIMWCTRIGGER_DEBUG_GEOM_INFO 1
+#if WCSIMWCTRIGGER_DEBUG_GEOM_INFO >= 1
+#include "TFile.h"
+#include "TTree.h"
+#endif
 
 
 // *******************************************
@@ -96,7 +103,16 @@ void WCSimWCTriggerBase::GetVariables()
 	 << (localNHitsAdjustForNoise ? " (will be adjusted for noise)" : "") << G4endl
 	 << "Using LocalNDigits window " << localNHitsWindow << " ns" << G4endl
 	 << "Using SaveFailures event pretrigger window " << saveFailuresPreTriggerWindow << " ns" << G4endl
-	 << "Using SaveFailures event posttrigger window " << saveFailuresPostTriggerWindow << " ns" << G4endl;
+	 << "Using SaveFailures event posttrigger window " << saveFailuresPostTriggerWindow << " ns" << G4endl
+	 << (writeGeom ? "Will write out geometry information for triggering to a file, then exit" : "") << G4endl;
+
+  if(writeGeom) {
+    WriteGeomInfo();
+    exit(0);
+  }
+  else {
+    ReadGeomInfo();
+  }
 }
 
 int WCSimWCTriggerBase::GetPreTriggerWindow(TriggerType_t t)
@@ -376,7 +392,7 @@ void WCSimWCTriggerBase::FindAllPMTNearestNeighbours()
     }
     std::vector<int> neighbours = FindPMTNearestNeighbours(ipmt);
     pmtNeighbours.push_back(neighbours);
-  }
+  }//ipmt
 
 #ifdef WCSIMWCTRIGGER_PMT_NEIGHBOURS_VERBOSE
   for(unsigned int i = 0; i < pmtNeighbours.size(); i++) {
@@ -387,6 +403,45 @@ void WCSimWCTriggerBase::FindAllPMTNearestNeighbours()
     G4cout << G4endl;
   }//i
 #endif
+}
+
+void WCSimWCTriggerBase::PopulatePMTAreas()
+{
+  if(myPMTs == NULL) {
+    myPMTs = myDetector->Get_Pmts();
+  }
+  for(unsigned int ipmt = 0; ipmt < nPMTs; ipmt++) {
+    if(ipmt % (nPMTs/20 + 1) == 0) {
+      G4cout << "WCSimWCTriggerBase::FindAllPMTNearestNeighbours at "
+             << ipmt / (float)nPMTs * 100 << "%"
+             << " (" << ipmt << " out of " << nPMTs << ")"
+             << G4endl;
+    }
+    //first estimate: 0 top, 1 bottom, 2-10 side
+    WCSimPmtInfo * thisPMT = myPMTs->at(ipmt);
+    int thisTubeID = thisPMT->Get_tubeid();
+    double thisX   = thisPMT->Get_transx();
+    double thisY   = thisPMT->Get_transy();
+    double thisZ   = thisPMT->Get_transz();
+    TVector3 thisV3(thisX, thisY, thisZ);
+    double thisR   = thisV3.Perp();
+    double thisP   = thisV3.Phi();
+    //ipmt is the position in the vector. Runs 0->nPMTs-1
+    //tubeid is the actual ID of the PMT. Runs 1->nPMTs
+    if((ipmt + 1) != thisTubeID)
+      G4cerr << "PMT ID is not the expected one!"
+	     << " Vector position + 1 " << ipmt+1
+	     << " PMT ID " << thisTubeID << G4endl;
+
+    G4cout << "PMT " << ipmt << " has ID " << thisTubeID
+	   << " position "
+	   << thisX << " "
+	   << thisY << " "
+	   << thisZ << "\t"
+	   << thisR << " "
+	   << thisP << " "
+	   << thisZ << G4endl;
+  }//ipmt
 }
 
 void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits)
@@ -828,7 +883,6 @@ WCSimWCTriggerNHitsThenLocalNHits::WCSimWCTriggerNHitsThenLocalNHits(G4String na
   triggerClassName = "NHitsThenLocalNHits";
   GetVariables();
 
-  FindAllPMTNearestNeighbours();
   //reserve an array to store the number of digits on each PMT
   localNHitsHits = new int[nPMTs];
   //and fill it with 0s
@@ -844,4 +898,104 @@ void WCSimWCTriggerNHitsThenLocalNHits::DoTheWork(WCSimWCDigitsCollection* WCDCP
   //Apply an NHitsThenLocalNHits trigger
   bool remove_hits = false;
   AlgNHitsThenLocalNHits(WCDCPMT, remove_hits);
+}
+
+void WCSimWCTriggerNHitsThenLocalNHits::WriteGeomInfo()
+{
+  PopulatePMTAreas();
+  exit(-1);
+
+  localNHitsNeighbours = nPMTs - 1; //don't include self!
+  //fill the arrays with neighbours
+  FindAllPMTNearestNeighbours();
+
+#if WCSIMWCTRIGGER_DEBUG_GEOM_INFO >= 1
+  TFile f("det.root","RECREATE");
+  TTree t("det","");
+  std::vector<int> neighbours;
+  int pmt;
+  t.Branch("pmt", &pmt);
+  t.Branch("neighbours",&neighbours); 
+#endif
+
+  std::ofstream ofs("det.bin", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+  for(int ipmt = 0, npmt = pmtNeighbours.size(); ipmt < npmt; ipmt++) {
+    if(ipmt % (nPMTs/20 + 1) == 0) {
+      G4cout << "WCSimWCTriggerNHitsThenLocalNHits::WriteGeomInfo at "
+             << ipmt / (float)nPMTs * 100 << "%"
+             << " (" << ipmt << " out of " << nPMTs << ")"
+             << G4endl;
+    }
+    int pmtid = ipmt + 1;
+    ofs.write(reinterpret_cast<const char *>(&pmtid), sizeof(pmtid));
+    ofs.write(reinterpret_cast<const char *>(pmtNeighbours[ipmt].data()), sizeof(int) * pmtNeighbours[ipmt].size());
+#if WCSIMWCTRIGGER_DEBUG_GEOM_INFO >= 2
+    neighbours = pmtNeighbours[ipmt];
+    pmt = ipmt;
+    t.Fill();
+    G4cout << pmtid << G4endl;
+    for(int in = 0, nn = pmtNeighbours[ipmt].size(); in < nn; in++) {
+      G4cout << " " << pmtNeighbours[ipmt][in];
+    }//in
+    G4cout << G4endl;
+#endif
+  }//ipmt
+
+  ofs.close();
+#if WCSIMWCTRIGGER_DEBUG_GEOM_INFO >= 1
+  t.Write();
+#endif
+
+
+}
+
+void WCSimWCTriggerNHitsThenLocalNHits::ReadGeomInfo()
+{
+  std::ifstream ifs("det.bin", std::ifstream::in | std::ifstream::binary);
+  int pmtid;
+  for(unsigned int ipmt = 0; ipmt < nPMTs; ipmt++) {
+    if(ipmt % (nPMTs/20 + 1) == 0) {
+      G4cout << "WCSimWCTriggerNHitsThenLocalNHits::ReadGeomInfo at "
+             << ipmt / (float)nPMTs * 100 << "%"
+             << " (" << ipmt << " out of " << nPMTs << ")"
+             << G4endl;
+    }
+    std::vector<int> neighbours;
+    ifs.read((char*)&pmtid, sizeof(int));
+#if WCSIMWCTRIGGER_DEBUG_GEOM_INFO >= 2
+    G4cout << pmtid << G4endl;
+#endif
+    if(pmtid != (int)(ipmt + 1)) {
+      G4cerr << "PMT ID mistmatch. Expected " << ipmt + 1 << " got " << pmtid << G4endl;
+      exit(-1);
+    }
+    for(unsigned int in = 0; in < nPMTs - 1; in++) {
+      ifs.read((char*)&pmtid, sizeof(int));
+#if WCSIMWCTRIGGER_DEBUG_GEOM_INFO >= 2
+      G4cout << " " << pmtid;
+#endif
+      if((int)in < localNHitsNeighbours)
+	neighbours.push_back(pmtid);
+    }//in
+#if WCSIMWCTRIGGER_DEBUG_GEOM_INFO >= 2
+    G4cout << G4endl;
+#endif
+    pmtNeighbours.push_back(neighbours);
+  }//ipmt
+  ifs.close();
+
+#if WCSIMWCTRIGGER_DEBUG_GEOM_INFO >= 1
+  TFile f("detread.root","RECREATE");
+  TTree t("det","");
+  std::vector<int> neighbours;
+  int pmt;
+  t.Branch("pmt", &pmt);
+  t.Branch("neighbours",&neighbours);
+  for(int ipmt = 0, npmt = pmtNeighbours.size(); ipmt < npmt; ipmt++) {
+    neighbours = pmtNeighbours[ipmt];
+    pmt = ipmt;
+    t.Fill();
+  }//ipmt
+  t.Write();
+#endif
 }

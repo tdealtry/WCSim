@@ -67,6 +67,13 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger(WCSimEventAction* eventaction) :
   MultiDigitsPerTriggerSet = false; //this variable is bool & defaults are class specfic; use this to know if the default is overidden
   //don't SetNewValue -> defaults class-specific and taken from GetDefault*()
 
+  bool defaultWriteGeomInfo = false;
+  WriteGeomInfo = new G4UIcmdWithABool("/DAQ/WriteGeomInfo", this);
+  WriteGeomInfo->SetGuidance("Allow trigger class to write out the geometry info to a file, then exit");
+  WriteGeomInfo->SetParameterName("WriteGeomInfo",true);
+  WriteGeomInfo->SetDefaultValue(defaultWriteGeomInfo);
+  StoreWriteGeomInfo = defaultWriteGeomInfo;
+  SetNewValue(WriteGeomInfo, G4UIcommand::ConvertToString(defaultWriteGeomInfo));
 
   //Generic digitizer specific options
   DigitizerDir = new G4UIdirectory("/DAQ/DigitizerOpt/");
@@ -246,6 +253,7 @@ WCSimWCDAQMessenger::~WCSimWCDAQMessenger()
   delete DigitizerChoice;
   delete TriggerChoice;
   delete MultiDigitsPerTrigger;
+  delete WriteGeomInfo;
   delete WCSimDAQDir;
 }
 
@@ -273,6 +281,11 @@ void WCSimWCDAQMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
       G4cout << "Will allow number of digits per PMT per trigger to go > 1" << initialiseString.c_str() << G4endl;
     if(initialised)
       MultiDigitsPerTriggerSet = true;
+  }
+  else if (command == WriteGeomInfo) {
+    StoreWriteGeomInfo = WriteGeomInfo->GetNewBoolValue(newValue);
+    if(StoreWriteGeomInfo)
+      G4cout << "Will write out geometry information for triggering to a file, then exit" << initialiseString.c_str() << G4endl;
   }
 
   //Generic digitizer options
@@ -374,6 +387,10 @@ void WCSimWCDAQMessenger::SetTriggerOptions()
     else
       G4cout << "\tWill allow number of digits per PMT per trigger to go > 1" << initialiseString.c_str() << G4endl;
   }
+
+  WCSimTrigger->SetWriteGeomInfo(StoreWriteGeomInfo);
+  if(StoreWriteGeomInfo)
+    G4cout << "\tWill write out geometry information for triggering to a file, then exit" << G4endl;
 
   //SaveFailures
   WCSimTrigger->SetSaveFailuresMode(StoreSaveFailuresMode);

@@ -62,6 +62,8 @@ public:
 
   ///Set whether to allow the number of digits per PMT per trigger to go > 1
   void SetMultiDigitsPerTrigger(G4bool allow_multi) { multiDigitsPerTrigger = allow_multi; }
+  ///Set whether to write the geometry information into a file, then exit
+  void SetWriteGeomInfo(G4bool write_geom) { writeGeom = write_geom; }
 
   // NDigits options
   ///Set the threshold for the NDigits trigger
@@ -163,6 +165,13 @@ protected:
    */
   void AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits);
 
+  // Geometry methods
+  ///Write out the geometry information required for this trigger
+  virtual void WriteGeomInfo() = 0;
+  ///Read in the geometry information required for this trigger
+  virtual void ReadGeomInfo() = 0;
+  ///Split the tank into areas & get the PMTs IDs for each area
+  void PopulatePMTAreas();
   ///Find the nearest neighbours of a PMT
   std::vector<int> FindPMTNearestNeighbours(int i);
   ///Find the nearest neighbours of all PMTs
@@ -191,6 +200,7 @@ protected:
   double PMTDarkRate;    ///< Dark noise rate of the PMTs
 
   // Trigger algorithm options
+  G4bool writeGeom;                ///< Write the geometry information for triggering, then exit?
   G4bool multiDigitsPerTrigger;    ///< Allow the number of digits per PMT saved in each trigger window to go > 1?
   //NDigits
   G4int  ndigitsThreshold;         ///< The threshold for the NDigits trigger
@@ -355,6 +365,9 @@ private:
   int  GetDefaultNDigitsThreshold()         { return 25;    } ///< SK NDigits threshold ~25
   int  GetDefaultNDigitsPreTriggerWindow()  { return -400;  } ///< SK SLE trigger window ~-400
   int  GetDefaultNDigitsPostTriggerWindow() { return 950;   } ///< SK SLE trigger window ~+950
+
+  void WriteGeomInfo() {}
+  void ReadGeomInfo()  {}
 };
 
 
@@ -381,6 +394,9 @@ private:
   int  GetDefaultNDigitsThreshold()         { return 50;    } ///< 2 * SK NDigits threshold ~25
   int  GetDefaultNDigitsPreTriggerWindow()  { return -400;  } ///< SK SLE trigger window ~-400
   int  GetDefaultNDigitsPostTriggerWindow() { return 950;   } ///< SK SLE trigger window ~+950
+
+  void WriteGeomInfo() {}
+  void ReadGeomInfo()  {}
 };
 
 /**
@@ -408,6 +424,9 @@ private:
   //int  GetDefaultNDigitsThreshold()         { return 50;    } ///< 2 * SK NDigits threshold ~25
   int  GetDefaultNDigitsPreTriggerWindow()  { return -400;  } ///< SK SLE trigger window ~-400
   int  GetDefaultNDigitsPostTriggerWindow() { return 950;   } ///< SK SLE trigger window ~+950
+
+  void WriteGeomInfo();
+  void ReadGeomInfo();
 };
 
 

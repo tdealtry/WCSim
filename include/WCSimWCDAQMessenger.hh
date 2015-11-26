@@ -42,6 +42,8 @@ private:
   G4UIcmdWithABool*   MultiDigitsPerTrigger;
   G4bool              StoreMultiDigitsPerTrigger;
   G4bool              MultiDigitsPerTriggerSet;
+  G4UIcmdWithABool*   WriteGeomInfo;
+  G4bool              StoreWriteGeomInfo;
 
   G4UIcmdWithoutParameter* DAQConstruct; //TODO remove this
 
