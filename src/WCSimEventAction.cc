@@ -105,6 +105,10 @@ void WCSimEventAction::CreateDAQInstances()
       WCSimWCTriggerNHitsThenLocalNHits* WCTM = new WCSimWCTriggerNHitsThenLocalNHits("WCReadout", detectorConstructor, DAQMessenger);
       DMman->AddNewModule(WCTM);
     }
+    else if(TriggerChoice == "NHitsThenRegions") {
+      WCSimWCTriggerNHitsThenRegions* WCTM = new WCSimWCTriggerNHitsThenRegions("WCReadout", detectorConstructor, DAQMessenger);
+      DMman->AddNewModule(WCTM);
+    }
     else if(TriggerChoice == "NDigits2") {
       WCSimWCTriggerNDigits2* WCTM = new WCSimWCTriggerNDigits2("WCReadout", detectorConstructor, DAQMessenger);
       DMman->AddNewModule(WCTM);

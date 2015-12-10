@@ -44,6 +44,7 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger(WCSimEventAction* eventaction) :
 			     "NDigits\n"
 			     "NDigits2\n"
 			     "NHitsThenLocalNHits\n"
+			     "NHitsThenRegions\n"
 			     "SKI_SKDETSIM (combined trigger & digitization (therefore ignores /DAQ/Digitization); buggy) \n"
 			     );
   TriggerChoice->SetParameterName("Trigger", false);
@@ -51,6 +52,7 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger(WCSimEventAction* eventaction) :
 			       "NDigits "
 			       "NDigits2 "
 			       "NHitsThenLocalNHits "
+			       "NHitsThenRegions "
 			       "SKI_SKDETSIM "
 			       );
   TriggerChoice->AvailableForStates(G4State_PreInit, G4State_Idle);

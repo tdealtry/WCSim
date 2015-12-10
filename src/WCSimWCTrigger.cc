@@ -420,13 +420,12 @@ void WCSimWCTriggerBase::PopulatePMTAreas()
   const int nbinsP = 10;
   const int nbinsZ = 11;
   const double overlap = 0;
-  std::vector<std::pair<std::vector<int>, TVector3> > pmtBlocks;
   const int nRings = 2;
   const int nCentralSectors = 3;
   const int nRingSectors = 3;
 
 
-
+  pmtBlocks.clear();
   if(myPMTs == NULL) {
     myPMTs = myDetector->Get_Pmts();
   }
@@ -1203,9 +1202,6 @@ void WCSimWCTriggerNHitsThenLocalNHits::DoTheWork(WCSimWCDigitsCollection* WCDCP
 
 void WCSimWCTriggerNHitsThenLocalNHits::WriteGeomInfo()
 {
-  PopulatePMTAreas();
-  exit(-1);
-
   localNHitsNeighbours = nPMTs - 1; //don't include self!
   //fill the arrays with neighbours
   FindAllPMTNearestNeighbours();
@@ -1299,4 +1295,34 @@ void WCSimWCTriggerNHitsThenLocalNHits::ReadGeomInfo()
   }//ipmt
   t.Write();
 #endif
+}
+
+// *******************************************
+// DERIVED CLASS
+// *******************************************
+
+WCSimWCTriggerNHitsThenRegions::WCSimWCTriggerNHitsThenRegions(G4String name,
+							       WCSimDetectorConstruction* myDetector,
+							       WCSimWCDAQMessenger* myMessenger)
+  :WCSimWCTriggerBase(name, myDetector, myMessenger)
+{
+  triggerClassName = "NHitsThenRegions";
+  GetVariables();
+  PopulatePMTAreas();
+
+  //reserve an array to store the number of digits on each PMT
+  localNHitsHits = new int[nPMTs];
+  //and fill it with 0s
+  memset(localNHitsHits, 0, nPMTs * sizeof(int));
+}
+
+WCSimWCTriggerNHitsThenRegions::~WCSimWCTriggerNHitsThenRegions()
+{
+}
+
+void WCSimWCTriggerNHitsThenRegions::DoTheWork(WCSimWCDigitsCollection* WCDCPMT)
+{
+  //Apply an NHitsThenRegions trigger
+  bool remove_hits = false;
+  //AlgNHitsThenRegions(WCDCPMT, remove_hits);
 }

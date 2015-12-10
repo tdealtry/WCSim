@@ -70,7 +70,7 @@
 # set at least one of the following two options (both /DAQ/Digitizer and /DAQ/Trigger to be clear) to SKI_SKDETSIM if you want to use the old combined Digitization & Trigger class (WCSimWCDigitizer)
 # note that only one of the two set to SKI_SKDETSIM will only use WCSimWCDigitizer for everything (i.e. you can't use the SKI Digitizer with the old trigger)
 /DAQ/Digitizer SKI
-/DAQ/Trigger NHitsThenLocalNHits
+/DAQ/Trigger NHitsThenRegions
 #/DAQ/Trigger NDigits
 
 #generic digitizer options (defaults are class-specific. Can be overridden here)
@@ -86,7 +86,7 @@
 
 #allow the trigger class to write out geometry information into a file
 # job exits after this
-/DAQ/WriteGeomInfo true
+/DAQ/WriteGeomInfo false
 
 #trigger algorithm development options (defaults are set in WCSimWCDAQMessenger. Can be overidden here)
 # do we want to save only triggered events (mode 0), both triggered events & failed events (mode 1), or only failed events (mode 2)?
@@ -163,5 +163,5 @@
 
 /WCSimIO/RootFile wcsim.root
 
-/run/beamOn 1000
+/run/beamOn 10
 #exit

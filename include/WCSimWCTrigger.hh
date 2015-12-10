@@ -183,6 +183,7 @@ protected:
   void FindAllPMTNearestNeighbours();
   std::vector<WCSimPmtInfo*> *    myPMTs;        ///< Vector with the position/orientation of every PMT in the geometry. myPMTs[i] is the PMT with tubeID=i+1
   std::vector< std::vector<int> > pmtNeighbours; ///< Vector of vectors that give the nearest neighbour for each PMT. pmtNeighbours[i] contains the tubeIDs of the neighbours of the PMT with tubeID=i+1
+  std::vector<std::pair<std::vector<int>, TVector3> > pmtBlocks; ///< Vector of pairs with first entry: vector of PMT ids in the block, second entry: TVector3 of the average position
 
   WCSimWCTriggeredDigitsCollection*   DigitsCollection; ///< The main output of the class - collection of digits in the trigger window
   std::map<int,int>          DigiHitMap; ///< Keeps track of the PMTs that have been added to the output WCSimWCTriggeredDigitsCollection
@@ -407,7 +408,7 @@ private:
 /**
  * \class WCSimWCTriggerNHitsThenLocalNHits
  *
- * \brief A trigger class which first looks for a global NHits trigger, then searches for a local NHits trigger
+ * \brief A trigger class which first looks for a global NHits trigger, then searches for a local NHits trigger using fraction of nearest neighbours
  *
  */
 
@@ -432,6 +433,36 @@ private:
 
   void WriteGeomInfo();
   void ReadGeomInfo();
+};
+
+/**
+ * \class WCSimWCTriggerNHitsThenRegions
+ *
+ * \brief A trigger class which first looks for a global NHits trigger, then searches for a local NHits trigger using regions
+ *
+ */
+
+class WCSimWCTriggerNHitsThenRegions : public WCSimWCTriggerBase
+{
+public:
+
+  ///Create WCSimWCTriggerNHitsThenRegions instance with knowledge of the detector and DAQ options
+  WCSimWCTriggerNHitsThenRegions(G4String name, WCSimDetectorConstruction*, WCSimWCDAQMessenger*);
+
+  ~WCSimWCTriggerNHitsThenRegions();
+
+private:
+  ///Calls the workhorse of this class: AlgNHitsThenRegions
+  void DoTheWork(WCSimWCDigitsCollection* WCDCPMT);
+
+  bool GetDefaultMultiDigitsPerTrigger()    { return false; } ///< SKI saves only earliest digit on a PMT in the trigger window
+  //int  GetDefaultNDigitsWindow()            { return 200;   } ///< SK max light travel time ~200 ns
+  //int  GetDefaultNDigitsThreshold()         { return 50;    } ///< 2 * SK NDigits threshold ~25
+  int  GetDefaultNDigitsPreTriggerWindow()  { return -400;  } ///< SK SLE trigger window ~-400
+  int  GetDefaultNDigitsPostTriggerWindow() { return 950;   } ///< SK SLE trigger window ~+950
+
+  void WriteGeomInfo() {};
+  void ReadGeomInfo()  {};
 };
 
 
