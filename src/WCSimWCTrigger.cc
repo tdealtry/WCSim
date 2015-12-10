@@ -16,6 +16,7 @@
 
 #include "TMath.h"
 #include "TVector3.h"
+#include "TAxis.h"
 
 #include <vector>
 // for memset
@@ -40,6 +41,13 @@
 #ifndef WCSIMWCTRIGGER_PMT_NEIGHBOURS_VERBOSE
 //#define WCSIMWCTRIGGER_PMT_NEIGHBOURS_VERBOSE
 #endif
+#ifndef WCSIMWCTRIGGER_POPULATE_PMT_AREAS_VERBOSE
+#define WCSIMWCTRIGGER_POPULATE_PMT_AREAS_VERBOSE 1
+#endif
+
+
+
+
 
 const double WCSimWCTriggerBase::offset = 950.0; // ns. apply offset to the digit time
 const double WCSimWCTriggerBase::LongTime = 1E6; // ns = 1ms. event time
@@ -68,7 +76,9 @@ WCSimWCTriggerBase::WCSimWCTriggerBase(G4String name,
 
 WCSimWCTriggerBase::~WCSimWCTriggerBase()
 {
-  if(triggerClassName.compare("NHitsThenLocalNHits") == 0)
+ 
+
+ if(triggerClassName.compare("NHitsThenLocalNHits") == 0)
     delete localNHitsHits;
 }
 
@@ -407,32 +417,47 @@ void WCSimWCTriggerBase::FindAllPMTNearestNeighbours()
 
 void WCSimWCTriggerBase::PopulatePMTAreas()
 {
+  const int nbinsP = 10;
+  const int nbinsZ = 11;
+  const double overlap = 0;
+  std::vector<std::pair<std::vector<int>, TVector3> > pmtBlocks;
+  const int nRings = 2;
+  const int nCentralSectors = 3;
+  const int nRingSectors = 3;
+
+
+
   if(myPMTs == NULL) {
     myPMTs = myDetector->Get_Pmts();
   }
+  std::vector<double> vR, vP, vZ;
+  std::vector<TVector3> allPMTs;
+  double RMax = 0;
   for(unsigned int ipmt = 0; ipmt < nPMTs; ipmt++) {
-    if(ipmt % (nPMTs/20 + 1) == 0) {
-      G4cout << "WCSimWCTriggerBase::FindAllPMTNearestNeighbours at "
+    if(ipmt % (nPMTs/10 + 1) == 0) {
+      G4cout << "WCSimWCTriggerBase::PopulatePMTAreas() at "
              << ipmt / (float)nPMTs * 100 << "%"
              << " (" << ipmt << " out of " << nPMTs << ")"
              << G4endl;
     }
-    //first estimate: 0 top, 1 bottom, 2-10 side
     WCSimPmtInfo * thisPMT = myPMTs->at(ipmt);
     int thisTubeID = thisPMT->Get_tubeid();
     double thisX   = thisPMT->Get_transx();
     double thisY   = thisPMT->Get_transy();
     double thisZ   = thisPMT->Get_transz();
+    if(TMath::Abs(thisZ) < 1E-10)
+      thisZ = 0;
     TVector3 thisV3(thisX, thisY, thisZ);
     double thisR   = thisV3.Perp();
     double thisP   = thisV3.Phi();
     //ipmt is the position in the vector. Runs 0->nPMTs-1
     //tubeid is the actual ID of the PMT. Runs 1->nPMTs
-    if((ipmt + 1) != thisTubeID)
+    if((int)(ipmt + 1) != thisTubeID)
       G4cerr << "PMT ID is not the expected one!"
 	     << " Vector position + 1 " << ipmt+1
 	     << " PMT ID " << thisTubeID << G4endl;
 
+#if WCSIMWCTRIGGER_POPULATE_PMT_AREAS_VERBOSE >= 4
     G4cout << "PMT " << ipmt << " has ID " << thisTubeID
 	   << " position "
 	   << thisX << " "
@@ -441,7 +466,283 @@ void WCSimWCTriggerBase::PopulatePMTAreas()
 	   << thisR << " "
 	   << thisP << " "
 	   << thisZ << G4endl;
+#endif
+
+    if(thisR > RMax)
+      RMax = thisR;
+    vR.push_back(thisR);
+    vP.push_back(thisP);
+    vZ.push_back(thisZ);
+    allPMTs.push_back(thisV3);
   }//ipmt
+  
+#if WCSIMWCTRIGGER_POPULATE_PMT_AREAS_VERBOSE >= 3
+  G4cout << "R positions" << G4endl;
+  PrintVectorCount(vR);
+  G4cout << "phi positions" << G4endl;
+  PrintVectorCount(vP);
+  G4cout << "Z positions" << G4endl;
+  PrintVectorCount(vZ);
+#endif
+
+  //make a definition of top/bottom (use Z position)
+  std::set<double> sZ(vZ.begin(), vZ.end());
+  int nzmax = 0, nzmin = 0;
+  double zmin, zmax;
+  for(std::set<double>::iterator it = sZ.begin(); it != sZ.end(); ++it) {
+    double thisZ = *it;
+    double thiscount = std::count(vZ.begin(), vZ.end(), thisZ);
+    if(thisZ < 0 && thiscount > nzmin) {
+      zmin  = thisZ;
+      nzmin = thiscount;
+    }
+    else if(thisZ > 0 && thiscount > nzmax) {
+      zmax  = thisZ;
+      nzmax = thiscount;
+    }
+  }//it
+#if WCSIMWCTRIGGER_POPULATE_PMT_AREAS_VERBOSE >= 2
+  G4cout << "top    defined as z = " << zmax << " with " << nzmax << " PMTs" << G4endl
+	 << "bottom defined as z = " << zmin << " with " << nzmin << " PMTs" << G4endl;
+#endif
+
+  //separate PMTs into top/bottom/side
+  std::vector<std::pair<int, TVector3> > topPMTs, bottomPMTs, sidePMTs;
+  for(unsigned int iv = 0; iv < allPMTs.size(); iv++) {
+    int thispmtid = iv + 1;
+    double thisZ = allPMTs[iv].Z();
+    if(TMath::Abs(thisZ - zmax) < 1E-6)
+      topPMTs.push_back(std::make_pair(thispmtid, allPMTs[iv]));
+    else if(TMath::Abs(thisZ - zmin) < 1E-6)
+      bottomPMTs.push_back(std::make_pair(thispmtid, allPMTs[iv]));
+    else
+      sidePMTs.push_back(std::make_pair(thispmtid, allPMTs[iv]));
+  }//iv
+#if WCSIMWCTRIGGER_POPULATE_PMT_AREAS_VERBOSE >= 1
+  G4cout << topPMTs.size() << " top PMTs + "
+	 << bottomPMTs.size() << " bottom PMTs + "
+	 << sidePMTs.size() << " side PMTs = "
+	 << allPMTs.size() << " total PMTs " << G4endl;
+#endif
+
+#if WCSIMWCTRIGGER_POPULATE_PMT_AREAS_VERBOSE >= 3
+  G4cout << "SIDE" << G4endl;
+  PrintVector3Count(sidePMTs,   false, true, true);
+  G4cout << "TOP" << G4endl;
+  PrintVector3Count(topPMTs,    true,  true, false);
+  G4cout << "BOTTOM" << G4endl;
+  PrintVector3Count(bottomPMTs, true,  true, false);
+#endif
+
+  //split the side PMTS into rectangles
+  // note that the side PMTs are arranged in rows of constant z, and columns of constant phi
+  TAxis aZ(nbinsZ, zmin, zmax);
+  TAxis aP(nbinsP, -TMath::Pi(), +TMath::Pi());
+  std::vector<int> thesePMTs;
+  TVector3 avposition;
+  int nsides = 0;
+  for(int iz = 1; iz <= nbinsZ; iz++) {
+    double thiszlo = aZ.GetBinLowEdge(iz) - overlap;
+    double thiszhi = aZ.GetBinUpEdge(iz)  - overlap;
+    for(int ip = 1; ip <= nbinsP; ip++) {
+      thesePMTs.clear();
+      double thisplo = aP.GetBinLowEdge(ip) - overlap;
+      double thisphi = aP.GetBinUpEdge(ip)  - overlap;
+      for(unsigned int ipmt = 0; ipmt < sidePMTs.size(); ipmt++) {
+	double thisZ = sidePMTs[ipmt].second.Z();
+	double thisP = sidePMTs[ipmt].second.Phi();
+	if(thisZ >= thiszlo && thisZ < thiszhi &&
+	   thisP >= thisplo && thisP < thisphi)
+	  thesePMTs.push_back(sidePMTs[ipmt].first);
+	avposition += sidePMTs[ipmt].second;
+      }//ipmt
+      int thispmts = thesePMTs.size();
+      avposition.SetX(avposition.X() / thispmts);
+      avposition.SetY(avposition.Y() / thispmts);
+      avposition.SetZ(avposition.Z() / thispmts);
+      pmtBlocks.push_back(std::make_pair(thesePMTs, avposition));
+#if WCSIMWCTRIGGER_POPULATE_PMT_AREAS_VERBOSE >= 2
+      G4cout << "Side PMT block " << pmtBlocks.size() << " has " << thispmts << " entries. "
+	     << thiszlo << " <= Z < " << thiszhi << " && "
+	     << thisplo << " <= P < " << thisphi
+	     << " Av position " << avposition.X() << "," << avposition.Y() << "," << avposition.Z()
+	     << G4endl;
+#endif
+      nsides += thispmts;
+    }//ip
+  }//iz
+#if WCSIMWCTRIGGER_POPULATE_PMT_AREAS_VERBOSE >= 1
+  G4cout << nsides << " total entries in side PMTs (including overlaps)" << G4endl;
+#endif
+
+  //split the top & bottom PMTs into groups
+  // note all have identical Z
+  // essentially no pattern in phi (majority are unique)
+  // essentially no pattern in R (some rings exist, but very few)
+  const int R = RMax + 1E-6;
+  double radii[nRings + 2]; //0th entry is a dummy index. 1st entry (central circle) not counted as 'ring'
+  radii[0] = 0;
+  radii[nRings + 1] = R;
+  const double Z = 1 + nRingSectors;
+  
+  //calculate the values of radii (i.e. the radius of each segment)
+  if(nRings == 1) {
+    radii[1] = TMath::Sqrt(R*R / Z);
+  }
+  else if(nRings == 2) {
+    radii[1] = TMath::Sqrt(R*R / (Z*Z - nRingSectors));
+    radii[2] = TMath::Sqrt(radii[1]*radii[1]*Z);
+  }
+  else if(nRings == 3) {
+    radii[1] = TMath::Sqrt(R*R / (Z*Z*Z - 2*Z*nRingSectors));
+    radii[2] = TMath::Sqrt(radii[1]*radii[1]*Z);
+    radii[3] = TMath::Sqrt(radii[2]*radii[2]*Z - radii[1]*radii[1]*nRingSectors);
+  }
+  else if(nRings == 4) {
+    radii[1] = TMath::Sqrt(R*R / (Z*Z*Z*Z - 3*Z*Z*nRingSectors + nRingSectors*nRingSectors));
+    radii[2] = TMath::Sqrt(radii[1]*radii[1]*Z);
+    radii[3] = TMath::Sqrt(radii[2]*radii[2]*Z - radii[1]*radii[1]*nRingSectors);
+    radii[4] = TMath::Sqrt(radii[3]*radii[3]*Z - radii[2]*radii[2]*nRingSectors);
+  }
+  else if(nRings == 5) {
+    radii[1] = TMath::Sqrt(R*R / (Z*Z*Z*Z*Z - 4*Z*Z*Z*nRingSectors + 3*Z*nRingSectors*nRingSectors));
+    radii[2] = TMath::Sqrt(radii[1]*radii[1]*Z);
+    radii[3] = TMath::Sqrt(radii[2]*radii[2]*Z - radii[1]*radii[1]*nRingSectors);
+    radii[4] = TMath::Sqrt(radii[3]*radii[3]*Z - radii[2]*radii[2]*nRingSectors);
+    radii[5] = TMath::Sqrt(radii[4]*radii[4]*Z - radii[3]*radii[3]*nRingSectors);
+  }
+  else {
+    G4cerr << "nRings value of " << nRings << " not implemented" << G4endl;
+    exit(-1);
+  }
+#if WCSIMWCTRIGGER_POPULATE_PMT_AREAS_VERBOSE >= 2
+  for(int i = 0; i <= nRings; i++)
+    G4cout << "Ring " << i << " radius: " << radii[i] << G4endl;
+#endif
+
+  //make the segments
+  std::vector<int> theseTopPMTs, theseBottomPMTs;
+  TVector3 avtopposition, avbottomposition;
+  double total_area = 0;
+  int ntops = 0;
+  int nbottoms = 0;
+  for(int ir = nRings; ir >= 0; ir--) {
+    const int nSectors = nCentralSectors * TMath::Power(nRingSectors, ir);
+    double thisrlo = radii[ir];
+    double thisrhi = radii[ir+1];
+    for(int is = 0; is < nSectors; is++) {
+      double thisplo = ((is  )*2*TMath::Pi() / (double)nSectors) - TMath::Pi();
+      double thisphi = ((is+1)*2*TMath::Pi() / (double)nSectors) - TMath::Pi();
+      //top
+      theseTopPMTs.clear();
+      for(unsigned int ipmt = 0; ipmt < topPMTs.size(); ipmt++) {
+	double thisR = topPMTs[ipmt].second.Perp();
+	double thisP = topPMTs[ipmt].second.Phi();
+	if(thisR >= thisrlo && thisR < thisrhi &&
+	   thisP >= thisplo && thisP < thisphi)
+	  theseTopPMTs.push_back(topPMTs[ipmt].first);
+        avtopposition += topPMTs[ipmt].second;
+      }//ipmt
+      int ntoppmts = theseTopPMTs.size();
+      avtopposition.SetX(avtopposition.X() / ntoppmts);
+      avtopposition.SetY(avtopposition.Y() / ntoppmts);
+      avtopposition.SetZ(avtopposition.Z() / ntoppmts);
+      pmtBlocks.push_back(std::make_pair(theseTopPMTs, avtopposition));
+      //bottom
+      theseBottomPMTs.clear();
+      for(unsigned int ipmt = 0; ipmt < bottomPMTs.size(); ipmt++) {
+	double thisR = bottomPMTs[ipmt].second.Perp();
+	double thisP = bottomPMTs[ipmt].second.Phi();
+	if(thisR >= thisrlo && thisR < thisrhi &&
+	   thisP >= thisplo && thisP < thisphi)
+	  theseBottomPMTs.push_back(bottomPMTs[ipmt].first);
+        avbottomposition += sidePMTs[ipmt].second;
+      }//ipmt
+      int nbottompmts = theseBottomPMTs.size();
+      avbottomposition.SetX(avbottomposition.X() / nbottompmts);
+      avbottomposition.SetY(avbottomposition.Y() / nbottompmts);
+      avbottomposition.SetZ(avbottomposition.Z() / nbottompmts);
+      pmtBlocks.push_back(std::make_pair(theseBottomPMTs, avbottomposition));
+
+      double area = TMath::Pi() * (TMath::Power(thisrhi, 2) - TMath::Power(thisrlo, 2)) / (double)nSectors;
+#if WCSIMWCTRIGGER_POPULATE_PMT_AREAS_VERBOSE >= 2
+      G4cout << "Ring " << ir << " Sector " << is << ":"
+	     << thisrlo << " <= R < " << thisrhi << " && "
+	     << thisplo << " <= P < " << thisphi
+	     << " (area: " << area
+	     << ") TopPMTs: " << ntoppmts
+	     << " BottomPMTs: " << nbottompmts
+	     << G4endl;
+#endif
+      ntops    += ntoppmts;
+      nbottoms += nbottompmts;
+      total_area += area;
+    }//is
+  }//ir
+#if WCSIMWCTRIGGER_POPULATE_PMT_AREAS_VERBOSE >= 2
+  G4cout << "Total area " << total_area << " = area from detector radius " 
+	 << TMath::Pi() * TMath::Power(R, 2) << G4endl;
+#endif
+#if WCSIMWCTRIGGER_POPULATE_PMT_AREAS_VERBOSE >= 1
+  G4cout << ntops << " total top PMTs (including overlaps)" << G4endl;
+  G4cout << nbottoms << " total bottom PMTs (including overlaps)" << G4endl;
+#endif
+
+  G4cout << pmtBlocks.size() << " total PMT blocks" << G4endl;
+  std::vector<int> pmts_per_block;
+  unsigned int blocklo = 9999, blockhi = 0;
+  for(unsigned int ib = 0; ib < pmtBlocks.size(); ib++) {
+    const unsigned int npmtsinblock = pmtBlocks[ib].first.size();
+    if(npmtsinblock > blockhi)
+      blockhi = npmtsinblock;
+    if(npmtsinblock < blocklo)
+      blocklo = npmtsinblock;
+    pmts_per_block.push_back(npmtsinblock);
+#if WCSIMWCTRIGGER_POPULATE_PMT_AREAS_VERBOSE >= 2
+    G4cout << "Block " << ib << "\t" << npmtsinblock << " PMTs:";
+    for(unsigned int ip = 0; ip < npmtsinblock; ip++) {
+      G4cout << " " << pmtBlocks[ib][ip];
+    }//ip
+    G4cout << G4endl;
+#endif
+  }//ib
+  G4cout << "PMTs per block ranges from " << blocklo << " to " << blockhi << G4endl;
+#if WCSIMWCTRIGGER_POPULATE_PMT_AREAS_VERBOSE >= 1
+  PrintVectorCount(pmts_per_block);
+#endif
+}
+
+void WCSimWCTriggerBase::PrintVector3Count(std::vector<std::pair<int, TVector3> > & v, bool r, bool p, bool z)
+{
+  std::vector<double> vz, vp, vr;
+  for(unsigned int iv = 0; iv < v.size(); iv++) {
+    if(r)
+      vr.push_back(v[iv].second.Perp());
+    if(z)
+      vz.push_back(v[iv].second.Z());
+    if(p)
+      vp.push_back(v[iv].second.Phi());
+  }//iv
+  if(z) {
+    G4cout << "Z positions" << G4endl;
+    PrintVectorCount(vz);
+  }
+  if(r) {
+    G4cout << "R positions" << G4endl;
+    PrintVectorCount(vr);
+  }
+  if(p) {
+    G4cout << "phi positions" << G4endl;
+    PrintVectorCount(vp);
+  }
+}
+
+template<typename T> void WCSimWCTriggerBase::PrintVectorCount(std::vector<T> & v)
+{
+  std::set<T> s(v.begin(), v.end());
+  for(typename std::set<T>::iterator it = s.begin(); it != s.end(); ++it) {
+    G4cout << *it << "\t" << std::count(v.begin(), v.end(), *it) << "\t" << s.count(*it) << G4endl;
+  }
 }
 
 void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits)

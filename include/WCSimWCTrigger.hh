@@ -11,6 +11,7 @@
 #include "Randomize.hh"
 #include <map>
 #include <vector>
+#include "TVector3.h"
 
 class WCSimWCDigiTrigger;
 typedef G4TDigiCollection<WCSimWCDigiTrigger> WCSimWCTriggeredDigitsCollection;
@@ -33,6 +34,10 @@ class WCSimWCTriggerBase : public G4VDigitizerModule
 {
 
 public:
+
+  ///Print out the number of occurances of each unique element in a vector
+  template<typename T> void PrintVectorCount(std::vector<T> & v);
+  void PrintVector3Count(std::vector<std::pair<int, TVector3> > & v, bool r, bool p, bool z);
 
   ///Create WCSimWCTriggerBase instance with knowledge of the detector and DAQ options
   WCSimWCTriggerBase(G4String name, WCSimDetectorConstruction*, WCSimWCDAQMessenger*);
