@@ -109,6 +109,7 @@
 #/DAQ/TriggerNDigits/PreTriggerWindow  -400
 #/DAQ/TriggerNDigits/PostTriggerWindow +950
 
+#options for LocalNHits trigger
 # control the number of nearest neighbours to define "local" for the local NHits trigger
 /DAQ/TriggerLocalNHits/Neighbours 500
 # control the local NHits trigger threshold
@@ -117,6 +118,19 @@
 /DAQ/TriggerLocalNHits/Window 100
 #automatically adjust the Local NHits threshold depending on the average noise occupancy during the trigger window
 /DAQ/TriggerLocalNHits/AdjustForNoise false
+
+#split the PMTs up into regions, for region-specific trigger algorithms
+# control the number of phi bins for dividing the side PMTs
+/DAQ/TriggerRegions/NBinsPhi 12
+# control the number of Z bins for dividing the side PMTs
+/DAQ/TriggerRegions/NBinsZ 11
+# control the number of rings for dividing the top/bottom PMTs
+# note the central circle isn't a region, therfore NRings=0 is valid
+/DAQ/TriggerRegions/NRings 2
+# control the number of sectors in the central circle region for dividing the top/bottom PMTs
+/DAQ/TriggerRegions/NCentralSectors 3
+# control the multiplicative number more sectors per ring for dividing the top/bottom PMTs
+/DAQ/TriggerRegions/NRingSectors 3
 
 #this is a temporary workaround for needing to construct the dark noise messenger (done in the old digitizer / new adddarknoise class) before the dark noise options below are read
 #this workaround can be removed after a forthcoming major code change:

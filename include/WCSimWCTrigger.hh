@@ -92,6 +92,18 @@ public:
   ///Automatically adjust the NHits threshold based on the average noise occupancy?
   void SetLocalNHitsAdjustForNoise(G4bool adjust) { localNHitsAdjustForNoise = adjust; }
 
+  // Regions options
+  /// Set the number of phi bins to use when splitting the side PMTs into regions
+  void SetRegionsNBinsP(G4int nbinsp) { regionsNBinsP = nbinsp; }
+  /// Set the number of Z bins to use when splitting the side PMTs into regions
+  void SetRegionsNBinsZ(G4int nbinsz) { regionsNBinsZ = nbinsz; }
+  /// Set the number of rings to use when splitting the top/bottom PMTs into regions. Note the central circle is not a ring (i.e. regionsNRings=0 is valid)
+  void SetRegionsNRings(G4int NRings) { regionsNRings = NRings; }
+  /// Set the number of sectors to split the central circle into when splitting the top/bottom PMTs into regions
+  void SetRegionsNCentralSectors(G4int NCentralSectors) { regionsNCentralSectors = NCentralSectors; }
+  /// Set the number of additional segments (relative to each inner segment) to split the ring into when splitting the top/bottom PMTs into regions
+  void SetRegionsNRingSectors(G4int NRingSectors) { regionsNRingSectors = NRingSectors; }
+
   // Save trigger failures options
   ///Set the mode for saving failed triggers (0:save only triggered events, 1:save both triggered events & failed events, 2:save only failed events)
   void SetSaveFailuresMode       (G4int mode )        { saveFailuresMode = mode; }
@@ -154,7 +166,7 @@ protected:
   void AlgNDigits(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, bool test=false);
 
   /**
-   * \brief An NHits then local NHits trigger algorithm
+   * \brief An NHits then local NHits (using nearest neighbours) trigger algorithm
    *
    * Looks through the input WCSimWCDigitsCollection and integrates the number of hits in a (specified) time window
    * If the integral passes above a (specified) threshold, a trigger is issued
@@ -169,6 +181,22 @@ protected:
    * and the seed PMT ID (local NHits)
    */
   void AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits);
+
+  /**
+   * \brief An NHits then local NHits (using regions) trigger algorithm
+   *
+   * Looks through the input WCSimWCDigitsCollection and integrates the number of hits in a (specified) time window
+   * If the integral passes above a (specified) threshold, a trigger is issued
+   * Else ???
+   *
+   * The trigger type is kTriggerNHits or kTriggerLocalNHits
+   *
+   * The trigger time is the time of the first digit above threshold
+   *
+   * The trigger information is the number of hits in the time window (i.e. the number of hits that caused the trigger to fire) (NHits & local NHits)
+   * and ???
+   */
+  void AlgNHitsThenRegions(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits);
 
   // Geometry methods
   ///Write out the geometry information required for this trigger
@@ -219,6 +247,12 @@ protected:
   G4int localNHitsThreshold;       ///< The threshold for the Local NHits trigger
   G4int localNHitsWindow;          ///< The time window for the Local NHits trigger
   G4bool localNHitsAdjustForNoise; ///< Automatically adjust the Local NHits trigger threshold based on the average dark noise rate?
+  //regions
+  G4int  regionsNBinsP;          ///< Number of phi bins to use when splitting the side PMTs into regions
+  G4int  regionsNBinsZ;          ///< Number of Z bins to use when splitting the side PMTs into regions
+  G4int  regionsNRings;          ///< Number of rings to use when splitting the top/bottom PMTs into regions. Note the central circle is not a ring (i.e. regionsNRings=0 is valid)
+  G4int  regionsNCentralSectors; ///< Number of sectors to split the central circle into when splitting the top/bottom PMTs into regions
+  G4int  regionsNRingSectors;    ///< Number of additional segments (relative to each inner segment) to split the ring into when splitting the top/bottom PMTs into regions
   //Save failures
   G4int    saveFailuresMode;              ///< The mode for saving events which don't pass triggers
   G4double saveFailuresTime;              ///< The dummy trigger time for failed events

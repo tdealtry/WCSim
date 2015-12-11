@@ -85,6 +85,18 @@ private:
   G4UIcmdWithABool*     LocalNHitsTriggerAdjustForNoise;
   G4bool                StoreLocalNHitsAdjustForNoise;
 
+  G4UIdirectory*        TriggerRegionsDir;
+  G4UIcmdWithAnInteger* TriggerRegionsNBinsPhi;
+  G4int                 StoreLocalNHitsNBinsPhi;
+  G4UIcmdWithAnInteger* TriggerRegionsNBinsZ;
+  G4int                 StoreLocalNHitsNBinsZ;
+  G4UIcmdWithAnInteger* TriggerRegionsNRings;
+  G4int                 StoreLocalNHitsNRings;
+  G4UIcmdWithAnInteger* TriggerRegionsNCentralSectors;
+  G4int                 StoreLocalNHitsNCentralSectors;
+  G4UIcmdWithAnInteger* TriggerRegionsNRingSectors;
+  G4int                 StoreLocalNHitsNRingSectors;
+
   G4String initialiseString;
   G4bool   initialised;
 

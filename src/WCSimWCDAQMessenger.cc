@@ -217,6 +217,51 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger(WCSimEventAction* eventaction) :
   StoreLocalNHitsAdjustForNoise = defaultLocalNHitsTriggerAdjustForNoise;
 
 
+  // NHits regions trigger specifc options
+  TriggerRegionsDir = new G4UIdirectory("/DAQ/TriggerRegions/");
+  TriggerRegionsDir->SetGuidance("Commands specific to the NHits regions triggers");
+
+  int defaultTriggerRegionsNBinsPhi = 12;
+  TriggerRegionsNBinsPhi = new G4UIcmdWithAnInteger("/DAQ/TriggerRegions/NBinsPhi", this);
+  TriggerRegionsNBinsPhi->SetGuidance("Set the Trigger Regions side PMT definition - the number of phi bins");
+  TriggerRegionsNBinsPhi->SetParameterName("TriggerRegionsNBinsPhi",false);
+  TriggerRegionsNBinsPhi->SetDefaultValue(defaultTriggerRegionsNBinsPhi);
+  SetNewValue(TriggerRegionsNBinsPhi, G4UIcommand::ConvertToString(defaultTriggerRegionsNBinsPhi));
+  StoreLocalNHitsNBinsPhi = defaultTriggerRegionsNBinsPhi;
+
+  int defaultTriggerRegionsNBinsZ = 11;
+  TriggerRegionsNBinsZ = new G4UIcmdWithAnInteger("/DAQ/TriggerRegions/NBinsZ", this);
+  TriggerRegionsNBinsZ->SetGuidance("Set the Trigger Regions side PMT definition - the number of Z bins");
+  TriggerRegionsNBinsZ->SetParameterName("TriggerRegionsNBinsZ",false);
+  TriggerRegionsNBinsZ->SetDefaultValue(defaultTriggerRegionsNBinsZ);
+  SetNewValue(TriggerRegionsNBinsZ, G4UIcommand::ConvertToString(defaultTriggerRegionsNBinsZ));
+  StoreLocalNHitsNBinsZ = defaultTriggerRegionsNBinsZ;
+
+  int defaultTriggerRegionsNRings = 2;
+  TriggerRegionsNRings = new G4UIcmdWithAnInteger("/DAQ/TriggerRegions/NRings", this);
+  TriggerRegionsNRings->SetGuidance("Set the Trigger Regions top/bottom PMT definition - the number of rings (note the central circle is not a ring, therefore NRings=0 is valid)");
+  TriggerRegionsNRings->SetParameterName("TriggerRegionsNRings",false);
+  TriggerRegionsNRings->SetDefaultValue(defaultTriggerRegionsNRings);
+  SetNewValue(TriggerRegionsNRings, G4UIcommand::ConvertToString(defaultTriggerRegionsNRings));
+  StoreLocalNHitsNRings = defaultTriggerRegionsNRings;
+
+  int defaultTriggerRegionsNCentralSectors = 3;
+  TriggerRegionsNCentralSectors = new G4UIcmdWithAnInteger("/DAQ/TriggerRegions/NCentralSectors", this);
+  TriggerRegionsNCentralSectors->SetGuidance("Set the Trigger Regions top/bottom PMT definition - the number of sectors in the the central circle");
+  TriggerRegionsNCentralSectors->SetParameterName("TriggerRegionsNCentralSectors",false);
+  TriggerRegionsNCentralSectors->SetDefaultValue(defaultTriggerRegionsNCentralSectors);
+  SetNewValue(TriggerRegionsNCentralSectors, G4UIcommand::ConvertToString(defaultTriggerRegionsNCentralSectors));
+  StoreLocalNHitsNCentralSectors = defaultTriggerRegionsNCentralSectors;
+
+  int defaultTriggerRegionsNRingSectors = 3;
+  TriggerRegionsNRingSectors = new G4UIcmdWithAnInteger("/DAQ/TriggerRegions/NRingSectors", this);
+  TriggerRegionsNRingSectors->SetGuidance("Set the Trigger Regions top/bottom PMT definition - the multiplicative number of sectors more in each subsequent ring");
+  TriggerRegionsNRingSectors->SetParameterName("TriggerRegionsNRingSectors",false);
+  TriggerRegionsNRingSectors->SetDefaultValue(defaultTriggerRegionsNRingSectors);
+  SetNewValue(TriggerRegionsNRingSectors, G4UIcommand::ConvertToString(defaultTriggerRegionsNRingSectors));
+  StoreLocalNHitsNRingSectors = defaultTriggerRegionsNRingSectors;
+
+
   //TODO remove this
   DAQConstruct = new G4UIcmdWithoutParameter("/DAQ/Construct", this);
   DAQConstruct->SetGuidance("Create the DAQ class instances");
@@ -251,6 +296,12 @@ WCSimWCDAQMessenger::~WCSimWCDAQMessenger()
   delete LocalNHitsTriggerThreshold;
   delete LocalNHitsTriggerWindow;
   delete LocalNHitsTriggerAdjustForNoise;
+
+  delete TriggerRegionsNBinsPhi;
+  delete TriggerRegionsNBinsZ;
+  delete TriggerRegionsNRings;
+  delete TriggerRegionsNCentralSectors;
+  delete TriggerRegionsNRingSectors;
 
   delete DigitizerChoice;
   delete TriggerChoice;
@@ -354,21 +405,43 @@ void WCSimWCDAQMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
 
   //Local NHits trigger
   else if (command == LocalNHitsTriggerNeighbours) {
-    G4cout << "Local NHits trigger neighbours set to " << newValue << G4endl;
+    G4cout << "Local NHits trigger neighbours set to " << newValue << initialiseString.c_str() << G4endl;
     StoreLocalNHitsNeighbours = LocalNHitsTriggerNeighbours->GetNewIntValue(newValue);
   }
   else if (command == LocalNHitsTriggerThreshold) {
-    G4cout << "Local NHits trigger threshold set to " << newValue << G4endl;
+    G4cout << "Local NHits trigger threshold set to " << newValue << initialiseString.c_str() << G4endl;
     StoreLocalNHitsThreshold = LocalNHitsTriggerThreshold->GetNewIntValue(newValue);
   }
   else if (command == LocalNHitsTriggerAdjustForNoise) {
     StoreLocalNHitsAdjustForNoise = LocalNHitsTriggerAdjustForNoise->GetNewBoolValue(newValue);
     if(StoreLocalNHitsAdjustForNoise)
-      G4cout << "Will adjust Local NHits trigger threshold using average dark noise rate" << G4endl;
+      G4cout << "Will adjust Local NHits trigger threshold using average dark noise rate" << initialiseString.c_str() << G4endl;
   }
   else if (command == LocalNHitsTriggerWindow) {
-    G4cout << "Local NHits trigger window set to " << newValue << G4endl;
+    G4cout << "Local NHits trigger window set to " << newValue << initialiseString.c_str() << G4endl;
     StoreLocalNHitsWindow = LocalNHitsTriggerWindow->GetNewIntValue(newValue);
+  }
+
+  //Trigger regions
+  else if (command == TriggerRegionsNBinsPhi) {
+    G4cout << "Number of phi bins in side PMT region set to " << newValue << initialiseString.c_str() << G4endl;
+    StoreLocalNHitsNBinsPhi = TriggerRegionsNBinsPhi->GetNewIntValue(newValue);
+  }
+  else if (command == TriggerRegionsNBinsZ) {
+    G4cout << "Number of Z bins in side PMT region set to " << newValue << initialiseString.c_str() << G4endl;
+    StoreLocalNHitsNBinsZ = TriggerRegionsNBinsZ->GetNewIntValue(newValue);
+  }
+  else if (command == TriggerRegionsNRings) {
+    G4cout << "Number of rings in the top/bottom region set to " << newValue << initialiseString.c_str() << G4endl;
+    StoreLocalNHitsNRings = TriggerRegionsNRings->GetNewIntValue(newValue);
+  }
+  else if (command == TriggerRegionsNCentralSectors) {
+    G4cout << "Number of sectors in the central circle sector set to " << newValue << initialiseString.c_str() << G4endl;
+    StoreLocalNHitsNCentralSectors = TriggerRegionsNCentralSectors->GetNewIntValue(newValue);
+  }
+  else if (command == TriggerRegionsNRingSectors) {
+    G4cout << "Multiplicative number more sectors per ring set to " << newValue << initialiseString.c_str() << G4endl;
+    StoreLocalNHitsNRingSectors = TriggerRegionsNRingSectors->GetNewIntValue(newValue);
   }
 
   //TODO remove this
@@ -446,6 +519,19 @@ void WCSimWCDAQMessenger::SetTriggerOptions()
     G4cout << "\tWill adjust Local NHits trigger threshold using average dark noise rate" << G4endl;
   WCSimTrigger->SetLocalNHitsWindow(StoreLocalNHitsWindow);
   G4cout << "\tLocalNHits trigger window set to " << StoreLocalNHitsWindow << G4endl;
+
+  //Regions
+  WCSimTrigger->SetRegionsNBinsP(StoreLocalNHitsNBinsPhi);
+  G4cout << "\tNumber of phi bins in side PMT region set to " << StoreLocalNHitsNBinsPhi << G4endl;
+  WCSimTrigger->SetRegionsNBinsZ(StoreLocalNHitsNBinsZ);
+  G4cout << "\tNumber of Z bins in side PMT region set to " << StoreLocalNHitsNBinsZ << G4endl;
+  WCSimTrigger->SetRegionsNRings(StoreLocalNHitsNRings);
+  G4cout << "\tNumber of rings in the top/bottom region set to " << StoreLocalNHitsNRings << G4endl;
+  WCSimTrigger->SetRegionsNCentralSectors(StoreLocalNHitsNCentralSectors);
+  G4cout << "\tNumber of sectors in the central circle sector set to " << StoreLocalNHitsNCentralSectors << G4endl;
+  WCSimTrigger->SetRegionsNRingSectors(StoreLocalNHitsNRingSectors);
+  G4cout << "\tMultiplicative number more sectors per ring set to " << StoreLocalNHitsNRingSectors << G4endl;
+
 }
 
 void WCSimWCDAQMessenger::SetDigitizerOptions()

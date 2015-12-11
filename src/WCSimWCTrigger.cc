@@ -56,7 +56,7 @@ const double WCSimWCTriggerBase::LongTime = 1E6; // ns = 1ms. event time
 WCSimWCTriggerBase::WCSimWCTriggerBase(G4String name,
 				       WCSimDetectorConstruction* inDetector,
 				       WCSimWCDAQMessenger* myMessenger)
-  :G4VDigitizerModule(name), DAQMessenger(myMessenger), myDetector(inDetector), triggerClassName(""), myPMTs(NULL)
+  :G4VDigitizerModule(name), myPMTs(NULL), DAQMessenger(myMessenger), myDetector(inDetector), triggerClassName("")
 {
   G4String colName = "WCDigitizedCollection";
   collectionName.push_back(colName);
@@ -112,6 +112,9 @@ void WCSimWCTriggerBase::GetVariables()
 	 << "Using LocalNDigits threshold " << localNHitsThreshold
 	 << (localNHitsAdjustForNoise ? " (will be adjusted for noise)" : "") << G4endl
 	 << "Using LocalNDigits window " << localNHitsWindow << " ns" << G4endl
+	 << "Using side PMT regions with " << regionsNBinsP << " phi bins and " << regionsNBinsZ << " Z bins" << G4endl
+	 << "Using top/bottom PMT regions with " << regionsNCentralSectors << " central sectors and " 
+	 <<  regionsNRings << " rings with " << regionsNRingSectors << " times more sectors per ring " << G4endl
 	 << "Using SaveFailures event pretrigger window " << saveFailuresPreTriggerWindow << " ns" << G4endl
 	 << "Using SaveFailures event posttrigger window " << saveFailuresPostTriggerWindow << " ns" << G4endl
 	 << (writeGeom ? "Will write out geometry information for triggering to a file, then exit" : "") << G4endl;
@@ -417,18 +420,14 @@ void WCSimWCTriggerBase::FindAllPMTNearestNeighbours()
 
 void WCSimWCTriggerBase::PopulatePMTAreas()
 {
-  const int nbinsP = 10;
-  const int nbinsZ = 11;
   const double overlap = 0;
-  const int nRings = 2;
-  const int nCentralSectors = 3;
-  const int nRingSectors = 3;
-
 
   pmtBlocks.clear();
   if(myPMTs == NULL) {
     myPMTs = myDetector->Get_Pmts();
   }
+
+  //Get the position of all PMTs in the detector
   std::vector<double> vR, vP, vZ;
   std::vector<TVector3> allPMTs;
   double RMax = 0;
@@ -535,15 +534,15 @@ void WCSimWCTriggerBase::PopulatePMTAreas()
 
   //split the side PMTS into rectangles
   // note that the side PMTs are arranged in rows of constant z, and columns of constant phi
-  TAxis aZ(nbinsZ, zmin, zmax);
-  TAxis aP(nbinsP, -TMath::Pi(), +TMath::Pi());
+  TAxis aZ(regionsNBinsZ, zmin, zmax);
+  TAxis aP(regionsNBinsP, -TMath::Pi(), +TMath::Pi());
   std::vector<int> thesePMTs;
   TVector3 avposition;
   int nsides = 0;
-  for(int iz = 1; iz <= nbinsZ; iz++) {
+  for(int iz = 1; iz <= regionsNBinsZ; iz++) {
     double thiszlo = aZ.GetBinLowEdge(iz) - overlap;
     double thiszhi = aZ.GetBinUpEdge(iz)  - overlap;
-    for(int ip = 1; ip <= nbinsP; ip++) {
+    for(int ip = 1; ip <= regionsNBinsP; ip++) {
       thesePMTs.clear();
       double thisplo = aP.GetBinLowEdge(ip) - overlap;
       double thisphi = aP.GetBinUpEdge(ip)  - overlap;
@@ -579,43 +578,45 @@ void WCSimWCTriggerBase::PopulatePMTAreas()
   // essentially no pattern in phi (majority are unique)
   // essentially no pattern in R (some rings exist, but very few)
   const int R = RMax + 1E-6;
-  double radii[nRings + 2]; //0th entry is a dummy index. 1st entry (central circle) not counted as 'ring'
-  radii[0] = 0;
-  radii[nRings + 1] = R;
-  const double Z = 1 + nRingSectors;
+  std::vector<double> radii; //0th entry is a dummy index. 1st entry (central circle) not counted as 'ring'
+  radii.push_back(0);
+  const double Z = 1 + regionsNRingSectors;
   
   //calculate the values of radii (i.e. the radius of each segment)
-  if(nRings == 1) {
-    radii[1] = TMath::Sqrt(R*R / Z);
+  if(regionsNRings == 1) {
+    radii.push_back(TMath::Sqrt(R*R / Z));
   }
-  else if(nRings == 2) {
-    radii[1] = TMath::Sqrt(R*R / (Z*Z - nRingSectors));
-    radii[2] = TMath::Sqrt(radii[1]*radii[1]*Z);
+  else if(regionsNRings == 2) {
+    radii.push_back(TMath::Sqrt(R*R / (Z*Z - regionsNRingSectors)));
+    radii.push_back(TMath::Sqrt(radii[1]*radii[1]*Z));
   }
-  else if(nRings == 3) {
-    radii[1] = TMath::Sqrt(R*R / (Z*Z*Z - 2*Z*nRingSectors));
-    radii[2] = TMath::Sqrt(radii[1]*radii[1]*Z);
-    radii[3] = TMath::Sqrt(radii[2]*radii[2]*Z - radii[1]*radii[1]*nRingSectors);
+  else if(regionsNRings == 3) {
+    radii.push_back(TMath::Sqrt(R*R / (Z*Z*Z - 2*Z*regionsNRingSectors)));
+    radii.push_back(TMath::Sqrt(radii[1]*radii[1]*Z));
+    radii.push_back(TMath::Sqrt(radii[2]*radii[2]*Z - radii[1]*radii[1]*regionsNRingSectors));
   }
-  else if(nRings == 4) {
-    radii[1] = TMath::Sqrt(R*R / (Z*Z*Z*Z - 3*Z*Z*nRingSectors + nRingSectors*nRingSectors));
-    radii[2] = TMath::Sqrt(radii[1]*radii[1]*Z);
-    radii[3] = TMath::Sqrt(radii[2]*radii[2]*Z - radii[1]*radii[1]*nRingSectors);
-    radii[4] = TMath::Sqrt(radii[3]*radii[3]*Z - radii[2]*radii[2]*nRingSectors);
+  else if(regionsNRings == 4) {
+    radii.push_back(TMath::Sqrt(R*R / (Z*Z*Z*Z - 3*Z*Z*regionsNRingSectors + regionsNRingSectors*regionsNRingSectors)));
+    radii.push_back(TMath::Sqrt(radii[1]*radii[1]*Z));
+    radii.push_back(TMath::Sqrt(radii[2]*radii[2]*Z - radii[1]*radii[1]*regionsNRingSectors));
+    radii.push_back(TMath::Sqrt(radii[3]*radii[3]*Z - radii[2]*radii[2]*regionsNRingSectors));
   }
-  else if(nRings == 5) {
-    radii[1] = TMath::Sqrt(R*R / (Z*Z*Z*Z*Z - 4*Z*Z*Z*nRingSectors + 3*Z*nRingSectors*nRingSectors));
-    radii[2] = TMath::Sqrt(radii[1]*radii[1]*Z);
-    radii[3] = TMath::Sqrt(radii[2]*radii[2]*Z - radii[1]*radii[1]*nRingSectors);
-    radii[4] = TMath::Sqrt(radii[3]*radii[3]*Z - radii[2]*radii[2]*nRingSectors);
-    radii[5] = TMath::Sqrt(radii[4]*radii[4]*Z - radii[3]*radii[3]*nRingSectors);
+  else if(regionsNRings == 5) {
+    radii.push_back(TMath::Sqrt(R*R / (Z*Z*Z*Z*Z - 4*Z*Z*Z*regionsNRingSectors + 3*Z*regionsNRingSectors*regionsNRingSectors)));
+    radii.push_back(TMath::Sqrt(radii[1]*radii[1]*Z));
+    radii.push_back(TMath::Sqrt(radii[2]*radii[2]*Z - radii[1]*radii[1]*regionsNRingSectors));
+    radii.push_back(TMath::Sqrt(radii[3]*radii[3]*Z - radii[2]*radii[2]*regionsNRingSectors));
+    radii.push_back(TMath::Sqrt(radii[4]*radii[4]*Z - radii[3]*radii[3]*regionsNRingSectors));
   }
   else {
-    G4cerr << "nRings value of " << nRings << " not implemented" << G4endl;
+    G4cerr << "regionsNRings value of " << regionsNRings << " not implemented" << G4endl;
     exit(-1);
   }
+  radii.push_back(R);
+  assert((int)radii.size() == regionsNRings + 2);
+
 #if WCSIMWCTRIGGER_POPULATE_PMT_AREAS_VERBOSE >= 2
-  for(int i = 0; i <= nRings; i++)
+  for(int i = 0; i <= regionsNRings; i++)
     G4cout << "Ring " << i << " radius: " << radii[i] << G4endl;
 #endif
 
@@ -625,8 +626,8 @@ void WCSimWCTriggerBase::PopulatePMTAreas()
   double total_area = 0;
   int ntops = 0;
   int nbottoms = 0;
-  for(int ir = nRings; ir >= 0; ir--) {
-    const int nSectors = nCentralSectors * TMath::Power(nRingSectors, ir);
+  for(int ir = regionsNRings; ir >= 0; ir--) {
+    const int nSectors = regionsNCentralSectors * TMath::Power(regionsNRingSectors, ir);
     double thisrlo = radii[ir];
     double thisrhi = radii[ir+1];
     for(int is = 0; is < nSectors; is++) {
@@ -914,6 +915,11 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
   //call FillDigitsCollection() whether any triggers are found or not
   // (what's saved depends on saveFailuresMode)
   FillDigitsCollection(WCDCPMT, remove_hits, kTriggerUndefined);
+}
+
+void WCSimWCTriggerBase::AlgNHitsThenRegions(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits)
+{
+
 }
 
 void WCSimWCTriggerBase::FillDigitsCollection(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, TriggerType_t save_triggerType)
@@ -1324,5 +1330,5 @@ void WCSimWCTriggerNHitsThenRegions::DoTheWork(WCSimWCDigitsCollection* WCDCPMT)
 {
   //Apply an NHitsThenRegions trigger
   bool remove_hits = false;
-  //AlgNHitsThenRegions(WCDCPMT, remove_hits);
+  AlgNHitsThenRegions(WCDCPMT, remove_hits);
 }
