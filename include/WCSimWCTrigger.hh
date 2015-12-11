@@ -205,6 +205,8 @@ protected:
   virtual void ReadGeomInfo() = 0;
   ///Split the tank into areas & get the PMTs IDs for each area
   void PopulatePMTAreas();
+  ///Get the region(s) the PMT belongs to
+  std::vector<int> FindRegion(const int tubeid);
   ///Find the nearest neighbours of a PMT
   std::vector<int> FindPMTNearestNeighbours(int i);
   ///Find the nearest neighbours of all PMTs
@@ -264,6 +266,7 @@ protected:
   unsigned int nPMTs;    ///< Store the number of PMTs in the geometry
 
   int * localNHitsHits; ///< Array to store the number of hits in a time window for each PMT tube id
+  int * regionsHits;    ///< Array to store the number of hits in a time window for each PMT region
 
 private:
 

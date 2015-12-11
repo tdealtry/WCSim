@@ -76,10 +76,12 @@ WCSimWCTriggerBase::WCSimWCTriggerBase(G4String name,
 
 WCSimWCTriggerBase::~WCSimWCTriggerBase()
 {
- 
-
- if(triggerClassName.compare("NHitsThenLocalNHits") == 0)
+  if(triggerClassName.compare("NHitsThenLocalNHits") == 0)
     delete localNHitsHits;
+  if(triggerClassName.compare("NHitsThenRegions") == 0) {
+    delete localNHitsHits;
+    delete regionsHits;
+  }
 }
 
 void WCSimWCTriggerBase::GetVariables()
@@ -865,8 +867,8 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
 
       if(local_info.size()) {
 	ntrig++;
-	//The trigger time is the time in the middle of the local NHits trigger window                                                                                                                                                         
-	//TODO potentially make this something dependant on digit times                                                                                                                                                                        
+	//The trigger time is the time in the middle of the local NHits trigger window
+	//TODO potentially make this something dependant on digit times
 	triggertime = window_start_time + ((double)localNHitsWindow / 2);
 	triggertime -= (int)triggertime % 5;
 	TriggerTimes.push_back(triggertime);
@@ -917,9 +919,216 @@ void WCSimWCTriggerBase::AlgNHitsThenLocalNHits(WCSimWCDigitsCollection* WCDCPMT
   FillDigitsCollection(WCDCPMT, remove_hits, kTriggerUndefined);
 }
 
+std::vector<int> WCSimWCTriggerBase::FindRegion(const int tubeid)
+{
+  std::vector<int> regions;
+  std::vector<int>::iterator it;
+  for(unsigned int ir = 0; ir < pmtBlocks.size(); ir++) {
+    it = std::find(pmtBlocks[ir].first.begin(), pmtBlocks[ir].first.end(), tubeid);
+    if(it != pmtBlocks[ir].first.end())
+      regions.push_back(ir);
+  }//ir
+  if(!regions.size()) {
+    G4cerr << "WCSimWCTriggerBase::FindRegion() >> no region found for PMT with ID " << tubeid << G4endl;
+    exit(-1);
+  }
+  return regions;
+}
+
 void WCSimWCTriggerBase::AlgNHitsThenRegions(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits)
 {
+  //Now we will try to find triggers
+  //loop over PMTs, and Digits in each PMT.  If nhits > Threshhold in a time window, then we have a trigger
 
+  int ntrig = 0;
+  int window_start_time = 0;
+  int window_end_time   = WCSimWCTriggerBase::LongTime - ndigitsWindow;
+  int window_step_size  = 5; //step the search window along this amount if no trigger is found
+  float lasthit;
+  std::vector<int> digit_times;
+  bool first_loop = true;
+
+  G4cout << "WCSimWCTriggerBase::AlgNHitsThenRegions. Number of entries in input digit collection: " << WCDCPMT->entries() << G4endl;
+#ifdef WCSIMWCTRIGGER_VERBOSE
+  int temp_total_pe = 0;
+  for (G4int i = 0 ; i < WCDCPMT->entries() ; i++) {
+    temp_total_pe += (*WCDCPMT)[i]->GetTotalPe();
+  }
+  G4cout << "WCSimWCTriggerBase::AlgNHitsThenRegions. " << temp_total_pe << " total p.e. input" << G4endl;
+#endif
+
+  // the upper time limit is set to the final possible full trigger window
+  while(window_start_time <= window_end_time) {
+    int n_digits = 0, local_n_digits = 0;
+    float triggertime; //save each digit time, because the trigger time is the time of the first hit above threshold
+    bool triggerfound = false;
+    digit_times.clear();
+    memset(localNHitsHits, 0, nPMTs            * sizeof(int));
+    memset(regionsHits,    0, pmtBlocks.size() * sizeof(int));
+    std::vector<int> pmts_hit;
+    
+    //Loop over each PMT
+    for (G4int i = 0 ; i < WCDCPMT->entries() ; i++) {
+      int tubeid = (*WCDCPMT)[i]->GetTubeID();
+      bool tubeidsaved = false;
+      //Loop over each Digit in this PMT
+      for ( G4int ip = 0 ; ip < (*WCDCPMT)[i]->GetTotalPe() ; ip++) {
+	int digit_time = (*WCDCPMT)[i]->GetTime(ip);
+	//hit in trigger window?
+	if(digit_time >= window_start_time) {
+	  //count the digits for the NHits
+	  if(digit_time <= (window_start_time + ndigitsWindow)) {
+	    n_digits++;
+	    digit_times.push_back(digit_time);
+	  }
+	  //save the digits & tubes for the local NHits
+	  if(digit_time <= (window_start_time + localNHitsWindow)) {
+	    local_n_digits++;
+	    localNHitsHits[tubeid-1]++; //tubeID goes from 1->nPMTs
+	    if(!tubeidsaved) {
+	      pmts_hit.push_back(tubeid);
+	      tubeidsaved = true;
+	    }
+	  }
+	}
+	//G4cout << digit_time << G4endl;
+	//get the time of the last hit (to make the loop shorter)
+	if(first_loop && (digit_time > lasthit))
+	  lasthit = digit_time;
+      }//ip //loop over Digits
+    }//i //loop over PMTs
+
+    //if over threshold, issue trigger
+    if(n_digits > ndigitsThreshold) {
+      ntrig++;
+      //The trigger time is the time of the first hit above threshold
+      std::sort(digit_times.begin(), digit_times.end());
+      triggertime = digit_times[ndigitsThreshold];
+      triggertime -= (int)triggertime % 5;
+      TriggerTimes.push_back(triggertime);
+      TriggerTypes.push_back(kTriggerNDigits);
+      TriggerInfos.push_back(std::vector<Float_t>(1, n_digits));
+      triggerfound = true;
+      G4cout << "Found NDigits trigger with " << n_digits
+	     << " digits in the " << ndigitsWindow
+	     << " ns trigger decision window" << G4endl;
+    }//NHits trigger
+
+    //NHits failed. Try region-based local NHits
+    else {
+      std::vector<Float_t> local_info;
+
+      //get a unique list of regions hit
+      std::vector<int> regions_hit;
+      for(int ip = 0; ip < pmts_hit.size(); ip++) {
+	int tubeid = pmts_hit[ip];
+	std::vector<int> theseregions = FindRegion(tubeid);
+	//#ifdef WCSIMWCTRIGGER_VERBOSE
+	G4cout << "Tube ID " << tubeid << " has " << localNHitsHits[tubeid-1] << " in region(s)";
+	//#endif
+	for(unsigned int ir = 0; ir < theseregions.size(); ir++) {
+	  int thisregion = theseregions[ir];
+	  regions_hit.push_back(thisregion);
+	  regionsHits[thisregion] += localNHitsHits[tubeid-1]; //tubeID goes from 1->nPMTs
+	  //#ifdef WCSIMWCTRIGGER_VERBOSE
+	  G4cout << " " << thisregion;
+	  //#endif
+	}//ir
+	//#ifdef WCSIMWCTRIGGER_VERBOSE
+	G4cout << G4endl;
+	//#endif
+      }//ip //loop over PMTs with hits
+      std::set<int> unique_regions_hit(regions_hit.begin(), regions_hit.end());
+      
+      //loop over all regions with hits
+      for(std::set<int>::iterator it = unique_regions_hit.begin(); it != unique_regions_hit.end(); ++it) {
+	int this_region = *it;
+	int nlocal = regionsHits[this_region];
+	//#ifdef WCSIMWCTRIGGER_VERBOSE
+	G4cout << "Region ID " << this_region << " has " << nlocal << " hits" << G4endl;
+	//#endif
+      }//it //end loop over regions with hits
+    }//region trigger
+
+    /*
+	//add the neighbours hits
+	std::vector<int> thisNeighbours = pmtNeighbours.at(this_pmtid - 1);
+	for(int in = 0; in < localNHitsNeighbours; in++) {
+	  nlocal += localNHitsHits[thisNeighbours[in] - 1];
+#ifdef WCSIMWCTRIGGER_VERBOSE
+	  G4cout << " " << thisNeighbours[in] << "(" << localNHitsHits[thisNeighbours[in] - 1] << ")";
+#endif
+	}//in
+#ifdef WCSIMWCTRIGGER_VERBOSE
+	G4cout << " total = " << nlocal  << G4endl;
+#endif
+	//if over threshold, issue trigger
+	if(nlocal > localNHitsThreshold) {
+	  local_info.push_back(nlocal); //the number of hits locally to the tube
+	  local_info.push_back(ip+1);   //the tube ID of the tube that fired the trigger
+	  triggerfound = true;
+	  G4cout << "Found LocalNDigits trigger with " << nlocal
+		 << " neighbours of PMT " << this_pmtid
+		 << " with digits in the " << localNHitsWindow
+		 << " ns trigger decision window" << G4endl;
+	}//trigger found on a specific PMT
+      }//ip
+
+    if(local_info.size()) {
+	ntrig++;
+	//The trigger time is the time in the middle of the local NHits trigger window
+	//TODO potentially make this something dependant on digit times
+	triggertime = window_start_time + ((double)localNHitsWindow / 2);
+	triggertime -= (int)triggertime % 5;
+	TriggerTimes.push_back(triggertime);
+	TriggerTypes.push_back(kTriggerLocalNHits);
+	TriggerInfos.push_back(local_info);
+	triggerfound = true;
+      }//trigger(s) found on any PMT
+    }//local NHits trigger
+    */
+
+
+
+    //Cheat sheet
+    // arrays/vectors that run from 0 to npmts-1
+    //pmts_hit, localNHitsHits, pmtNeighbours
+    // arrays/vectors that run from 1 to npmts
+    //thisNeighbours (an element of pmtNeighbours)
+
+#ifdef WCSIMWCTRIGGER_VERBOSE
+    if(n_digits)
+      G4cout << n_digits << " digits found in 200nsec trigger window ["
+	     << window_start_time << ", " << window_start_time + ndigitsWindow
+	     << "]. Threshold is: " << ndigitsThreshold << G4endl;
+#endif
+
+    //move onto the next go through the timing loop
+    if(triggerfound) {
+      window_start_time = triggertime + GetPostTriggerWindow(TriggerTypes.back());
+    }//triggerfound
+    else {
+      window_start_time += window_step_size;
+    }
+
+    //shorten the loop using the time of the last hit
+    if(first_loop) {
+      int newend = TMath::Max((float)0, lasthit - ((ndigitsWindow - 10)));
+#ifdef WCSIMWCTRIGGER_VERBOSE
+      G4cout << "Last hit found to be at " << lasthit
+	     << ". Changing window_end_time from " << window_end_time
+	     << " to " << newend
+	     << G4endl;
+#endif
+      window_end_time = newend;
+      first_loop = false;
+    }
+  }
+  
+  G4cout << "Found " << ntrig << " NHit or NHitRegions triggers" << G4endl;
+  //call FillDigitsCollection() whether any triggers are found or not
+  // (what's saved depends on saveFailuresMode)
+  FillDigitsCollection(WCDCPMT, remove_hits, kTriggerUndefined);
 }
 
 void WCSimWCTriggerBase::FillDigitsCollection(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, TriggerType_t save_triggerType)
@@ -1320,6 +1529,11 @@ WCSimWCTriggerNHitsThenRegions::WCSimWCTriggerNHitsThenRegions(G4String name,
   localNHitsHits = new int[nPMTs];
   //and fill it with 0s
   memset(localNHitsHits, 0, nPMTs * sizeof(int));
+
+  //reserve an array to store the number of digits in each PMT region
+  regionsHits = new int[pmtBlocks.size()];
+  //and fill it with 0s
+  memset(regionsHits, 0, pmtBlocks.size() * sizeof(int));
 }
 
 WCSimWCTriggerNHitsThenRegions::~WCSimWCTriggerNHitsThenRegions()
