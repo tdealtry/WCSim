@@ -353,6 +353,7 @@ void WCSimWCDAQMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
   else if(command == ITCRatioTriggerLargeWindowHigh) {
     G4cout << "ITC ratio large trigger window high edge set to " << newValue << initialiseString.c_str() << G4endl;
     StoreITCRatioTriggerLargeWindowHigh = ITCRatioTriggerLargeWindowHigh->GetNewIntValue(newValue);
+  }
 
   //TODO remove this
   else if(command == DAQConstruct) {

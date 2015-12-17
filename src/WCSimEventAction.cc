@@ -108,6 +108,7 @@ void WCSimEventAction::CreateDAQInstances()
     else if(TriggerChoice == "NHitsThenITC") {
       WCSimWCTriggerNHitsThenITC* WCTM = new WCSimWCTriggerNHitsThenITC("WCReadout", detectorConstructor, DAQMessenger);
       DMman->AddNewModule(WCTM);
+    }
     else {
       G4cerr << "Unknown TriggerChoice " << TriggerChoice << G4endl;
       exit(-1);

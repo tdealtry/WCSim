@@ -82,7 +82,10 @@ void WCSimWCTriggerBase::GetVariables()
 	 << "Using NDigits trigger window " << ndigitsWindow << " ns" << G4endl
 	 << "Using NDigits event pretrigger window " << ndigitsPreTriggerWindow << " ns" << G4endl
 	 << "Using NDigits event posttrigger window " << ndigitsPostTriggerWindow << " ns" << G4endl
-    ;
+	 << "Using ITC ratio threshold " << itcRatioThreshold << G4endl
+	 << "Using ITC ratio small window " << itcSmallWindow << G4endl
+	 << "Using ITC ratio large window (lo) " << itcLargeWindowLow << G4endl
+	 << "Using ITC ratio large window (hi) " << itcLargeWindowHigh << G4endl
 	 << "Using SaveFailures event pretrigger window " << saveFailuresPreTriggerWindow << " ns" << G4endl
 	 << "Using SaveFailures event posttrigger window " << saveFailuresPostTriggerWindow << " ns" << G4endl;
 }
@@ -312,7 +315,7 @@ void WCSimWCTriggerBase::AlgNHitsThenITC(WCSimWCDigitsCollection* WCDCPMT, bool 
     bool triggerfound = false;
     digit_times.clear();
 
-    //Loop over each PMT & count NDigits in window [window_start_time, window_start_time + nhitsWindow]
+    //Loop over each PMT & count NDigits in window [window_start_time, window_start_time + ndigitsWindow]
     //Also count in two extra windows for the ITC cut
     // [window_start_time, window_start_time + itcSmallWindow]
     // [window_start_time - itcLargeWindowLow, window_start_time + itcLargeWindowHigh]
@@ -322,7 +325,7 @@ void WCSimWCTriggerBase::AlgNHitsThenITC(WCSimWCDigitsCollection* WCDCPMT, bool 
       for ( G4int ip = 0 ; ip < (*WCDCPMT)[i]->GetTotalPe() ; ip++) {
         int digit_time = (*WCDCPMT)[i]->GetTime(ip);
         //hit in trigger window?
-        if(digit_time >= window_start_time && digit_time <= (window_start_time + nhitsWindow)) {
+        if(digit_time >= window_start_time && digit_time <= (window_start_time + ndigitsWindow)) {
           n_digits++;
           digit_times.push_back(digit_time);
         }
@@ -385,7 +388,7 @@ void WCSimWCTriggerBase::AlgNHitsThenITC(WCSimWCDigitsCollection* WCDCPMT, bool 
 #ifdef WCSIMWCTRIGGERBASE_VERBOSE
     if(n_digits)
       G4cout << n_digits << " digits found in " << ndigitsWindow << "nsec trigger window ["
-             << window_start_time << ", " << window_start_time + nhitsWindow
+             << window_start_time << ", " << window_start_time + ndigitsWindow
              << "]. Threshold is: " << nhitsThreshold
 	     << G4endl
 	     << n_digits_itc_small << "(" << n_digits_itc_large << ") digits found in "
@@ -407,10 +410,10 @@ void WCSimWCTriggerBase::AlgNHitsThenITC(WCSimWCDigitsCollection* WCDCPMT, bool 
 #ifdef WCSIMWCTRIGGERBASE_VERBOSE
       G4cout << "Last hit found to be at " << lasthit
              << ". Changing window_end_time from " << window_end_time
-             << " to " << lasthit - (nhitsWindow - 10)
+             << " to " << lasthit - (ndigitsWindow - 10)
              << G4endl;
 #endif
-      window_end_time = lasthit - (nhitsWindow - 10);
+      window_end_time = lasthit - (ndigitsWindow - 10);
       first_loop = false;
     }
   }//while <= window_end_time

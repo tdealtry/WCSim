@@ -47,9 +47,6 @@ public:
     case (kTriggerNDigitsTest) :
       return "NDigits_TEST";
       break;
-    case (kTriggerFailure) :
-      return "No_trigger_passed";
-      break;
     case (kTriggerITCRatio) :
       return "ITCRatio";
       break;
