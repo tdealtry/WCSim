@@ -27,8 +27,8 @@ delim_list = lambda s: list(set(s.split(',')))
 delim_list_str = lambda s: s.split(',') if len(s.split(',')) == 3 else s
 
 DAQdigitizer_choices = ['SKI', 'SKI_SKDETSIM']
-DAQtrigger_choices = ['NDigits', 'SKI_SKDETSIM', 'NDigits2', 'NDigitsThenLocalNDigits']
-DAQtrigger_ndigits_choices = ['NDigits', 'SKI_SKDETSIM', 'NDigits2', 'NDigitsThenLocalNDigits']
+DAQtrigger_choices = ['NDigits', 'SKI_SKDETSIM', 'NDigits2', 'NHitsThenLocalNHits','NHitsThenRegions']
+DAQtrigger_ndigits_choices = ['NDigits', 'SKI_SKDETSIM', 'NDigits2', 'NHitsThenLocalNHits','NHitsThenRegions']
 DAQtrigger_localndigits_choices = ['NDigitsThenLocalNDigits']
 WCgeom_choices = ['HyperK', \
                       'HyperK_withHPD', \

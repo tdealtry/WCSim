@@ -121,16 +121,16 @@
 
 #split the PMTs up into regions, for region-specific trigger algorithms
 # control the number of phi bins for dividing the side PMTs
-/DAQ/TriggerRegions/NBinsPhi 12
+/DAQ/TriggerRegions/NBinsPhi 5
 # control the number of Z bins for dividing the side PMTs
-/DAQ/TriggerRegions/NBinsZ 11
+/DAQ/TriggerRegions/NBinsZ 7
 # control the number of rings for dividing the top/bottom PMTs
 # note the central circle isn't a region, therfore NRings=0 is valid
 /DAQ/TriggerRegions/NRings 2
 # control the number of sectors in the central circle region for dividing the top/bottom PMTs
-/DAQ/TriggerRegions/NCentralSectors 3
+/DAQ/TriggerRegions/NCentralSectors 1
 # control the multiplicative number more sectors per ring for dividing the top/bottom PMTs
-/DAQ/TriggerRegions/NRingSectors 3
+/DAQ/TriggerRegions/NRingSectors 2
 
 #this is a temporary workaround for needing to construct the dark noise messenger (done in the old digitizer / new adddarknoise class) before the dark noise options below are read
 #this workaround can be removed after a forthcoming major code change:
@@ -145,7 +145,7 @@
 
 # default dark noise frequency is 0 kHz
 #/DarkRate/SetDarkRate 4.2 kHz #This is the value for SKI set in SKDETSIM.
-#/DarkRate/SetDarkRate 8.4 kHz #For 20 inch HPDs and Box and Line PMTs, based on High QE 20" R3600 dark rate from EGADS nov 2014
+/DarkRate/SetDarkRate 8.4 kHz #For 20 inch HPDs and Box and Line PMTs, based on High QE 20" R3600 dark rate from EGADS nov 2014
 #/DarkRate/SetDarkRate 3.0 kHz #For 12 inch HPDs and Box and Line PMTs, based on High QE 20" R3600 dark rate from EGADS nov 2014
 
 # command to multiply the dark rate.
@@ -163,7 +163,7 @@
 /DarkRate/SetDarkMode 1
 /DarkRate/SetDarkHigh 100000
 /DarkRate/SetDarkLow 0
-/DarkRate/SetDarkWindow 4000
+/DarkRate/SetDarkWindow 2000
 
 # Or you can use the G4 Particle Gun
 /mygen/generator normal

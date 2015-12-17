@@ -393,6 +393,45 @@ std::vector<int> WCSimWCTriggerBase::FindPMTNearestNeighbours(int ipmt)
   return thisNeighbours;
 }
 
+/*
+std::vector<int> WCSimWCTriggerBase::FindRegionsNearestNeighbours(int ir)
+{
+  int thisTubeID = pmtBlocks[ir].first;
+  TVector3 thisV = pmtBlocks[ir].second;
+    
+  //loop over ALL the other regions & save the distance to the current region
+  std::vector< std::pair<double, int> > distances;
+  for(unsigned int i = 0; i < pmtBlocks.size(); i++) {
+    if(i == (unsigned int)ir)
+      continue;
+    TVector3 V = pmtBlocks[i].second;
+    double distance = sqrt(((thisV.X() - V.X()) * (thisV.X() - V.X())) +
+			   ((thisV.Y() - V.Y()) * (thisV.Y() - V.Y())) +
+			   ((thisZ.Y() - V.Z()) * (thisZ.Y() - V.Z())));
+    distances.push_back(std::pair<double, int>(distance, i));
+  }//ipmt
+
+  //sorts by pair.first -> have a vector of pairs ordered by distance
+  std::sort(distances.begin(), distances.end());
+
+  /*
+  //get the N nearest neighbours
+  std::vector<int> thisNeighbours;
+  for(int i = 0; i < localNHitsNeighbours; i++) {
+    thisNeighbours.push_back(distances.at(i).second);
+  }
+  
+#ifdef WCSIMWCTRIGGER_PMT_NEIGHBOURS_VERBOSE
+  G4cout << "PMT " << ipmt << " has ID " << thisTubeID
+	 << " position " 
+	 << thisX << " "
+	 << thisY << " "
+	 << thisZ << G4endl;
+#endif
+  return thisNeighbours;
+}
+*/
+
 void WCSimWCTriggerBase::FindAllPMTNearestNeighbours()
 {
   if(myPMTs == NULL) {
@@ -419,6 +458,26 @@ void WCSimWCTriggerBase::FindAllPMTNearestNeighbours()
   }//i
 #endif
 }
+
+/*
+void WCSimWCTriggerBase::FindAllRegionsNearestNeighbours()
+{
+  for(int ir = 0; ir < pmtBlocks.size(); ir++) {
+    std::vector<int> neighbours = FindRegionNearestNeighbours(ir);
+    regionsNeighbours.push_back(neighbours);
+  }//ir
+
+#ifdef WCSIMWCTRIGGER_PMT_NEIGHBOURS_VERBOSE
+  for(unsigned int i = 0; i < regionsNeighbours.size(); i++) {
+    G4cout << "REGIONS ID " << i << " has neighbours";
+    for(unsigned int j = 0; j < regionsNeighbours.at(i).size(); j++) {
+      G4cout << " " << regionsNeighbours.at(i).at(j);
+    }//j
+    G4cout << G4endl;
+  }//i
+#endif
+}
+*/
 
 void WCSimWCTriggerBase::PopulatePMTAreas()
 {
