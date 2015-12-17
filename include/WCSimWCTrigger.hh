@@ -104,6 +104,16 @@ public:
   /// Set the number of additional segments (relative to each inner segment) to split the ring into when splitting the top/bottom PMTs into regions
   void SetRegionsNRingSectors(G4int NRingSectors) { regionsNRingSectors = NRingSectors; }
 
+  // ITC ratio options
+  ///Set the length of the numerator time window
+  void SetITCRatioSmallWindow    (G4int window)       { itcSmallWindow = window; }
+  ///Set the start time of the denominator time window
+  void SetITCRatioLargeWindowLow (G4int window)       { itcLargeWindowLow = window; }
+  ///Set the stop time of the denominator time window
+  void SetITCRatioLargeWindowHigh(G4int window)       { itcLargeWindowHigh = window; }
+  ///Trigger when (NHits in numerator) / (NHits in denominator) > the threshold
+  void SetITCRatioThreshold      (G4double threshold) { itcRatioThreshold = threshold; }
+
   // Save trigger failures options
   ///Set the mode for saving failed triggers (0:save only triggered events, 1:save both triggered events & failed events, 2:save only failed events)
   void SetSaveFailuresMode       (G4int mode )        { saveFailuresMode = mode; }
@@ -164,6 +174,25 @@ protected:
    * for testing purposes. Triggers issued in this mode have type kTriggerNDigitsTest
    */
   void AlgNDigits(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, bool test=false);
+  /**
+   * \brief An NHits then ITC ratio trigger algorithm
+   *
+   * Looks through the input WCSimWCDigitsCollection and integrates the number of hits in a (specified) time window
+   * If the integral passes above a (specified) threshold, a trigger is issued
+   * Else, sees if the number of hits in a small time window fluctuates dramatically above the average
+   *  by taking the ratio of NHits in two (specified) time windows
+   * If the ratio is above a (specified) threshold, a trigger is issued
+   * If neither trigger fires, go to the next time slice in the event & try again
+   *
+   * The trigger type is kTriggerNHits or kTriggerITCRatio
+   *
+   * The trigger time is the time of the first digit above threshold (NHits)
+   * or the time of the last digit (ITCRatio)
+   *
+   * The trigger information is the number of hits in the time window (i.e. the number of hits that caused the trigger to fire) (NHits)
+   * or the ITC ratio, the numerator, the denominator (ITCRatio)
+   */
+  void AlgNHitsThenITC     (WCSimWCDigitsCollection* WCDCPMT, bool remove_hits);
 
   /**
    * \brief An NHits then local NHits (using nearest neighbours) trigger algorithm
@@ -255,6 +284,11 @@ protected:
   G4int  regionsNRings;          ///< Number of rings to use when splitting the top/bottom PMTs into regions. Note the central circle is not a ring (i.e. regionsNRings=0 is valid)
   G4int  regionsNCentralSectors; ///< Number of sectors to split the central circle into when splitting the top/bottom PMTs into regions
   G4int  regionsNRingSectors;    ///< Number of additional segments (relative to each inner segment) to split the ring into when splitting the top/bottom PMTs into regions
+  //ITC ratio
+  G4int    itcSmallWindow;     ///< The length of time of the ITC ratio numerator
+  G4int    itcLargeWindowLow;  ///< The start time of the ITC ratio denominator
+  G4int    itcLargeWindowHigh; ///< The stop time of the ITC ratio denominator
+  G4double itcRatioThreshold;  ///< The ITC ratio threshold, above which triggers are issued    
   //Save failures
   G4int    saveFailuresMode;              ///< The mode for saving events which don't pass triggers
   G4double saveFailuresTime;              ///< The dummy trigger time for failed events
@@ -495,6 +529,33 @@ private:
   bool GetDefaultMultiDigitsPerTrigger()    { return false; } ///< SKI saves only earliest digit on a PMT in the trigger window
   //int  GetDefaultNDigitsWindow()            { return 200;   } ///< SK max light travel time ~200 ns
   //int  GetDefaultNDigitsThreshold()         { return 50;    } ///< 2 * SK NDigits threshold ~25
+  int  GetDefaultNDigitsPreTriggerWindow()  { return -400;  } ///< SK SLE trigger window ~-400
+  int  GetDefaultNDigitsPostTriggerWindow() { return 950;   } ///< SK SLE trigger window ~+950
+
+  void WriteGeomInfo() {};
+  void ReadGeomInfo()  {};
+};
+
+/*
+ * \class WCSimWCTriggerNHitsThenITC
+ *
+ * \brief Attempt an NDigits trigger. If this fails, use the ITC ratio to try and recover events
+ */
+
+class WCSimWCTriggerNHitsThenITC : public WCSimWCTriggerBase
+{
+public:
+
+  //not recommended to override these methods
+  WCSimWCTriggerNHitsThenITC(G4String name, WCSimDetectorConstruction*, WCSimWCDAQMessenger*);
+  ~WCSimWCTriggerNHitsThenITC();
+
+private:
+  void DoTheWork(WCSimWCDigitsCollection* WCDCPMT);
+
+  bool GetDefaultMultiDigitsPerTrigger()    { return false; } ///< SKI saves only earliest digit on a PMT in the trigger window
+  int  GetDefaultNDigitsWindow()            { return 200;   } ///< SK max light travel time ~200 ns
+  int  GetDefaultNDigitsThreshold()         { return 50;    } ///< 2 * SK NDigits threshold ~25
   int  GetDefaultNDigitsPreTriggerWindow()  { return -400;  } ///< SK SLE trigger window ~-400
   int  GetDefaultNDigitsPostTriggerWindow() { return 950;   } ///< SK SLE trigger window ~+950
 

@@ -113,6 +113,10 @@ void WCSimEventAction::CreateDAQInstances()
       WCSimWCTriggerNDigits2* WCTM = new WCSimWCTriggerNDigits2("WCReadout", detectorConstructor, DAQMessenger);
       DMman->AddNewModule(WCTM);
     }
+    else if(TriggerChoice == "NHitsThenITC") {
+      WCSimWCTriggerNHitsThenITC* WCTM = new WCSimWCTriggerNHitsThenITC("WCReadout", detectorConstructor, DAQMessenger);
+      DMman->AddNewModule(WCTM);
+    }
     else {
       G4cerr << "Unknown TriggerChoice " << TriggerChoice << G4endl;
       exit(-1);
@@ -255,6 +259,9 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
       (WCSimWCTriggerBase*)DMman->FindDigitizerModule("WCReadout");
   
     //tell it the dark noise rate (for calculating the average dark occupancy -> can adjust the NDigits threshold)
+    WCTM->SetDarkRate(WCDNM->GetDarkRate());
+
+    //tell it the dark noise rate (for calculating the average dark occupancy -> can adjust the NHits threshold)
     WCTM->SetDarkRate(WCDNM->GetDarkRate());
 
     //Apply the trigger

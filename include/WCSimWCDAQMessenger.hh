@@ -45,6 +45,7 @@ private:
   G4UIcmdWithABool*   WriteGeomInfo;
   G4bool              StoreWriteGeomInfo;
 
+
   G4UIcmdWithoutParameter* DAQConstruct; //TODO remove this
 
   G4UIdirectory*        DigitizerDir;
@@ -96,6 +97,16 @@ private:
   G4int                 StoreLocalNHitsNCentralSectors;
   G4UIcmdWithAnInteger* TriggerRegionsNRingSectors;
   G4int                 StoreLocalNHitsNRingSectors;
+
+  G4UIdirectory*        ITCRatioTriggerDir;
+  G4UIcmdWithADouble*   ITCRatioTriggerThreshold;
+  G4double              StoreITCRatioTriggerThreshold;
+  G4UIcmdWithAnInteger* ITCRatioTriggerSmallWindow;
+  G4int                 StoreITCRatioTriggerSmallWindow;
+  G4UIcmdWithAnInteger* ITCRatioTriggerLargeWindowLow;
+  G4int                 StoreITCRatioTriggerLargeWindowLow;
+  G4UIcmdWithAnInteger* ITCRatioTriggerLargeWindowHigh;
+  G4int                 StoreITCRatioTriggerLargeWindowHigh;
 
   G4String initialiseString;
   G4bool   initialised;

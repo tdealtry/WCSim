@@ -20,7 +20,7 @@ WCSimDarkRateMessenger::WCSimDarkRateMessenger(WCSimWCDigitizer* darkratepoint)
 WCSimDarkRateMessenger::WCSimDarkRateMessenger(WCSimWCAddDarkNoise* darkratepoint)
   : WCSimAddDarkNoise(darkratepoint)
 {
-  //inform the DarkRateMessenger which constructor was called
+  //inform the DarkRateMessenger which constructor was called   
   constructor = 1;
 
   Initialize();

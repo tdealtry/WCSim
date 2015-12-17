@@ -45,6 +45,7 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger(WCSimEventAction* eventaction) :
 			     "NDigits2\n"
 			     "NHitsThenLocalNHits\n"
 			     "NHitsThenRegions\n"
+			     "NHitsThenITC\n"
 			     "SKI_SKDETSIM (combined trigger & digitization (therefore ignores /DAQ/Digitization); buggy) \n"
 			     );
   TriggerChoice->SetParameterName("Trigger", false);
@@ -53,6 +54,7 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger(WCSimEventAction* eventaction) :
 			       "NDigits2 "
 			       "NHitsThenLocalNHits "
 			       "NHitsThenRegions "
+			       "NHitsThenITC "
 			       "SKI_SKDETSIM "
 			       );
   TriggerChoice->AvailableForStates(G4State_PreInit, G4State_Idle);
@@ -262,6 +264,43 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger(WCSimEventAction* eventaction) :
   StoreLocalNHitsNRingSectors = defaultTriggerRegionsNRingSectors;
 
 
+  //ITC Ratio trigger specifc options
+  ITCRatioTriggerDir = new G4UIdirectory("/DAQ/TriggerITCRatio/");
+  ITCRatioTriggerDir->SetGuidance("Commands specific to the ITCRatio trigger");
+
+  double defaultITCRatioTriggerThreshold = 0.3;
+  ITCRatioTriggerThreshold = new G4UIcmdWithADouble("/DAQ/TriggerITCRatio/Threshold", this);
+  ITCRatioTriggerThreshold->SetGuidance("Set the ITCRatio trigger threshold");
+  ITCRatioTriggerThreshold->SetParameterName("ITCRatioThreshold",true);
+  ITCRatioTriggerThreshold->SetDefaultValue(defaultITCRatioTriggerThreshold);
+  StoreITCRatioTriggerThreshold = defaultITCRatioTriggerThreshold;
+  SetNewValue(ITCRatioTriggerThreshold, G4UIcommand::ConvertToString(defaultITCRatioTriggerThreshold));
+
+  int defaultITCRatioTriggerSmallWindow = 200;
+  ITCRatioTriggerSmallWindow = new G4UIcmdWithAnInteger("/DAQ/TriggerITCRatio/SmallWindow", this);
+  ITCRatioTriggerSmallWindow->SetGuidance("Set the ITCRatio small trigger window (in ns) i.e. for the numerator");
+  ITCRatioTriggerSmallWindow->SetParameterName("ITCRatioSmallWindow",true);
+  ITCRatioTriggerSmallWindow->SetDefaultValue(defaultITCRatioTriggerSmallWindow);
+  StoreITCRatioTriggerSmallWindow = defaultITCRatioTriggerSmallWindow;
+  SetNewValue(ITCRatioTriggerSmallWindow, G4UIcommand::ConvertToString(defaultITCRatioTriggerSmallWindow));
+
+  int defaultITCRatioTriggerLargeWindowLow = 200;
+  ITCRatioTriggerLargeWindowLow = new G4UIcmdWithAnInteger("/DAQ/TriggerITCRatio/LargeWindowLow", this);
+  ITCRatioTriggerLargeWindowLow->SetGuidance("Set the ITCRatio large trigger window low edge (in ns) i.e. for the denominator");
+  ITCRatioTriggerLargeWindowLow->SetParameterName("ITCRatioLargeWindowLow",true);
+  ITCRatioTriggerLargeWindowLow->SetDefaultValue(defaultITCRatioTriggerLargeWindowLow);
+  StoreITCRatioTriggerLargeWindowLow = defaultITCRatioTriggerLargeWindowLow;
+  SetNewValue(ITCRatioTriggerLargeWindowLow, G4UIcommand::ConvertToString(defaultITCRatioTriggerLargeWindowLow));
+
+  int defaultITCRatioTriggerLargeWindowHigh = 1000;
+  ITCRatioTriggerLargeWindowHigh = new G4UIcmdWithAnInteger("/DAQ/TriggerITCRatio/LargeWindowHigh", this);
+  ITCRatioTriggerLargeWindowHigh->SetGuidance("Set the ITCRatio large trigger window high edge (in ns) i.e. for the denominator");
+  ITCRatioTriggerLargeWindowHigh->SetParameterName("ITCRatioLargeWindowHigh",true);
+  ITCRatioTriggerLargeWindowHigh->SetDefaultValue(defaultITCRatioTriggerLargeWindowHigh);
+  StoreITCRatioTriggerLargeWindowHigh = defaultITCRatioTriggerLargeWindowHigh;
+  SetNewValue(ITCRatioTriggerLargeWindowHigh, G4UIcommand::ConvertToString(defaultITCRatioTriggerLargeWindowHigh));
+
+
   //TODO remove this
   DAQConstruct = new G4UIcmdWithoutParameter("/DAQ/Construct", this);
   DAQConstruct->SetGuidance("Create the DAQ class instances");
@@ -303,6 +342,11 @@ WCSimWCDAQMessenger::~WCSimWCDAQMessenger()
   delete TriggerRegionsNCentralSectors;
   delete TriggerRegionsNRingSectors;
 
+  delete ITCRatioTriggerThreshold;
+  delete ITCRatioTriggerSmallWindow;
+  delete ITCRatioTriggerLargeWindowLow;
+  delete ITCRatioTriggerLargeWindowHigh;
+
   delete DigitizerChoice;
   delete TriggerChoice;
   delete MultiDigitsPerTrigger;
@@ -326,6 +370,7 @@ void WCSimWCDAQMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
     WCSimEvent->SetTriggerChoice(newValue);
     StoreTriggerChoice = newValue;
   }
+
   else if (command == MultiDigitsPerTrigger) {
     StoreMultiDigitsPerTrigger = MultiDigitsPerTrigger->GetNewBoolValue(newValue);
     if(!StoreMultiDigitsPerTrigger)
@@ -444,6 +489,24 @@ void WCSimWCDAQMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
     StoreLocalNHitsNRingSectors = TriggerRegionsNRingSectors->GetNewIntValue(newValue);
   }
 
+  //ITC ratio trigger
+  else if(command == ITCRatioTriggerThreshold) {
+    G4cout << "ITC ratio threshold set to " << newValue << initialiseString.c_str() << G4endl;
+    StoreITCRatioTriggerThreshold = ITCRatioTriggerThreshold->GetNewDoubleValue(newValue);
+  }
+  else if(command == ITCRatioTriggerSmallWindow) {
+    G4cout << "ITC ratio small trigger window set to " << newValue << initialiseString.c_str() << G4endl;
+    StoreITCRatioTriggerSmallWindow = ITCRatioTriggerSmallWindow->GetNewIntValue(newValue);
+  }
+  else if(command == ITCRatioTriggerLargeWindowLow) {
+    G4cout << "ITC ratio large trigger window low edge set to " << newValue << initialiseString.c_str() << G4endl;
+    StoreITCRatioTriggerLargeWindowLow = ITCRatioTriggerLargeWindowLow->GetNewIntValue(newValue);
+  }
+  else if(command == ITCRatioTriggerLargeWindowHigh) {
+    G4cout << "ITC ratio large trigger window high edge set to " << newValue << initialiseString.c_str() << G4endl;
+    StoreITCRatioTriggerLargeWindowHigh = ITCRatioTriggerLargeWindowHigh->GetNewIntValue(newValue);
+  }
+
   //TODO remove this
   else if(command == DAQConstruct) {
     G4cout << "Calling WCSimEventAction::CreateDAQInstances()" << G4endl;
@@ -460,7 +523,7 @@ void WCSimWCDAQMessenger::SetTriggerOptions()
     if(!StoreMultiDigitsPerTrigger)
       G4cout << "\tWill restrict number of digits per PMT per trigger to <= 1" << G4endl;
     else
-      G4cout << "\tWill allow number of digits per PMT per trigger to go > 1" << initialiseString.c_str() << G4endl;
+      G4cout << "\tWill allow number of digits per PMT per trigger to go > 1" << G4endl;
   }
 
   WCSimTrigger->SetWriteGeomInfo(StoreWriteGeomInfo);
@@ -478,6 +541,7 @@ void WCSimWCDAQMessenger::SetTriggerOptions()
     failuremode = "Saving only failed events";
   G4cout << "\t" << failuremode << G4endl;
   WCSimTrigger->SetSaveFailuresTime(StoreSaveFailuresTime);
+  G4cout << "\tTrigger time for events which fail all triggers will be set to " << StoreSaveFailuresTime << G4endl;
   G4cout << "\tTrigger time for events which fail all triggers will be set to " << StoreSaveFailuresTime << " ns" << G4endl;
   if(StoreSaveFailuresPreWindow >= -1E6) {
     WCSimTrigger->SetSaveFailuresPreTriggerWindow(StoreSaveFailuresPreWindow);
@@ -532,6 +596,15 @@ void WCSimWCDAQMessenger::SetTriggerOptions()
   WCSimTrigger->SetRegionsNRingSectors(StoreLocalNHitsNRingSectors);
   G4cout << "\tMultiplicative number more sectors per ring set to " << StoreLocalNHitsNRingSectors << G4endl;
 
+  //ITC ratio
+  WCSimTrigger->SetITCRatioThreshold(StoreITCRatioTriggerThreshold);
+  G4cout << "\tITC ratio threshold set to " << StoreITCRatioTriggerThreshold << G4endl;
+  WCSimTrigger->SetITCRatioSmallWindow(StoreITCRatioTriggerSmallWindow);
+  G4cout << "\tITC ratio small window set to " << StoreITCRatioTriggerSmallWindow << G4endl;
+  WCSimTrigger->SetITCRatioLargeWindowLow(StoreITCRatioTriggerLargeWindowLow);
+  G4cout << "\tITC ratio large window low edge set to " << StoreITCRatioTriggerLargeWindowLow << G4endl;
+  WCSimTrigger->SetITCRatioLargeWindowHigh(StoreITCRatioTriggerLargeWindowHigh);
+  G4cout << "\tITC ratio large window high edge set to " << StoreITCRatioTriggerLargeWindowHigh << G4endl;
 }
 
 void WCSimWCDAQMessenger::SetDigitizerOptions()

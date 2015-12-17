@@ -132,6 +132,12 @@
 # control the multiplicative number more sectors per ring for dividing the top/bottom PMTs
 /DAQ/TriggerRegions/NRingSectors 2
 
+#control the ITC ratio parameters. ITC ratio is (nhits in small window) / (nhits in large window)
+/DAQ/TriggerITCRatio/Threshold 0.3
+/DAQ/TriggerITCRatio/SmallWindow 200
+/DAQ/TriggerITCRatio/LargeWindowLow 200
+/DAQ/TriggerITCRatio/LargeWindowHigh 1000
+
 #this is a temporary workaround for needing to construct the dark noise messenger (done in the old digitizer / new adddarknoise class) before the dark noise options below are read
 #this workaround can be removed after a forthcoming major code change:
 # - removal of old WCSimWCDigitizer
