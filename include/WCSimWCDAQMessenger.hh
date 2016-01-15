@@ -46,8 +46,6 @@ private:
   G4bool              StoreWriteGeomInfo;
 
 
-  G4UIcmdWithoutParameter* DAQConstruct; //TODO remove this
-
   G4UIdirectory*        DigitizerDir;
   G4UIcmdWithAnInteger* DigitizerDeadTime;
   G4int                 StoreDigitizerDeadTime;

@@ -132,6 +132,16 @@ void WCSimWCTriggerBase::GetVariables()
   else {
     ReadGeomInfo();
   }
+  if(saveFailuresMode == 0)
+    G4cout << "Saving only triggered digits" << G4endl;
+  else if(saveFailuresMode == 1)
+    G4cout << "Saving both triggered and not-triggered digits" << G4endl;
+  else if(saveFailuresMode == 2)
+    G4cout << "Saving only not-triggered digits" << G4endl;
+  if(saveFailuresMode > 0)
+    G4cout << "Using SaveFailures trigger time" << saveFailuresTime << " ns" << G4endl
+	   << "Using SaveFailures event pretrigger window " << saveFailuresPreTriggerWindow << " ns" << G4endl
+	   << "Using SaveFailures event posttrigger window " << saveFailuresPostTriggerWindow << " ns" << G4endl;
 }
 
 int WCSimWCTriggerBase::GetPreTriggerWindow(TriggerType_t t)
@@ -139,7 +149,6 @@ int WCSimWCTriggerBase::GetPreTriggerWindow(TriggerType_t t)
   switch(t) {
   case kTriggerNDigits:
   case kTriggerNDigitsTest:
-  case kTriggerNHitsSKDETSIM:
   case kTriggerLocalNHits:
   case kTriggerITCRatio:
     return ndigitsPreTriggerWindow;
@@ -160,7 +169,6 @@ int WCSimWCTriggerBase::GetPostTriggerWindow(TriggerType_t t)
   switch(t) {
   case kTriggerNDigits:
   case kTriggerNDigitsTest:
-  case kTriggerNHitsSKDETSIM:
   case kTriggerLocalNHits:
   case kTriggerITCRatio:
     return ndigitsPostTriggerWindow;

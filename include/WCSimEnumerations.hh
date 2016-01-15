@@ -7,7 +7,6 @@
 typedef enum ETriggerType {
   kTriggerUndefined = -1,
   kTriggerNDigits,
-  kTriggerNHitsSKDETSIM,
   kTriggerNDigitsTest,
   kTriggerLocalNHits,
   kTriggerITCRatio,
@@ -44,9 +43,6 @@ public:
       break;
     case (kTriggerLocalNHits) :
       return "Local_NHits";
-      break;
-    case (kTriggerNHitsSKDETSIM) :
-      return "NHits_SKDETSIM";
       break;
     case (kTriggerNDigitsTest) :
       return "NDigits_TEST";
