@@ -1093,7 +1093,7 @@ void WCSimWCTriggerBase::AlgNHitsThenRegions(WCSimWCDigitsCollection* WCDCPMT, b
 
       //get a unique list of regions hit
       std::vector<int> regions_hit;
-      for(int ip = 0; ip < pmts_hit.size(); ip++) {
+      for(size_t ip = 0; ip < pmts_hit.size(); ip++) {
 	int tubeid = pmts_hit[ip];
 	std::vector<int> theseregions = FindRegion(tubeid);
 	//#ifdef WCSIMWCTRIGGER_VERBOSE
