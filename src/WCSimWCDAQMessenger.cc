@@ -44,6 +44,7 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger(WCSimEventAction* eventaction) :
 			     "NHitsThenLocalNHits\n"
 			     "NHitsThenRegions\n"
 			     "NHitsThenITC\n"
+			     "NHitsThenAnisotropy\n"
 			     );
   TriggerChoice->SetParameterName("Trigger", false);
   TriggerChoice->SetCandidates(
@@ -52,6 +53,7 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger(WCSimEventAction* eventaction) :
 			       "NHitsThenLocalNHits "
 			       "NHitsThenRegions "
 			       "NHitsThenITC "
+			       "NHitsThenAnisotropy "
 			       );
   TriggerChoice->AvailableForStates(G4State_PreInit, G4State_Idle);
   TriggerChoice->SetDefaultValue(defaultTrigger);

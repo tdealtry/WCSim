@@ -458,7 +458,7 @@ private:
   void DoTheWork(WCSimWCDigitsCollection* WCDCPMT);
 
   bool GetDefaultMultiDigitsPerTrigger()    { return false; } ///< SKI saves only earliest digit on a PMT in the trigger window
-  int  GetDefaultNDigitsWindow()            { return 200;   } ///< SK max light travel time ~200 ns
+  //int  GetDefaultNDigitsWindow()            { return 200;   } ///< SK max light travel time ~200 ns
   int  GetDefaultNDigitsThreshold()         { return 50;    } ///< 2 * SK NDigits threshold ~25
   int  GetDefaultNDigitsPreTriggerWindow()  { return -400;  } ///< SK SLE trigger window ~-400
   int  GetDefaultNDigitsPostTriggerWindow() { return 950;   } ///< SK SLE trigger window ~+950
@@ -481,7 +481,7 @@ public:
   ///Create WCSimWCTriggerNHitsThenLocalNHits instance with knowledge of the detector and DAQ options
   WCSimWCTriggerNHitsThenLocalNHits(G4String name, WCSimDetectorConstruction*, WCSimWCDAQMessenger*);
 
-  ~WCSimWCTriggerNHitsThenLocalNHits();
+  virtual ~WCSimWCTriggerNHitsThenLocalNHits();
 
 private:
   ///Calls the workhorse of this class: AlgNHitsThenLocalNHits
@@ -494,6 +494,38 @@ private:
   int  GetDefaultNDigitsPostTriggerWindow() { return 950;   } ///< SK SLE trigger window ~+950
 
   void WriteGeomInfo();
+
+protected:
+  virtual void ReadGeomInfo();
+};
+
+/**
+ * \class WCSimWCTriggerNHitsThenAnisotropy
+ *
+ * \brief A trigger class which first looks for a global NHits trigger, then searches for a local NHits trigger using fraction of nearest neighbours
+ *
+ */
+
+class WCSimWCTriggerNHitsThenAnisotropy : public WCSimWCTriggerNHitsThenLocalNHits //Base
+{
+public:
+
+  ///Create WCSimWCTriggerNHitsThenAnisotropy instance with knowledge of the detector and DAQ options
+  WCSimWCTriggerNHitsThenAnisotropy(G4String name, WCSimDetectorConstruction*, WCSimWCDAQMessenger*);
+
+  ~WCSimWCTriggerNHitsThenAnisotropy();
+
+private:
+  ///Calls the workhorse of this class: AlgNHitsThenAnisotropy
+  void DoTheWork(WCSimWCDigitsCollection* WCDCPMT);
+
+  //bool GetDefaultMultiDigitsPerTrigger()    { return false; } ///< SKI saves only earliest digit on a PMT in the trigger window
+  //int  GetDefaultNDigitsWindow()            { return 200;   } ///< SK max light travel time ~200 ns
+  //int  GetDefaultNDigitsThreshold()         { return 50;    } ///< 2 * SK NDigits threshold ~25
+  //int  GetDefaultNDigitsPreTriggerWindow()  { return -400;  } ///< SK SLE trigger window ~-400
+  //int  GetDefaultNDigitsPostTriggerWindow() { return 950;   } ///< SK SLE trigger window ~+950
+
+  //void WriteGeomInfo();
   void ReadGeomInfo();
 };
 

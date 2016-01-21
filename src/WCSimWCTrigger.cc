@@ -151,6 +151,8 @@ int WCSimWCTriggerBase::GetPreTriggerWindow(TriggerType_t t)
   case kTriggerNDigitsTest:
   case kTriggerLocalNHits:
   case kTriggerITCRatio:
+  case kTriggerRegions:
+  case kTriggerAnisotropy:
     return ndigitsPreTriggerWindow;
     break;
   case kTriggerFailure:
@@ -171,6 +173,8 @@ int WCSimWCTriggerBase::GetPostTriggerWindow(TriggerType_t t)
   case kTriggerNDigitsTest:
   case kTriggerLocalNHits:
   case kTriggerITCRatio:
+  case kTriggerRegions:
+  case kTriggerAnisotropy:
     return ndigitsPostTriggerWindow;
     break;
   case kTriggerFailure:
@@ -1154,7 +1158,7 @@ void WCSimWCTriggerBase::AlgNHitsThenRegions(WCSimWCDigitsCollection* WCDCPMT, b
 	triggertime = window_start_time + ((double)localNHitsWindow / 2);
 	triggertime -= (int)triggertime % 5;
 	TriggerTimes.push_back(triggertime);
-	TriggerTypes.push_back(kTriggerLocalNHits);
+	TriggerTypes.push_back(kTriggerRegions);
 	TriggerInfos.push_back(local_info);
 	triggerfound = true;
       }//trigger(s) found on any PMT
@@ -1725,6 +1729,37 @@ void WCSimWCTriggerNHitsThenLocalNHits::ReadGeomInfo()
   t.Write();
 #endif
 }
+
+
+// *******************************************
+// DERIVED CLASS
+// *******************************************
+
+WCSimWCTriggerNHitsThenAnisotropy::WCSimWCTriggerNHitsThenAnisotropy(G4String name,
+								     WCSimDetectorConstruction* myDetector,
+								     WCSimWCDAQMessenger* myMessenger)
+  :WCSimWCTriggerNHitsThenLocalNHits(name, myDetector, myMessenger)
+{
+  triggerClassName = "NHitsThenAnisotropy";
+}
+
+WCSimWCTriggerNHitsThenAnisotropy::~WCSimWCTriggerNHitsThenAnisotropy()
+{
+}
+
+void WCSimWCTriggerNHitsThenAnisotropy::DoTheWork(WCSimWCDigitsCollection* WCDCPMT)
+{
+  //Apply an NHitsThenAnisotropy trigger
+  bool remove_hits = false;
+  //AlgNHitsThenAnisotropy(WCDCPMT, remove_hits);
+}
+
+void WCSimWCTriggerNHitsThenAnisotropy::ReadGeomInfo()
+{
+  localNHitsNeighbours = nPMTs / 2;
+  WCSimWCTriggerNHitsThenLocalNHits::ReadGeomInfo();
+}
+
 
 // *******************************************
 // DERIVED CLASS

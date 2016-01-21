@@ -10,6 +10,8 @@ typedef enum ETriggerType {
   kTriggerNDigitsTest,
   kTriggerLocalNHits,
   kTriggerITCRatio,
+  kTriggerRegions,
+  kTriggerAnisotropy,
   kTriggerFailure // this should always be the last entry (for looping)
 } TriggerType_t;
 
@@ -49,6 +51,12 @@ public:
       break;
     case (kTriggerITCRatio) :
       return "ITCRatio";
+      break;
+    case (kTriggerRegions) :
+      return "Regions";
+      break;
+    case (kTriggerAnisotropy) :
+      return "Anisotropy";
       break;
     case (kTriggerFailure) :
       return "No_trigger_passed";
