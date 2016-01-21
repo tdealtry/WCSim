@@ -68,8 +68,14 @@
 
 #choose the Trigger & Digitizer type (and options)
 /DAQ/Digitizer SKI
-/DAQ/Trigger NHitsThenRegions
+
+#/DAQ/Trigger NHitsThenLocalNHits
+/DAQ/Trigger NHitsThenAnisotropy
+#/DAQ/Trigger NHitsThenRegions
+#/DAQ/Trigger NHitsThenITCRatio
+
 #/DAQ/Trigger NDigits
+
 
 #generic digitizer options (defaults are class-specific. Can be overridden here)
 # how long is the digitizer dead before a new hit on the same PMT can be recorded (ns)?
