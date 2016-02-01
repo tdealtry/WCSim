@@ -121,6 +121,10 @@ void WCSimEventAction::CreateDAQInstances()
     WCSimWCTriggerNHitsThenAnisotropy* WCTM = new WCSimWCTriggerNHitsThenAnisotropy("WCReadout", detectorConstructor, DAQMessenger);
     DMman->AddNewModule(WCTM);
   }
+  else if(TriggerChoice == "NoTrigger") {
+    WCSimWCTriggerNoTrigger* WCTM = new WCSimWCTriggerNoTrigger("WCReadout", detectorConstructor, DAQMessenger);
+    DMman->AddNewModule(WCTM);
+  }
   else {
     G4cerr << "Unknown TriggerChoice " << TriggerChoice << G4endl;
     exit(-1);

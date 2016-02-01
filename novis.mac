@@ -70,9 +70,10 @@
 /DAQ/Digitizer SKI
 
 #/DAQ/Trigger NHitsThenLocalNHits
-/DAQ/Trigger NHitsThenAnisotropy
+#/DAQ/Trigger NHitsThenAnisotropy
 #/DAQ/Trigger NHitsThenRegions
-#/DAQ/Trigger NHitsThenITCRatio
+#/DAQ/Trigger NHitsThenITC
+/DAQ/Trigger NoTrigger
 #/DAQ/Trigger NDigits
 
 #grab the other DAQ options (thresholds, timing windows, etc.)

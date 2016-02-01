@@ -149,6 +149,8 @@ protected:
 
   //these are the algorithms that perform triggering
   //they are stored here so that different trigger classes can use the same algorithms without copying code
+  ///Everything Passes
+  void AlgNoTrigger(WCSimWCDigitsCollection* WCDCPMT);
   /**
    * \brief An NDigits trigger algorithm
    *
@@ -586,6 +588,23 @@ private:
   void ReadGeomInfo()  {};
 };
 
+class WCSimWCTriggerNoTrigger : public WCSimWCTriggerBase
+{
+public:
 
+  ///Create WCSimWCTriggerNDigits instance with knowledge of the detector and DAQ options
+  WCSimWCTriggerNoTrigger(G4String name, WCSimDetectorConstruction*, WCSimWCDAQMessenger*);
+
+  ~WCSimWCTriggerNoTrigger();
+  
+private:
+  ///Calls the workhorse of this class: AlgNDigits
+  void DoTheWork(WCSimWCDigitsCollection* WCDCPMT);
+
+  bool GetDefaultMultiDigitsPerTrigger()    { return true; }
+
+  void WriteGeomInfo() {};
+  void ReadGeomInfo()  {};
+};
 
 #endif //WCSimWCTrigger_h

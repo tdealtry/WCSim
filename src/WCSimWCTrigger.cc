@@ -158,6 +158,9 @@ int WCSimWCTriggerBase::GetPreTriggerWindow(TriggerType_t t)
   case kTriggerFailure:
     return saveFailuresPreTriggerWindow;
     break;
+  case kTriggerNoTrig:
+    return - 2147483647 / 2;
+    break;
   default:
     G4cerr << "WCSimWCTriggerBase::GetPreTriggerWindow() Unknown trigger type " << t
 	   << "\t" << WCSimEnumerations::EnumAsString(t) << G4endl;
@@ -179,6 +182,9 @@ int WCSimWCTriggerBase::GetPostTriggerWindow(TriggerType_t t)
     break;
   case kTriggerFailure:
     return saveFailuresPostTriggerWindow;
+    break;
+  case kTriggerNoTrig:
+    return 2147483647 / 2;
     break;
   default:
     G4cerr << "WCSimWCTriggerBase::GetPostTriggerWindow() Unknown trigger type " << t
@@ -1350,6 +1356,23 @@ void WCSimWCTriggerBase::AlgNHitsThenITC(WCSimWCDigitsCollection* WCDCPMT, bool 
   FillDigitsCollection(WCDCPMT, remove_hits, kTriggerUndefined);
 }
 
+void WCSimWCTriggerBase::AlgNoTrigger(WCSimWCDigitsCollection* WCDCPMT)
+{
+  //Does not doanything, just writes out all hits
+  std::vector<Float_t> triggerinfo;
+  Int_t Ndigits=0;
+  for (G4int i = 0 ; i < WCDCPMT->entries() ; i++) {
+    for ( G4int ip = 0 ; ip < (*WCDCPMT)[i]->GetTotalPe() ; ip++) {
+      Ndigits++;
+    }
+  }
+  triggerinfo.push_back(Ndigits);
+  TriggerTypes.push_back(kTriggerNoTrig);
+  TriggerInfos.push_back(triggerinfo);
+  TriggerTimes.push_back(0.);
+
+  FillDigitsCollection(WCDCPMT, false, kTriggerNoTrig);
+}
 
 void WCSimWCTriggerBase::FillDigitsCollection(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, TriggerType_t save_triggerType)
 {
@@ -1814,4 +1837,26 @@ void WCSimWCTriggerNHitsThenITC::DoTheWork(WCSimWCDigitsCollection* WCDCPMT) {
   //Apply an NHitsThenITC trigger
   bool remove_hits = false;
   AlgNHitsThenITC(WCDCPMT, remove_hits);
+}
+
+// *******************************************
+// DERIVED CLASS
+// *******************************************
+WCSimWCTriggerNoTrigger::WCSimWCTriggerNoTrigger(G4String name,
+						 WCSimDetectorConstruction* myDetector,
+						 WCSimWCDAQMessenger* myMessenger)
+  :WCSimWCTriggerBase(name, myDetector, myMessenger)
+{
+  triggerClassName = "NoTrigger";
+  GetVariables();
+}
+
+WCSimWCTriggerNoTrigger::~WCSimWCTriggerNoTrigger()
+{
+}
+
+void WCSimWCTriggerNoTrigger::DoTheWork(WCSimWCDigitsCollection* WCDCPMT) {
+  //Apply a dummy 'pass everything' trigger
+  bool remove_hits = false;
+  AlgNoTrigger(WCDCPMT);
 }
