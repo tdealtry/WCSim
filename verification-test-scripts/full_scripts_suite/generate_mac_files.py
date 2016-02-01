@@ -27,7 +27,7 @@ delim_list = lambda s: list(set(s.split(',')))
 delim_list_str = lambda s: s.split(',') if len(s.split(',')) == 3 else s
 
 DAQdigitizer_choices = ['SKI', 'SKI_SKDETSIM']
-DAQtrigger_choices = ['NDigits', 'SKI_SKDETSIM', 'NDigits2', 'NHitsThenLocalNHits', 'NHitsThenRegions', 'NHitsThenITC']
+DAQtrigger_choices = ['NDigits', 'SKI_SKDETSIM', 'NDigits2', 'NHitsThenLocalNHits', 'NHitsThenRegions', 'NHitsThenITC', 'NoTrigger']
 DAQtrigger_ndigits_choices = ['NDigits', 'SKI_SKDETSIM', 'NDigits2', 'NHitsThenLocalNHits', 'NHitsThenRegions', 'NHitsThenITC']
 DAQtrigger_localndigits_choices = ['NDigitsThenLocalNDigits']
 DAQtrigger_regions_choices = ['NHitsThenRegions']
@@ -603,7 +603,7 @@ def Submit(filenamestub, args):
                 'notify_user    = ' + args.notifyuseremail + '\n' \
                 'notification   = Always \n'
         condor += '' \
-            'executable     = WCSim \n' \
+            'executable     = $ENV(WCSIMDIR)/bin/Linux-g++/WCSim \n' \
             'universe       = vanilla \n' \
             'arguments      = ' + filenamestub + '.mac \n' \
             'output         = ' + filenamestub + '.out \n' \
