@@ -8,6 +8,7 @@ parser.add_argument('-m','--macroname', type=str, default='$WCSIMDIR/sample-root
 parser.add_argument('-d','--dir', type=str, help='Directory to analyse', default='./')
 parser.add_argument('-v','--verbose', action='store_true', help='Run verbosely?')
 parser.add_argument('-f','--onlyonefile', action='store_true', help='Run only one file?')
+parser.add_argument('-t','--tag', type=str, help='Prefix of the output file', default='analysewcsim')
 parser.add_argument('--additional-macro-options', type=str, default='', help='If your macro has more options than just filename & verbosity, specify the remaining arguments here. Recommended to wrap the command in \'\', then "" are dealt with correctly. WARNING: no whitespace allowed!')
 parser.add_argument('--batchmode', type=str, default='local', choices=['local','condor'], help='Where to submit the jobs')
 parser.add_argument('--notifyuseremail', type=str, default='', help='Specify this to get email notifications about jobs')
@@ -41,7 +42,8 @@ def main(args_to_parse = None):
     if args.compiled_mode:
         prefix += '+'
     
-    filenamestub = 'analysewcsim'
+    tag = args.tag.replace('.', '_')
+    filenamestub = tag
     if args.batchmode == 'condor' and not os.path.islink('rootwc'):
         os.symlink(os.path.expandvars("$WCSIMDIR") + "/rootwc/rootwc", "rootwc")
 
