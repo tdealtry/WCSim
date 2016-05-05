@@ -52,6 +52,12 @@ BatchChoices=['local','condor']
 
 def ListAsString(l):
     return ' '.join(str(o)+',' for o in l)[:-1]
+def pair_or_single(arg):
+    pair = list(set(float(x) for x in arg.split(':')))
+    if len(pair) > 2 or len(pair) < 1:
+        print "Argument %s is not a colon-separted pair of floats, or a single float" % arg
+    else:
+        return pair
 
 parser = argparse.ArgumentParser(description='Run many WCSim jobs with different options. Use , to delimit multiple options', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 #options about how to run this script
@@ -475,16 +481,17 @@ def main(args_to_parse = None):
     def ConstructParticleGun(args, geom):
         guns = []
         filestubs = []
-        for GunEnergy in args.GunEnergy:
+        for GunEnergyStr in args.GunEnergy:
+            GunEnergy = pair_or_single(GunEnergyStr)
             filestub = ''
-            if type(args.GunPosition) is str:
+            if type(args.GunPosition) is str or type(args.GunDirection) is str or len(GunEnergy) > 1:
                 #if GunPosition and GunDirection are string's
-                #we need to call MakeKin.py to generate distributions of different positions/directions
+                #we need to call MakeKin.py to generate distributions of different positions/directions/energies
                 command = '$WCSIMDIR/sample-root-scripts/MakeKin.py ' \
                     '-N ' + str(args.JobsPerConfig) + ' ' \
                     '-n ' + str(args.NEvents) + ' ' \
                     '-t ' + args.GunParticle  + ' ' \
-                    '-e ' + GunEnergy  + ' ' \
+                    '-e ' + GunEnergyStr  + ' ' \
                     '-v ' + args.GunPosition  + ' ' \
                     '-d ' + args.GunDirection + ' ' \
                     '-w ' + geom
@@ -492,7 +499,7 @@ def main(args_to_parse = None):
                 os.system(command)
                 for ijob in xrange(args.JobsPerConfig):
                     #now create the .kin filename
-                    kinname = "%s_%.1fMeV_%s_%s_%s_%03i.kin" % (args.GunParticle.replace("+","plus").replace("-","minus"), float(GunEnergy), args.GunPosition, args.GunDirection, args.WCgeom[0], ijob)
+                    kinname = "%s_%sMeV_%s_%s_%s_%03i.kin" % (args.GunParticle.replace("+","plus").replace("-","minus"), GunEnergyStr, args.GunPosition, args.GunDirection, args.WCgeom[0], ijob)
                     print kinname
                     #and finally get the .mac options
                     gunoptions = '/mygen/vecfile ' + os.getcwd() + '/' + kinname + '\n'
@@ -503,7 +510,7 @@ def main(args_to_parse = None):
                 #https://geant4.web.cern.ch/geant4/UserDocumentation/UsersGuides/ForApplicationDeveloper/html/ch02s07.html
                 gunoptions = "/mygen/generator laser \n" \
                     "/gps/particle " + args.GunParticle + "\n" \
-                    "/gps/energy " + GunEnergy + " MeV \n" \
+                    "/gps/energy " + GunEnergy[0] + " MeV \n" \
                     "/gps/pos/centre " + " ".join(i for i in args.GunPosition) + "\n" \
                     "/gps/pos/type Plane \n" \
                     "/gps/pos/shape Rectangle \n" \
@@ -520,7 +527,7 @@ def main(args_to_parse = None):
                 #https://geant4.web.cern.ch/geant4/UserDocumentation/UsersGuides/ForApplicationDeveloper/html/ch02s07.html
                 gunoptions = "/mygen/generator laser \n" \
                     "/gps/particle " + args.GunParticle + "\n" \
-                    "/gps/energy " + GunEnergy + " MeV \n" \
+                    "/gps/energy " + GunEnergy[0] + " MeV \n" \
                     "/gps/pos/centre " + " ".join(i for i in args.GunPosition) + "\n" \
                     "/gps/pos/type Volume \n" \
                     "/gps/pos/shape Cylinder \n" \
@@ -537,7 +544,7 @@ def main(args_to_parse = None):
                 #http://geant4.web.cern.ch/geant4/G4UsersDocuments/UsersGuides/ForApplicationDeveloper/html/Control/UIcommands/_gun_.html
                 gunoptions = "/mygen/generator normal " + "\n" \
                     "/gun/particle " + args.GunParticle + "\n" \
-                    "/gun/energy " + GunEnergy + " MeV \n" \
+                    "/gun/energy " + GunEnergy[0] + " MeV \n" \
                     "/gun/direction " + " ".join(i for i in args.GunDirection) + "\n" \
                     "/gun/position " + " ".join(i for i in args.GunPosition) + "\n"
                 guns.append(gunoptions)
@@ -545,7 +552,7 @@ def main(args_to_parse = None):
             if type(args.GunPosition) is str:
                 nappends = args.JobsPerConfig
             for i in xrange(nappends):
-                filestubs.append(filestub + GunEnergy + args.GunParticle)
+                filestubs.append(filestub + GunEnergyStr + args.GunParticle)
         return [guns, filestubs]
 
     #construct the .mac options and parts of filenames for the different groups
