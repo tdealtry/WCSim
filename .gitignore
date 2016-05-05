@@ -11,6 +11,8 @@ tmp/
 #ignore compiled ROOT or python scripts
 *_C.d
 *_C.so
+*_cxx.d
+*_cxx.so
 *.pyc
 
 #ignore run results
