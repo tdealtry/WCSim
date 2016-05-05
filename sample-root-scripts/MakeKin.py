@@ -6,7 +6,6 @@ from math import pi,sin,cos,sqrt
 import sys
 
 
-
 pid = {"pi0":111, "pi+":211, "k0l":130, "k0s":310, "k+":321,
        "e+":-11, "mu+":-13, "tau+":-15, 
        "nue":12, "nuebar":-12, 
@@ -45,9 +44,9 @@ parser.add_option("-t", "--type", dest="type",
                       % (optchoices, optdefault),
                   metavar="TYPE",
                   choices=optchoices, default=optdefault)
-optdefault = 1000.0
+optdefault = '1000.0'
 parser.add_option("-e", "--energy", dest="energy",
-                  help="Particle energy to be generated in MeV. Default: %s" \
+                  help="Particle energy to be generated in MeV. Specify range with colon separated pair (e.g. 0:10). Default: %s" \
                       % (optdefault),
                   metavar="ENERGY",default=optdefault)
 optchoices = ["center", "random", "minusx", "plusx", "minusz", "plusz"]
@@ -76,16 +75,23 @@ options.dirname = options.dirname.lower()
 
 
 
+def pair_or_single(arg):
+    pair = list(set(float(x) for x in arg.split(':')))
+    if len(pair) > 2 or len(pair) < 1:
+        print "Argument %s is not a colon-separted pair of floats, or a single float" % arg
+    else:
+        return pair
+
 nfiles = int(options.nfiles)
-npart = int(options.npart)
-energy = float(options.energy)
+npart  = int(options.npart)
+energy = pair_or_single(options.energy)
 
 
 #Define the particle
 particle = {"vertex":(0, 0, 0),
             "time":0,
             "type":pid[options.type],
-            "energy":energy,
+            "energy":energy[0],
             "direction":(1,0,0)}
 
 
@@ -140,7 +146,7 @@ else:
 
 
 
-nu =   {"type":pid["numu"], "energy":energy+1000.0,
+nu =   {"type":pid["numu"], "energy":energy[0]+1000.0,
         "direction":(1, 0, 0)}
 prot = {"type":pid["p+"], "energy":935.9840,
         "direction":(0, 0, 1)}
@@ -150,6 +156,11 @@ prot = {"type":pid["p+"], "energy":935.9840,
 def partPrint(p, f, recno):
     f.write("$ begin\n")
     f.write("$ nuance 0\n")
+    #random energy
+    if len(energy) == 2:
+        thisenergy  = random.uniform(energy[0], energy[1])
+        p ["energy"] = thisenergy
+        nu["energy"] = thisenergy + 1000
     if randvert:
         rad    = detectors[options.detector][0] - 20.
         height = detectors[options.detector][1] - 20.
@@ -186,7 +197,12 @@ def printTrack(p, f, code=0):
 for fileno in range(nfiles):
     typestr = options.type.replace("+","plus").replace("-","minus")
     
-    filename="%s_%.1fMeV_%s_%s_%s_%03i.kin" % (typestr, energy, options.vertname, options.dirname, options.detector, fileno)
+    estring = ""
+    for i, e in enumerate(energy):
+        if i:
+            estring += ":"
+        estring += "%.1f" % e
+    filename="%s_%sMeV_%s_%s_%s_%03i.kin" % (typestr, estring, options.vertname, options.dirname, options.detector, fileno)
 
     outfile = open(filename, 'w')
 
