@@ -33,8 +33,8 @@ TString create_filename(const char * prefix, TString& filename_string)
 }
 
 // Simple example of reading a generated Root file
-int sample_analysis(char *filename=NULL, bool verbose=false, 
-		    long max_nevents = -1, long max_ntriggers = -1, bool write_tree = false,)
+int sample_analysis(const char *filename=NULL, const bool verbose=false, 
+		    const long max_nevents = -1, const int max_ntriggers = -1, const bool write_tree = false)
 {
 #if !defined(__MAKECINT__)
   // Load the library with class dictionary info
@@ -138,14 +138,14 @@ int sample_analysis(char *filename=NULL, bool verbose=false,
       wcsimrootevent = wcsimrootsuperevent->GetTrigger(0);
 
       //get some of the basic event information
-      const int ntriggers = wcsimrootsuperevent->GetNumberOfEvents();
-      const int ntriggers_loop = max_ntriggers > 0 ? TMath::Min(max_ntriggers, ntriggers) : ntriggers;
-      const int ntracks = wcsimrootevent->GetNtrack();
-      const int ncherenkovhits      = wcsimrootevent->GetNcherenkovhits();
-      const int ncherenkovhittimes  = wcsimrootevent->GetNcherenkovhittimes();
-      const int ntubeshit           = wcsimrootevent->GetNumTubesHit();
-      const int ncherenkovdigihits0 = wcsimrootevent->GetNcherenkovdigihits(); 
-      const int ntubesdigihit0      = wcsimrootevent->GetNumDigiTubesHit();
+      const int  ntriggers = wcsimrootsuperevent->GetNumberOfEvents();
+      const int  ntriggers_loop = max_ntriggers > 0 ? TMath::Min(max_ntriggers, ntriggers) : ntriggers;
+      const int  ntracks = wcsimrootevent->GetNtrack();
+      const int  ncherenkovhits      = wcsimrootevent->GetNcherenkovhits();
+      const int  ncherenkovhittimes  = wcsimrootevent->GetNcherenkovhittimes();
+      const int  ntubeshit           = wcsimrootevent->GetNumTubesHit();
+      const int  ncherenkovdigihits0 = wcsimrootevent->GetNcherenkovdigihits(); 
+      const int  ntubesdigihit0      = wcsimrootevent->GetNumDigiTubesHit();
       const double vtx0 = wcsimrootevent->GetVtx(0);
       const double vtx1 = wcsimrootevent->GetVtx(1);
       const double vtx2 = wcsimrootevent->GetVtx(2);
@@ -216,16 +216,9 @@ int sample_analysis(char *filename=NULL, bool verbose=false,
 	  double truetime = wcsimrootcherenkovhittime->GetTruetime();
 	  if(verbose)
 	    printf("%6.2f ", truetime);
-	  h1hittime->Fill(truetime);
 	  if(wcsimrootcherenkovhittime->GetParentID() == -1) {
-	    h1hittime_noise->Fill(truetime);
-	    if(hists_per_event)
-	      h1event_hittime[ev][1]->Fill(truetime);
 	  }
 	  else {
-	    h1hittime_photon->Fill(truetime);
-	    if(hists_per_event)
-	      h1event_hittime[ev][0]->Fill(truetime);
 	  }
 	}//irawhit
 	if(verbose)
@@ -243,7 +236,6 @@ int sample_analysis(char *filename=NULL, bool verbose=false,
       //
       // Digi hits are arranged in subevents, so loop over these first
       //
-      const int ntriggers_loop = max_ntriggers > 0 ? TMath::Min(max_ntriggers, ntriggers) : ntriggers;
 
       //save a pointer to the 0th WCSimRootTrigger, so can access track/hit information in triggers >= 1
       wcsimroottrigger0 = wcsimrootevent;
@@ -266,16 +258,11 @@ int sample_analysis(char *filename=NULL, bool verbose=false,
 	const TriggerType_t  trigger_type = wcsimrootevent->GetTriggerType();
 	std::vector<Float_t> trigger_info = wcsimrootevent->GetTriggerInfo();
 
-	h1triggertime->Fill(trigger_time);
 	if(trigger_info.size() > 0) {
 	  if((trigger_type == kTriggerNDigits) || (trigger_type == kTriggerNDigitsTest)) {
-	    h1ndigihitstrigger->Fill(trigger_info[0]);
 	  }
 	}
-	h1ndigihits->Fill(ncherenkovdigihits);
-	h1ntubeshitdigi->Fill(ntubeshitdigi);
 
-	h1triggertype->Fill(WCSimEnumerations::EnumAsString(trigger_type).c_str(), 1);
 	if(verbose) {
 	  cout << "Passed trigger "
 	       << WCSimEnumerations::EnumAsString(trigger_type)
@@ -310,7 +297,7 @@ int sample_analysis(char *filename=NULL, bool verbose=false,
 
   cout << "---------------------------------" << endl
        << "Run summary" << endl
-       << "nevent (run over) " << nevent << endl
+       << "nevent (run over) " << nevents_loop << endl
        << "num_trig (run over) " << num_trig << endl;
 
   //save histograms in .root file

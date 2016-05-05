@@ -1,4 +1,4 @@
-#include trigger_tools.hxx
+#include "trigger_tools.hxx"
 
 #ifndef __DIGIT_TIME_VERBOSE__
 //#define __DIGIT_TIME_VERBOSE__
@@ -6,10 +6,10 @@
 
 trigger_tools::trigger_tools()
 {
-  digit_times         = null;
-  digit_times_physics = null;
-  digit_times_noise   = null;
-  digit_times_mix     = null;
+  digit_times         = NULL;
+  digit_times_physics = NULL;
+  digit_times_noise   = NULL;
+  digit_times_mix     = NULL;
 }
 
 trigger_tools::~trigger_tools()
@@ -19,52 +19,52 @@ trigger_tools::~trigger_tools()
 
 void trigger_tools::CleanupDigitTimes()
 {
-  if(digit_times != null) {
+  if(digit_times != NULL) {
     delete digit_times;
-    digit_times = null;
+    digit_times = NULL;
   }
-  if(digit_times_physics != null) {
+  if(digit_times_physics != NULL) {
     delete digit_times_physics;
-    digit_times_physics = null;
+    digit_times_physics = NULL;
   }
-  if(digit_times_noise != null) {
+  if(digit_times_noise != NULL) {
     delete digit_times_noise;
-    digit_times_noise = null;
+    digit_times_noise = NULL;
   }
-  if(digit_times_mix != null) {
+  if(digit_times_mix != NULL) {
     delete digit_times_mix;
-    digit_times_mix = null;
+    digit_times_mix = NULL;
   }
 }
 
 void trigger_tools::CreateDigitTimes()
 {
-  if(digit_times == null) {
+  if(digit_times == NULL) {
     digit_times = new vector<double>;
   }
-  if(digit_times_physics == null) {
+  if(digit_times_physics == NULL) {
     digit_times_physics = new vector<double>;
   }
-  if(digit_times_noise == null) {
+  if(digit_times_noise == NULL) {
     digit_times_noise = new vector<double>;
   }
-  if(digit_times_mix == null) {
+  if(digit_times_mix == NULL) {
     digit_times_mix = new vector<double>;
   }
 }
 
 void trigger_tools::FillDigitTimes(double digitime, DigiType_t digitype)
 {
-  digit_times.push_back(digitime);
-  switch(filltype) {
+  digit_times->push_back(digitime);
+  switch(digitype) {
   case kDigiTypePhysics:
-    digi_times_physics.push_back(digitime);
+    digit_times_physics->push_back(digitime);
     break;
   case kDigiTypeNoise:
-    digi_times_noise.push_back(digitime);
+    digit_times_noise->push_back(digitime);
     break;
   case kDigiTypeMix:
-    digi_times_mix.push_back(digitime);
+    digit_times_mix->push_back(digitime);
     break;
   case kDigiTypeUndefined:
     break;
@@ -95,14 +95,14 @@ void trigger_tools::PopulateDigitTimes(WCSimRootTrigger * trigger, bool append, 
     //const double digipe     = wcsimrootcherenkovdigihit->GetQ();
     //const int    digitubeid = wcsimrootcherenkovdigihit->GetTubeId();
 
-    DigiType_t filltype = GetDigitType(wcsimrootcherenkovdigihit, event);
-    FillDigitTimes(digitime, filltype);
+    DigiType_t digitype = GetDigitType(wcsimrootcherenkovdigihit, event);
+    FillDigitTimes(digitime, digitype);
   }//idigipmt
 }
 
-DigiType_t trigger_tools::GetDigitType(WCSimRootCherenkovDigiHit * wcsimrootcherenkovdigihit, WCSimRootEvent * event)
+trigger_tools::DigiType_t trigger_tools::GetDigitType(WCSimRootCherenkovDigiHit * wcsimrootcherenkovdigihit, WCSimRootEvent * event)
 {
-  if(event == null)
+  if(event == NULL)
     return kDigiTypeUndefined;
 
   const int digitubeid = wcsimrootcherenkovdigihit->GetTubeId();
@@ -111,8 +111,8 @@ DigiType_t trigger_tools::GetDigitType(WCSimRootCherenkovDigiHit * wcsimrootcher
   TClonesArray * hittimes = event->GetTrigger(0)->GetCherenkovHitTimes();
   
   //first, find the correct PMT in the WCSimRootCherenkovHit array
-  int timeArrayIndex = wcsimrootcherenkovhit->GetTotalPe(0); //position in the WCSimRootCherenkovHitTime for this PMT
-  int peForTube      = wcsimrootcherenkovhit->GetTotalPe(1); //number of pe (i.e. entries) for this tube in the WCSimRootCherenkovHitTime
+  int timeArrayIndex = -1; //position in the WCSimRootCherenkovHitTime for this PMT
+  int peForTube      = -1; //number of pe (i.e. entries) for this tube in the WCSimRootCherenkovHitTime
   const long ncherenkovhits = event->GetTrigger(0)->GetNcherenkovhits();
   for(int ipmt = 0; ipmt < ncherenkovhits; ipmt++) {
 #ifdef __DIGIT_TIME_VERBOSE__
@@ -135,9 +135,10 @@ DigiType_t trigger_tools::GetDigitType(WCSimRootCherenkovDigiHit * wcsimrootcher
     return kDigiTypeError;
   }
 
-  if(verbose)
+#ifdef __DIGIT_TIME_VERBOSE__
     cout << peForTube << " PMT hits found for digit " << idigipmt << " with tube ID " << tube_id << endl;
-  
+#endif
+
   //loop over the rawhits ids of hits that made up the digit,
   // and use them to find the hits in the WCSimRootCherenkovHitTime
   int n_noise_hits = 0, n_photon_hits = 0;
@@ -160,8 +161,9 @@ DigiType_t trigger_tools::GetDigitType(WCSimRootCherenkovDigiHit * wcsimrootcher
       dynamic_cast<WCSimRootCherenkovHitTime *>(Hit);
     //const double hittime  = wcsimrootcherenkovhittime->GetTruetime();
     const int    parentid = wcsimrootcherenkovhittime->GetParentID();
-    if(verbose)
+#ifdef __DIGIT_TIME_VERBOSE__
       cout << " hit time " << hittime << " " << parentid << endl;
+#endif
     if(parentid == -1) {
       n_noise_hits++;
     }
