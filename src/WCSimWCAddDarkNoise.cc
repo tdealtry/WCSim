@@ -129,13 +129,13 @@ void WCSimWCAddDarkNoise::AddDarkNoiseBeforeDigi(WCSimWCDigitsCollection* WCHCPM
 
     //poisson distributed noise, number of noise hits to add
     int nnoispmt = CLHEP::RandPoisson::shoot(ave);
-    //#ifdef WCSIMWCADDDARKNOISE_VERBOSE
+#ifdef WCSIMWCADDDARKNOISE_VERBOSE
     G4cout << "WCSimWCAddDarkNoise::AddDarkNoiseBeforeDigi Going to add " << nnoispmt << " dark noise hits in time window [" << num1 << "," << num2 << "]" 
 	   << " Rate = " << (double)nnoispmt / (windowsize * number_pmts * 1E-6) << " kHz"
 	   << " (no fluctuation = " << ave / (windowsize * number_pmts * 1E-6) << " kHz)"
 	   << " Expected = " << this->PMTDarkRate << " * " << this->ConvRate << " = " << this->ConvRate * this->PMTDarkRate << " kHz"
 	   << G4endl;
-    //#endif
+#endif
     for( int i = 0; i < nnoispmt; i++ )
       {
 	//time of noise hit to be generated
