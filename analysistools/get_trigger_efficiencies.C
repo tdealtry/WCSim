@@ -55,7 +55,7 @@ TCanvas * ceffs[2][3];
 TPad    * peffs[2][3][4];
 TH1D * heffs[nsmallfracs + 1][2][3];
 TH1D * hcuts[nsmallfracs + 1][2][3];
-Color_t effcols  [nsmallfracs + 1] = {kBlack, kRed, kBlue, kGreen+2, kOrange-1, kCyan, kYellow+2, kMagenta};
+Color_t effcols  [nsmallfracs + 1] = {kBlack, kMagenta, kBlue, kCyan, kOrange-1, kGreen+2, kGray+2, kRed};
 Color_t effstyles[nsmallfracs + 1] = {20, 21, 22, 23, 24, 25, 26, 27};
 void InitEffHists() {
   for(int ismall = 0; ismall < nsmallfracs + 1; ismall++) {
@@ -91,10 +91,12 @@ void InitEffHists() {
 	  leffs[ien][ieff]->SetHeader(TString::Format("Noise rejection efficiency for cut allowing %d%% of %d MeV signal", (int)(100 * efficiencies[ieff]), energies[ien+1]));
 	  cout << TString::Format("Noise rejection efficiency for cut allowing %d%% of %d MeV signal", (int)(100 * efficiencies[ieff]), energies[ien+1]) << endl;
 	}
-	if(ismall < nsmallfracs)
+	if(ismall == 1 || ismall == 3)
+	  continue;
+	else if(ismall < nsmallfracs)
 	  leffs[ien][ieff]->AddEntry(heffs[ismall][ien][ieff], TString::Format("Small = large * %.1f", smallfracs[ismall]), "p");
 	else
-	  leffs[ien][ieff]->AddEntry(heffs[ismall][ien][ieff], "NDigits", "p");
+	  leffs[ien][ieff]->AddEntry(heffs[ismall][ien][ieff], "NHITS", "p");
       }//ieff
     }//ien
   }//ismall
@@ -111,6 +113,8 @@ void DrawEffHists(bool oneslice) {
       cout << "Drawn ccuts" << endl;
       */
       for(int ismall = 0; ismall < nsmallfracs + 1; ismall++) {
+	if(ismall == 1 || ismall == 3)
+	  continue;
 	peffs[ien][ieff][1]->cd();
 	if(ismall == 0)
 	  heffs[ismall][ien][ieff]->Draw("P");
@@ -410,7 +414,7 @@ void get_trigger_efficiencies(TString filenames, bool oneslice = false)
     if(oneslice)
       hname_ndigits += "_1slice";
     lndigits.Clear();
-    lndigits.SetHeader(TString::Format("NDigits %d ns", largewindow));
+    lndigits.SetHeader(TString::Format("NHITS %d ns", largewindow));
 
     for(int ismall = 0; ismall < nsmallfracs; ismall++) {
       int smallwindow = smallfracs[ismall]*largewindows[ilarge];
