@@ -1,5 +1,8 @@
 #include "trigger_tools.hxx"
 
+#include <algorithm>
+#include <iostream>
+
 #ifndef __DIGIT_TIME_VERBOSE__
 //#define __DIGIT_TIME_VERBOSE__
 #endif
@@ -53,6 +56,53 @@ void trigger_tools::CreateDigitTimes()
   }
 }
 
+void trigger_tools::SortDigitTimes()
+{
+  if(digit_times != NULL) {
+    std::sort(digit_times->begin(), digit_times->end());
+  }
+  if(digit_times_physics != NULL) {
+    std::sort(digit_times_physics->begin(), digit_times_physics->end());
+  }
+  if(digit_times_noise != NULL) {
+    std::sort(digit_times_noise->begin(), digit_times_noise->end());
+  }
+  if(digit_times_mix != NULL) {
+    std::sort(digit_times_mix->begin(), digit_times_mix->end());
+  }
+}
+
+void trigger_tools::PrintDigitTimes(DigiType_t digitype)
+{
+  vector<double> * v;
+  switch(digitype) {
+  case kDigiTypePhysics:
+    v = digit_times_physics;
+    break;
+  case kDigiTypeNoise:
+    v = digit_times_noise;
+    break;
+  case kDigiTypeMix:
+    v = digit_times_mix;
+    break;
+  case kDigiTypeUndefined:
+    v = digit_times;
+    break;
+  case kDigiTypeError:
+    exit(-1);
+    break;
+  }
+  cout << "trigger_tools::PrintDigitTimes() Printing digit type " << digitype << endl
+       << "vector has " << v->size() << " entries" << endl;
+  for(size_t i = 0; i < v->size(); i++) {
+    cout << v->at(i);
+    if((i % 10) == 9)
+      cout << endl;
+    else
+      cout << "\t";
+  }//i
+}
+
 void trigger_tools::FillDigitTimes(double digitime, DigiType_t digitype)
 {
   digit_times->push_back(digitime);
@@ -98,6 +148,7 @@ void trigger_tools::PopulateDigitTimes(WCSimRootTrigger * trigger, bool append, 
     DigiType_t digitype = GetDigitType(wcsimrootcherenkovdigihit, event);
     FillDigitTimes(digitime, digitype);
   }//idigipmt
+  SortDigitTimes();
 }
 
 trigger_tools::DigiType_t trigger_tools::GetDigitType(WCSimRootCherenkovDigiHit * wcsimrootcherenkovdigihit, WCSimRootEvent * event)
@@ -186,4 +237,33 @@ trigger_tools::DigiType_t trigger_tools::GetDigitType(WCSimRootCherenkovDigiHit 
   else {
     return kDigiTypeMix;
   }
+}
+
+/*
+vector<double> * trigger_tools::GetDigitTimes(DigiType_t digitype)
+{
+  switch(digitype) {
+  case kDigiTypePhysics:
+    return digit_times_physics;
+    break;
+  case kDigiTypeNoise:
+    return digit_times_noise;
+    break;
+  case kDigiTypeMix:
+    return digit_times_mix;
+    break;
+  case kDigiTypeUndefined:
+    return digit_times;
+    break;
+  case kDigiTypeError:
+    exit(-1);
+    return 0;
+    break;
+  }
+}
+*/
+
+void trigger_tools::CalcMaxITC(itc_tools * itc)
+{
+  itc->CalcMaxITC(digit_times, digit_times_physics, digit_times_mix);
 }

@@ -16,6 +16,9 @@
 #include <TLegend.h>
 #include <TROOT.h>
 
+#include "trigger_tools.cxx"
+#include "itc_tools.cxx"
+
 #if !defined(__CINT__) || defined(__MAKECINT__)
 #include "WCSimRootEvent.hh"
 #include "WCSimRootGeom.hh"
@@ -34,7 +37,7 @@ TString create_filename(const char * prefix, TString& filename_string)
 
 // Simple example of reading a generated Root file
 int sample_analysis(const char *filename=NULL, const bool verbose=false, 
-		    const long max_nevents = -1, const int max_ntriggers = -1, const bool write_tree = false)
+		    const long max_nevents = -1, const int max_ntriggers = -1)
 {
 #if !defined(__MAKECINT__)
   // Load the library with class dictionary info
@@ -128,16 +131,42 @@ int sample_analysis(const char *filename=NULL, const bool verbose=false,
   vector<double> tdigitimes;
   tout->Branch("digitimes", &tdigitimes);
 
+
+  //
+  // CREATE TOOL INSTANCE
+  //
+  trigger_tools tools;
+  vector<itc_tools *> itcconfigs;
+  double smallfracs[] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 0.9};
+  int  largewindows[] = {200, 300, 400, 500, 600, 800, 1000, 1250, 1500, 1750, 2000};
+  const int nsmallfracs   = sizeof(smallfracs)   / sizeof(double);
+  const int nlargewindows = sizeof(largewindows) / sizeof(int);
+  const bool one_time_slice = false;
+  for(int ilarge = 0; ilarge < nlargewindows; ilarge++) {
+    for(int ismall = 0; ismall < nsmallfracs; ismall++) {
+      itcconfigs.push_back(new itc_tools(smallfracs[ismall]*largewindows[ilarge], largewindows[ilarge], 0, !ismall, one_time_slice));
+    }//ismall
+  }//ilarge
+  const int nconfigs = itcconfigs.size();
+
+  //
+  // LOOP OVER EVENTS
+  //
+
+  //setup event loop counters
   int num_trig = 0;
   
-  // Now loop over events
-  for (int iev=0; iev<nevents_loop; iev++)
+  //loop over events
+  for (int iev = 0; iev < nevents_loop; iev++)
     {
       // Read the event from the tree into the WCSimRootEvent instance
       tree->GetEntry(iev);
       wcsimrootevent = wcsimrootsuperevent->GetTrigger(0);
 
-      //get some of the basic event information
+      //
+      // GLOBAL EVENT INFO
+      //
+
       const int  ntriggers = wcsimrootsuperevent->GetNumberOfEvents();
       const int  ntriggers_loop = max_ntriggers > 0 ? TMath::Min(max_ntriggers, ntriggers) : ntriggers;
       const int  ntracks = wcsimrootevent->GetNtrack();
@@ -173,120 +202,26 @@ int sample_analysis(const char *filename=NULL, const bool verbose=false,
 	printf("NumDigitizedTubes in trigger 0 %d\n", wcsimrootevent->GetNumDigiTubesHit());
       }
 
-      // Loop through elements in the TClonesArray of WCSimTracks
-      for (int itrack = 0; itrack < ntracks; itrack++) {
-	TObject *element = (wcsimrootevent->GetTracks())->At(itrack);      
-	WCSimRootTrack *wcsimroottrack = dynamic_cast<WCSimRootTrack*>(element);
-	if(verbose) {
-	  printf("Track ipnu: %d\n",wcsimroottrack->GetIpnu());
-	  printf("Track parent ID: %d\n",wcsimroottrack->GetParenttype());
-	  for (int j=0; j<3; j++)
-	    printf("Track dir: %d %f\n", j, wcsimroottrack->GetDir(j));
-	}
-      }  //itrack // End of loop over tracks
-    
-
-      //
-      // Now look at the raw Cherenkov+noise hits
-      //
-      if(verbose)
-	cout << "RAW HITS:" << endl;
-
-      // Grab the big arrays of times and parent IDs
-      TClonesArray *timeArray = wcsimrootevent->GetCherenkovHitTimes();
-    
-      //calculate total p.e. in event
-      int totalPe = 0;
-      // Loop through elements in the TClonesArray of WCSimRootCherenkovHits
-      for(int ipmt = 0; ipmt < ncherenkovhits; ipmt++) {
-	TObject * Hit = (wcsimrootevent->GetCherenkovHits())->At(ipmt);
-	WCSimRootCherenkovHit * wcsimrootcherenkovhit =
-	  dynamic_cast<WCSimRootCherenkovHit*>(Hit);
-	int timeArrayIndex = wcsimrootcherenkovhit->GetTotalPe(0);
-	int peForTube      = wcsimrootcherenkovhit->GetTotalPe(1);
-	int tubeNumber     = wcsimrootcherenkovhit->GetTubeID();
-	WCSimRootPMT pmt   = geo->GetPMT(tubeNumber-1);
-	totalPe += peForTube;
-	if(verbose)
-	  printf("Total pe for tube %d: %d times( ", tubeNumber, peForTube);
-	for(int irawhit = 0; irawhit < peForTube; irawhit++) {
-	  TObject * HitTime = (wcsimrootevent->GetCherenkovHitTimes())->At(timeArrayIndex + irawhit);
-	  WCSimRootCherenkovHitTime * wcsimrootcherenkovhittime =
-	    dynamic_cast<WCSimRootCherenkovHitTime*>(HitTime);
-	  double truetime = wcsimrootcherenkovhittime->GetTruetime();
-	  if(verbose)
-	    printf("%6.2f ", truetime);
-	  if(wcsimrootcherenkovhittime->GetParentID() == -1) {
-	  }
-	  else {
-	  }
-	}//irawhit
-	if(verbose)
-	  cout << ")" << endl;
-      }//ipmt
-      if(verbose)
-	cout << "Total Pe : " << totalPe << endl;
-
       //    
-      // Now look at digitized hit info
+      // DIGITS INFO
       //
       if(verbose)
 	cout << "DIGITIZED HITS:" << endl;
 
-      //
-      // Digi hits are arranged in subevents, so loop over these first
-      //
-
+      // WARNING: just looking in the first trigger
       //save a pointer to the 0th WCSimRootTrigger, so can access track/hit information in triggers >= 1
       wcsimroottrigger0 = wcsimrootevent;
-      tdigitimes.clear();
-      for (int itrigger = 0 ; itrigger < ntriggers_loop; itrigger++) {
 
-	//count the number of noise/photon hits making up all the digits in this trigger
-	int n_noise_hits_total = 0, n_photon_hits_total = 0;
+      tools.PopulateDigitTimes(wcsimroottrigger0, false, wcsimrootsuperevent);
+      num_trig++;
 
-	wcsimrootevent = wcsimrootsuperevent->GetTrigger(itrigger);
-	if(verbose)
-	  cout << "Sub event number = " << itrigger << "\n";
+      //get a list of all the digit times
+      //tdigitimes = tools.GetDigitTimes(kDigiTypeUndefined);
 
-	const int ncherenkovdigihits = wcsimrootevent->GetNcherenkovdigihits();
-	const int ntubeshitdigi      = wcsimrootevent->GetNumDigiTubesHit();
-	if(verbose)
-	  printf("Ncherenkovdigihits %d\n", ncherenkovdigihits);
-
-	const int            trigger_time = wcsimrootevent->GetHeader()->GetDate();
-	const TriggerType_t  trigger_type = wcsimrootevent->GetTriggerType();
-	std::vector<Float_t> trigger_info = wcsimrootevent->GetTriggerInfo();
-
-	if(trigger_info.size() > 0) {
-	  if((trigger_type == kTriggerNDigits) || (trigger_type == kTriggerNDigitsTest)) {
-	  }
-	}
-
-	if(verbose) {
-	  cout << "Passed trigger "
-	       << WCSimEnumerations::EnumAsString(trigger_type)
-	       << " with timestamp " << trigger_time
-	       << " and " << ncherenkovdigihits
-	       << " hits in the saved subevent region";
-	  if(trigger_info.size() > 0) {
-	    if((trigger_type == kTriggerNDigits) /*|| (trigger_type == kTriggerNHitsSKDETSIM)*/ || (trigger_type == kTriggerNDigitsTest))
-	      cout << " (" << trigger_info[0]
-		   << " in the 200nsec region)";
-	    else if(trigger_type == kTriggerLocalNHits)
-	      cout << " (PMT with tubeID " << trigger_info[1]
-		   << " fired the trigger with " << trigger_info[0]
-		   << " hits)";
-	  }
-	  cout << endl;
-	}
-
-	if(ncherenkovdigihits > 0)
-	  num_trig++;
-
-
-	tout->Fill();
-      }//itrigger // End of loop over triggers
+      //tools.PrintDigitTimes();
+      for(int iconfig = 0; iconfig < nconfigs; iconfig++) {
+	tools.CalcMaxITC(itcconfigs[iconfig]);
+      }//iconfig
 
       wcsimroottrigger0 = 0;
 
@@ -295,6 +230,8 @@ int sample_analysis(const char *filename=NULL, const bool verbose=false,
 
     }//iev // End of loop over events
 
+  //tools.Write()
+
   cout << "---------------------------------" << endl
        << "Run summary" << endl
        << "nevent (run over) " << nevents_loop << endl
@@ -302,8 +239,10 @@ int sample_analysis(const char *filename=NULL, const bool verbose=false,
 
   //save histograms in .root file
   fout->cd();
-  if(write_tree)
-    tout->Write();
+  for(int iconfig = 0; iconfig < nconfigs; iconfig++) {
+    itcconfigs[iconfig]->WriteToFile(fout);
+  }//iconfig  
+  tout->Write();
 
 
   return 0;
