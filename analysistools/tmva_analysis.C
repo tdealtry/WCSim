@@ -17,7 +17,7 @@
 #include <TROOT.h>
 
 #include "trigger_tools.cxx"
-#include "itc_tools.cxx"
+#include "tmva_tools.cxx"
 
 #if !defined(__CINT__) || defined(__MAKECINT__)
 #include "WCSimRootEvent.hh"
@@ -36,8 +36,9 @@ TString create_filename(const char * prefix, TString& filename_string)
 }
 
 // Simple example of reading a generated Root file
-int sample_analysis(const char *filename=NULL, const bool verbose=false, 
-		    const long max_nevents = -1, const int max_ntriggers = -1)
+int tmva_analysis(const char *filename=NULL, const bool verbose=false, 
+		  const long max_nevents = -1, const int max_ntriggers = -1,
+		  double duration = 1000)
 {
 #if !defined(__MAKECINT__)
   // Load the library with class dictionary info
@@ -126,28 +127,11 @@ int sample_analysis(const char *filename=NULL, const bool verbose=false,
   TFile * fout = new TFile(create_filename(__func__, filenameout).Data(), "RECREATE");
   fout->cd();
 
-  //book 
-  TTree * tout = new TTree("digitimes", "digitimes");
-  vector<double> tdigitimes;
-  tout->Branch("digitimes", &tdigitimes);
-
 
   //
   // CREATE TOOL INSTANCE
   //
-  trigger_tools tools;
-  vector<itc_tools *> itcconfigs;
-  double smallfracs[] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 0.9};
-  int  largewindows[] = {200, 300, 400, 500, 600, 800, 1000, 1250, 1500, 1750, 2000};
-  const int nsmallfracs   = sizeof(smallfracs)   / sizeof(double);
-  const int nlargewindows = sizeof(largewindows) / sizeof(int);
-  const bool one_time_slice = false;
-  for(int ilarge = 0; ilarge < nlargewindows; ilarge++) {
-    for(int ismall = 0; ismall < nsmallfracs; ismall++) {
-      itcconfigs.push_back(new itc_tools(smallfracs[ismall]*largewindows[ilarge], largewindows[ilarge], 0, !ismall, one_time_slice));
-    }//ismall
-  }//ilarge
-  const int nconfigs = itcconfigs.size();
+  tmva_tools tools(fout, true);
 
   //
   // LOOP OVER EVENTS
@@ -213,15 +197,10 @@ int sample_analysis(const char *filename=NULL, const bool verbose=false,
       wcsimroottrigger0 = wcsimrootevent;
 
       tools.PopulateDigitTimes(wcsimroottrigger0, false, wcsimrootsuperevent);
+      tools.PopulateVectors   (wcsimroottrigger0, false, geo);
       num_trig++;
 
-      //get a list of all the digit times
-      //tdigitimes = tools.GetDigitTimes(kDigiTypeUndefined);
-
-      //tools.PrintDigitTimes();
-      for(int iconfig = 0; iconfig < nconfigs; iconfig++) {
-	tools.CalcMaxITC(itcconfigs[iconfig]);
-      }//iconfig
+      tools.FillTree(duration);
 
       wcsimroottrigger0 = 0;
 
@@ -239,10 +218,7 @@ int sample_analysis(const char *filename=NULL, const bool verbose=false,
 
   //save histograms in .root file
   fout->cd();
-  for(int iconfig = 0; iconfig < nconfigs; iconfig++) {
-    itcconfigs[iconfig]->WriteToFile(fout);
-  }//iconfig  
-  tout->Write();
+  tools.Write();
 
 
   return 0;

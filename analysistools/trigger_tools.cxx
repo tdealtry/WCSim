@@ -13,11 +13,52 @@ trigger_tools::trigger_tools()
   digit_times_physics = NULL;
   digit_times_noise   = NULL;
   digit_times_mix     = NULL;
+
+  digit_times_nosort = NULL;
+  digit_charges    = NULL;
+  digit_ipmt       = NULL;
+  digit_pmtvec     = NULL;
+  digit_position_q = NULL;
+  digit_position_r = NULL;
+  digit_position_z = NULL;
 }
 
 trigger_tools::~trigger_tools()
 {
   CleanupDigitTimes();
+  CleanupVectors();
+}
+
+void trigger_tools::CleanupVectors()
+{
+  if(digit_times_nosort != NULL) {
+    delete digit_times_nosort;
+    digit_times_nosort = NULL;
+  }
+  if(digit_charges != NULL) {
+    delete digit_charges;
+    digit_charges = NULL;
+  }
+  if(digit_ipmt != NULL) {
+    delete digit_ipmt;
+    digit_ipmt = NULL;
+  }
+  if(digit_pmtvec != NULL) {
+    delete digit_pmtvec;
+    digit_pmtvec = NULL;
+  }
+  if(digit_position_q != NULL) {
+    delete digit_position_q;
+    digit_position_q = NULL;
+  }
+  if(digit_position_r != NULL) {
+    delete digit_position_r;
+    digit_position_r = NULL;
+  }
+  if(digit_position_z != NULL) {
+    delete digit_position_z;
+    digit_position_z = NULL;
+  }
 }
 
 void trigger_tools::CleanupDigitTimes()
@@ -37,6 +78,31 @@ void trigger_tools::CleanupDigitTimes()
   if(digit_times_mix != NULL) {
     delete digit_times_mix;
     digit_times_mix = NULL;
+  }
+}
+
+void trigger_tools::CreateVectors()
+{
+  if(digit_times_nosort == NULL) {
+    digit_times_nosort = new vector<double>;
+  }
+  if(digit_charges == NULL) {
+    digit_charges = new vector<double>;
+  }
+  if(digit_ipmt == NULL) {
+    digit_ipmt = new vector<double>;
+  }
+  if(digit_pmtvec == NULL) {
+    digit_pmtvec = new vector<TVector3>;
+  }
+  if(digit_position_q == NULL) {
+    digit_position_q = new vector<double>;
+  }
+  if(digit_position_r == NULL) {
+    digit_position_r = new vector<double>;
+  }
+  if(digit_position_z == NULL) {
+    digit_position_z = new vector<double>;
   }
 }
 
@@ -91,6 +157,9 @@ void trigger_tools::PrintDigitTimes(DigiType_t digitype)
   case kDigiTypeError:
     exit(-1);
     break;
+  default:
+    exit(-1);
+    break;
   }
   cout << "trigger_tools::PrintDigitTimes() Printing digit type " << digitype << endl
        << "vector has " << v->size() << " entries" << endl;
@@ -124,6 +193,52 @@ void trigger_tools::FillDigitTimes(double digitime, DigiType_t digitype)
   }
 }
 
+void trigger_tools::PopulateVectors(WCSimRootTrigger * trigger, bool append, WCSimRootGeom * geo)
+{
+  if(!append)
+    CleanupVectors();
+  CreateVectors();
+  
+  // Loop through elements in the TClonesArray of WCSimRootCherenkovDigHits
+  const long ncherenkovdigihits = trigger->GetNcherenkovdigihits();
+  for(long idigipmt = 0; idigipmt < ncherenkovdigihits; idigipmt++) {
+    //get the digit
+#ifdef __DIGIT_TIME_VERBOSE__
+    cout << "Getting digit " << idigipmt << endl;
+#endif
+    TObject * Digit = (trigger->GetCherenkovDigiHits())->At(idigipmt);
+    WCSimRootCherenkovDigiHit * wcsimrootcherenkovdigihit = 
+      dynamic_cast<WCSimRootCherenkovDigiHit *>(Digit);
+    //get the charge, time, PMT
+    const double digitime   = wcsimrootcherenkovdigihit->GetT();
+    const double digiq      = wcsimrootcherenkovdigihit->GetQ();
+    const int    digitubeid = wcsimrootcherenkovdigihit->GetTubeId();
+    //get the PMT position info
+    //GetTubeNo() runs from 1 to NPMT
+    //tube_id runs from 0 to NPMT-1
+    const int tube_id_to_get = digitubeid - 1;
+    if(tube_id_to_get < 0 || tube_id_to_get > geo->GetWCNumPMT()) {
+      cerr << "tube_id_to_get " << tube_id_to_get << " GetWCNumPMT " << geo->GetWCNumPMT() << endl;
+      exit(-1);
+    }
+    WCSimRootPMT * pmtobj = geo->GetPMTPointer(tube_id_to_get);
+    if(pmtobj->GetTubeNo() != tube_id_to_get + 1) {
+      cerr << "tube_id_to_get + 1 " << tube_id_to_get + 1 << " != WCSimRootPMT->GetTubeNo() " << pmtobj->GetTubeNo() << endl;
+      exit(-1);
+    }
+    TVector3 tube_vec(pmtobj->GetPosition(0), pmtobj->GetPosition(1), pmtobj->GetPosition(2));
+
+    //fill the vectors
+    digit_times_nosort->push_back(digitime);
+    digit_charges->push_back(digiq);
+    digit_ipmt   ->push_back(digitubeid);
+    digit_pmtvec ->push_back(tube_vec);
+    digit_position_q ->push_back(tube_vec.Theta());
+    digit_position_r ->push_back(tube_vec.Perp());
+    digit_position_z ->push_back(tube_vec.Z());
+  }//idigipmt
+}
+
 void trigger_tools::PopulateDigitTimes(WCSimRootTrigger * trigger, bool append, WCSimRootEvent * event)
 {
   if(!append)
@@ -135,20 +250,53 @@ void trigger_tools::PopulateDigitTimes(WCSimRootTrigger * trigger, bool append, 
   for(long idigipmt = 0; idigipmt < ncherenkovdigihits; idigipmt++) {
     //get the digit
 #ifdef __DIGIT_TIME_VERBOSE__
-      cout << "Getting digit " << idigipmt << endl;
+    cout << "Getting digit " << idigipmt << endl;
 #endif
     TObject * Digit = (trigger->GetCherenkovDigiHits())->At(idigipmt);
     WCSimRootCherenkovDigiHit * wcsimrootcherenkovdigihit = 
       dynamic_cast<WCSimRootCherenkovDigiHit *>(Digit);
     //get the charge, time, PMT
     const double digitime   = wcsimrootcherenkovdigihit->GetT();
-    //const double digipe     = wcsimrootcherenkovdigihit->GetQ();
+    //const double digiq      = wcsimrootcherenkovdigihit->GetQ();
     //const int    digitubeid = wcsimrootcherenkovdigihit->GetTubeId();
 
     DigiType_t digitype = GetDigitType(wcsimrootcherenkovdigihit, event);
     FillDigitTimes(digitime, digitype);
   }//idigipmt
   SortDigitTimes();
+}
+
+void trigger_tools::CopyDigitTimes(trigger_tools * t)
+{
+  digit_times         = t->GetDigitTimes(kDigiTypeUndefined);
+  digit_times_physics = t->GetDigitTimes(kDigiTypePhysics);
+  digit_times_noise   = t->GetDigitTimes(kDigiTypeNoise);
+  digit_times_mix     = t->GetDigitTimes(kDigiTypeMix);
+}
+
+void trigger_tools::PopulateTruthGun(WCSimRootTrigger * trigger)
+{
+  //vertex
+  TRUE_e_vertex.SetXYZ(trigger->GetVtx(0), trigger->GetVtx(1), trigger->GetVtx(2));
+  //direction, energy
+  bool found_electron = false;
+  for (int itrack = 0; itrack < trigger->GetNtrack(); itrack++) {
+    TObject *element = (trigger->GetTracks())->At(itrack);      
+    WCSimRootTrack *wcsimroottrack = dynamic_cast<WCSimRootTrack*>(element);
+    if(itrack == 2 && wcsimroottrack->GetIpnu() == 11 && wcsimroottrack->GetFlag() == 0) {
+      if(found_electron) {
+	cerr << "Found multiple true electrons" << endl;
+	exit(-1);
+      }
+      found_electron = true;
+      TRUE_e_direction.SetXYZ(wcsimroottrack->GetDir(0), wcsimroottrack->GetDir(1), wcsimroottrack->GetDir(2));
+      TRUE_e_energy = wcsimroottrack->GetE();
+    }
+  }  //itrack // End of loop over tracks
+  if(!found_electron) {
+    cerr << "Found no true electrons" << endl;
+    exit(-1);
+  }
 }
 
 trigger_tools::DigiType_t trigger_tools::GetDigitType(WCSimRootCherenkovDigiHit * wcsimrootcherenkovdigihit, WCSimRootEvent * event)
@@ -239,7 +387,6 @@ trigger_tools::DigiType_t trigger_tools::GetDigitType(WCSimRootCherenkovDigiHit 
   }
 }
 
-/*
 vector<double> * trigger_tools::GetDigitTimes(DigiType_t digitype)
 {
   switch(digitype) {
@@ -261,9 +408,4 @@ vector<double> * trigger_tools::GetDigitTimes(DigiType_t digitype)
     break;
   }
 }
-*/
 
-void trigger_tools::CalcMaxITC(itc_tools * itc)
-{
-  itc->CalcMaxITC(digit_times, digit_times_physics, digit_times_mix);
-}

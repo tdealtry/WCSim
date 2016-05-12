@@ -9,22 +9,24 @@
 #include "TFile.h"
 #include "TTree.h"
 
+#include "trigger_tools.hxx"
+
 using std::vector;
 using std::cout;
 using std::endl;
 using std::cerr;
 using std::sort;
 
-class itc_tools
+class itc_tools : public trigger_tools
 {
 public:
-  itc_tools(int smallwindow, int largewindow, int offset, bool calculatendigits, bool onetimeslice);
+  itc_tools(TFile * f, int smallwindow, int largewindow, int offset, bool calculatendigits, bool onetimeslice);
   ~itc_tools();
 
-  void CalcMaxITC(vector<double> * digit_times, vector<double> * digit_times_physics, vector<double> * digit_times_mix);
-  void TestCalcITC();
+  void CalcMaxITC();
+  //void TestCalcITC();
 
-  void WriteToFile(TFile * f);
+  void Write();
 
 private:
   TH1D * h1_max_ndigits;
@@ -42,7 +44,8 @@ private:
   double var_max_itc_1slice;
 
   TTree * tree;
-  
+  TFile * f;
+
   int smallwindow;
   int largewindow;
   int offset;

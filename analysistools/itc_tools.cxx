@@ -5,10 +5,12 @@
 //#define __DIGIT_TIME_VERBOSE__
 #endif
 
-itc_tools::itc_tools(int smallwindow, int largewindow, int offset, bool calculatendigits, bool onetimeslice) :
-  smallwindow(smallwindow), largewindow(largewindow), offset(offset),
-  calcndigits(calculatendigits), one_time_slice(onetimeslice)
+itc_tools::itc_tools(TFile * f, int smallwindow, int largewindow, int offset, bool calculatendigits, bool onetimeslice) :
+  f(f), smallwindow(smallwindow), largewindow(largewindow), offset(offset),
+  calcndigits(calculatendigits), one_time_slice(onetimeslice), trigger_tools()
 {
+  f->cd();
+
   if(calcndigits) {
     h1_max_ndigits        = new TH1D(TString::Format("h1_max_ndigits%d", largewindow), ";Max NDigits;Number of entries", 1000, 0, 1000);
     h1_max_ndigits_1slice = new TH1D(TString::Format("h1_max_ndigits%d_1slice", largewindow), ";NDigits (one slice);Number of entries", 1000, 0, 1000);
@@ -44,7 +46,7 @@ itc_tools::~itc_tools()
 #define CALCMAXITC_VERB 0
 #endif
 
-void itc_tools::CalcMaxITC(vector<double> * digit_times, vector<double> * digit_times_physics, vector<double> * digit_times_mix)
+void itc_tools::CalcMaxITC()
 {
 #if CALCMAXITC_VERB >= 1
   cout << "CALCMAXITC " << smallwindow << "\t" << largewindow << endl;
@@ -77,7 +79,7 @@ void itc_tools::CalcMaxITC(vector<double> * digit_times, vector<double> * digit_
     first_physics = digit_times_physics->at(0);
   else if(!digit_times_physics->size() &&  digit_times_mix->size())
     first_physics = digit_times_mix->at(0);
-  if(mintime > first_physics) {
+  if(mintime < first_physics) {
     mintime = first_physics;
     mintime_it = std::lower_bound(digit_times->begin(), digit_times->end(), mintime);
     mintime_pos = mintime_it - digit_times->begin();
@@ -134,7 +136,7 @@ void itc_tools::CalcMaxITC(vector<double> * digit_times, vector<double> * digit_
   tree->Fill();
 }
 
-void itc_tools::WriteToFile(TFile * f)
+void itc_tools::Write()
 {
   f->cd();
   if(calcndigits) {
@@ -148,6 +150,7 @@ void itc_tools::WriteToFile(TFile * f)
   tree->Write();
 }
 
+/*
 void itc_tools::TestCalcITC()
 {
   double times[] = {1,5,5,5,5,5,15,15,15,15,15,24.5,25,25,25,25,25,35,35,35,35,35,51,52,52,53,53,500,502,502,799,800,801,1000};
@@ -156,3 +159,4 @@ void itc_tools::TestCalcITC()
   vector<double> v3(times, times + sizeof(times) / sizeof(double));
   CalcMaxITC(&v1, &v2, &v3);
 }
+*/
