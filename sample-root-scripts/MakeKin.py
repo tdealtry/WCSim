@@ -77,14 +77,17 @@ options.dirname = options.dirname.lower()
 
 def pair_or_single(arg):
     pair = list(set(float(x) for x in arg.split(':')))
+    pair.sort()
     if len(pair) > 2 or len(pair) < 1:
         print "Argument %s is not a colon-separted pair of floats, or a single float" % arg
-    else:
-        return pair
+    elif len(pair) == 1:
+        return pair, "%.1f" % (pair[0])
+    elif len(pair) == 2:
+        return pair, "%.1f:%.1f" % (pair[0], pair[1])
 
 nfiles = int(options.nfiles)
 npart  = int(options.npart)
-energy = pair_or_single(options.energy)
+energy, energystr = pair_or_single(options.energy)
 
 
 #Define the particle
@@ -198,11 +201,7 @@ for fileno in range(nfiles):
     typestr = options.type.replace("+","plus").replace("-","minus")
     
     estring = ""
-    for i, e in enumerate(energy):
-        if i:
-            estring += ":"
-        estring += "%.1f" % e
-    filename="%s_%sMeV_%s_%s_%s_%03i.kin" % (typestr, estring, options.vertname, options.dirname, options.detector, fileno)
+    filename="%s_%sMeV_%s_%s_%s_%03i.kin" % (typestr, energystr, options.vertname, options.dirname, options.detector, fileno)
 
     outfile = open(filename, 'w')
 

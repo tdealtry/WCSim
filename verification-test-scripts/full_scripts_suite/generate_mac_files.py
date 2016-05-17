@@ -54,10 +54,14 @@ def ListAsString(l):
     return ' '.join(str(o)+',' for o in l)[:-1]
 def pair_or_single(arg):
     pair = list(set(float(x) for x in arg.split(':')))
+    pair.sort()
+    print pair, arg
     if len(pair) > 2 or len(pair) < 1:
         print "Argument %s is not a colon-separted pair of floats, or a single float" % arg
-    else:
-        return pair
+    elif len(pair) == 1:
+        return pair, "%.1f" % (pair[0])
+    elif len(pair) == 2:
+        return pair, "%.1f:%.1f" % (pair[0], pair[1])
 
 parser = argparse.ArgumentParser(description='Run many WCSim jobs with different options. Use , to delimit multiple options', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 #options about how to run this script
@@ -481,8 +485,8 @@ def main(args_to_parse = None):
     def ConstructParticleGun(args, geom):
         guns = []
         filestubs = []
-        for GunEnergyStr in args.GunEnergy:
-            GunEnergy = pair_or_single(GunEnergyStr)
+        for energiesarg in args.GunEnergy:
+            GunEnergy, GunEnergyStr = pair_or_single(energiesarg)
             filestub = ''
             if type(args.GunPosition) is str or type(args.GunDirection) is str or len(GunEnergy) > 1:
                 #if GunPosition and GunDirection are string's
