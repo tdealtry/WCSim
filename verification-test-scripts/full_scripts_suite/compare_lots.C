@@ -8,7 +8,7 @@ void split_args(TString str, vector<string> & vec, const char * delim = ":") {
   }//i
 }
 
-void compare_lots(const char* histname, double axis_low, double axis_high, TString infilenames, TString labels, const char * filenamestub, int rebin = -1, bool dashed = false, bool kolmotest = false)
+void compare_lots(const char* histname, double axis_low, double axis_high, TString infilenames, TString labels, const char * filenamestub, int rebin = -1, bool dashed = false, bool kolmotest = false, bool calc_efficiency = true)
 {
 
   TCanvas * c = new TCanvas();
@@ -49,6 +49,7 @@ void compare_lots(const char* histname, double axis_low, double axis_high, TStri
   double xmin =  999999;
   double xmax = -999999;
   double autorebin = 1;
+  bool foundahist = false;
   //for(int i = nhists - 1; i > 0; i--) {
   for(int i = 0; i < nhists; i++) {
     cout << i << "\t";
@@ -64,7 +65,15 @@ void compare_lots(const char* histname, double axis_low, double axis_high, TStri
     if(!h[i]) {
       cout << "Cannot find histogram " << histname << " in file " << infilename_tokens[i] << endl;
       looper--;
+      if(looper == 0 && !foundahist) {
+	cout << "No histograms found" << endl;
+	f[i]->ls();
+	exit(-1);
+      }
       continue;//return;
+    }
+    else {
+      foundahist = true;
     }
     if(rebin > 0)
       h[i]->Rebin(rebin);
@@ -130,6 +139,34 @@ void compare_lots(const char* histname, double axis_low, double axis_high, TStri
   filename += histname;
   filename += "_";
   filename += filenamestub;
-  filename += ".pdf";
-  c->SaveAs(filename.Data());
+
+  if(calc_efficiency) {
+    //find the 50% point
+    double integral = h[1]->Integral(), portion = 1;
+    int i = 0;
+    for(i = 0; i <= h[1]->GetNbinsX(); i++) {
+      portion = h[1]->Integral(i, h[1]->GetNbinsX()+1) / integral;
+      if(portion <= 0.5)
+	break;
+    }//i
+    double noise_eff = 100 - (100 * h[0]->Integral(i, h[0]->GetNbinsX()+1) / h[0]->Integral());
+    TString filenametxt = filename;
+    filenametxt +=".txt";
+    std::ofstream ofs(filenametxt.Data(), std::ofstream::out);
+    ofs << noise_eff << "\\% noise rejection" << endl;
+    ofs.close();
+
+    double cut_pos = h[1]->GetXaxis()->GetBinCenter(i);
+    TLine * line = new TLine(cut_pos, 0, cut_pos, 9999999);
+    line->SetLineStyle(kDashed);
+    line->Draw();
+
+    cout << cut_pos << "\t" << portion << "\t" << noise_eff << endl;
+  }//calc_efficiency
+
+  TString filenamepdf = filename;
+  filenamepdf +=".pdf";
+  c->SaveAs(filenamepdf.Data());
+
+
 }
