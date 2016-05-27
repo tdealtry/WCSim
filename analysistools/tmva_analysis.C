@@ -36,7 +36,7 @@ TString create_filename(const char * prefix, TString& filename_string)
 }
 
 // Simple example of reading a generated Root file
-int tmva_analysis(const char *filename=NULL, const bool verbose=false, 
+int tmva_analysis(const char *filename=NULL, const int verbose=0, 
 		  const long max_nevents = -1, const int max_ntriggers = -1,
 		  double duration = 1000)
 {
@@ -131,7 +131,7 @@ int tmva_analysis(const char *filename=NULL, const bool verbose=false,
   //
   // CREATE TOOL INSTANCE
   //
-  tmva_tools tools(fout, true);
+  tmva_tools tools(fout, true, verbose);
 
   //
   // LOOP OVER EVENTS
@@ -196,10 +196,19 @@ int tmva_analysis(const char *filename=NULL, const bool verbose=false,
       //save a pointer to the 0th WCSimRootTrigger, so can access track/hit information in triggers >= 1
       wcsimroottrigger0 = wcsimrootevent;
 
+      if(verbose)
+	cout << "Calling PopulateDigitTimes()" << endl;
       tools.PopulateDigitTimes(wcsimroottrigger0, false, wcsimrootsuperevent);
+      if(verbose)
+	cout << "Calling PopulateVectors()" << endl;
       tools.PopulateVectors   (wcsimroottrigger0, false, geo);
+      if(verbose)
+	cout << "Calling PopulateTruthGun()" << endl;
+      tools.PopulateTruthGun  (wcsimroottrigger0);
       num_trig++;
 
+      if(verbose)
+	cout << "Calling FillTree()" << endl;
       tools.FillTree(duration);
 
       wcsimroottrigger0 = 0;

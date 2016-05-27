@@ -36,7 +36,7 @@ TString create_filename(const char * prefix, TString& filename_string)
 }
 
 // Simple example of reading a generated Root file
-int itc_analysis(const char *filename=NULL, const bool verbose=false, 
+int itc_analysis(const char *filename=NULL, const int verbose=false, 
 		 const long max_nevents = -1, const int max_ntriggers = -1)
 {
 #if !defined(__MAKECINT__)
@@ -138,7 +138,7 @@ int itc_analysis(const char *filename=NULL, const bool verbose=false,
   const bool one_time_slice = false;
   for(int ilarge = 0; ilarge < nlargewindows; ilarge++) {
     for(int ismall = 0; ismall < nsmallfracs; ismall++) {
-      itcconfigs.push_back(new itc_tools(fout, smallfracs[ismall]*largewindows[ilarge], largewindows[ilarge], 0, !ismall, one_time_slice));
+      itcconfigs.push_back(new itc_tools(fout, smallfracs[ismall]*largewindows[ilarge], largewindows[ilarge], 0, !ismall, one_time_slice, verbose));
     }//ismall
   }//ilarge
   const int nconfigs = itcconfigs.size();

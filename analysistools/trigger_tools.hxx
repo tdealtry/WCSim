@@ -5,16 +5,13 @@
 
 #include "TH1D.h"
 #include "TVector3.h"
+#include "TFile.h"
 
 #include "WCSimRootEvent.hh"
 #include "WCSimRootGeom.hh"
 #include "WCSimEnumerations.hh"
 
 using std::vector;
-using std::cout;
-using std::endl;
-using std::cerr;
-using std::sort;
 
 class trigger_tools
 {
@@ -28,7 +25,7 @@ public:
     kDigiTypeError
   };
   
-  trigger_tools();
+  trigger_tools(TFile * f, bool onetimeslice, int verbosity);
   virtual ~trigger_tools();
 
   void PopulateDigitTimes(WCSimRootTrigger * trigger, bool append, WCSimRootEvent * event = NULL);
@@ -43,14 +40,20 @@ public:
 private:
   void CleanupVectors();
   void CreateVectors();
+  void ClearVectors();
 
   void CleanupDigitTimes();
   void CreateDigitTimes();
+  void ClearDigitTimes();
   void SortDigitTimes();
   void FillDigitTimes(double digitime, DigiType_t digitype);
   DigiType_t GetDigitType(WCSimRootCherenkovDigiHit * wcsimrootcherenkovdigihit, WCSimRootEvent * event);
 
 protected:
+  TFile * f;
+  bool one_time_slice;
+  int verbosity;
+  
   vector<double> * digit_times;
   vector<double> * digit_times_physics;
   vector<double> * digit_times_noise;

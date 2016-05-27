@@ -1,26 +1,14 @@
 #ifndef itc_tools_h
 #define itc_tools_h
 
-#include <vector>
-#include <algorithm>
-#include <iostream>
-
-#include "TH1D.h"
-#include "TFile.h"
 #include "TTree.h"
 
 #include "trigger_tools.hxx"
 
-using std::vector;
-using std::cout;
-using std::endl;
-using std::cerr;
-using std::sort;
-
 class itc_tools : public trigger_tools
 {
 public:
-  itc_tools(TFile * f, int smallwindow, int largewindow, int offset, bool calculatendigits, bool onetimeslice);
+  itc_tools(TFile * f, int smallwindow, int largewindow, int offset, bool calculatendigits, bool onetimeslice, int verbosity);
   ~itc_tools();
 
   void CalcMaxITC();
@@ -44,13 +32,11 @@ private:
   double var_max_itc_1slice;
 
   TTree * tree;
-  TFile * f;
 
   int smallwindow;
   int largewindow;
   int offset;
   bool calcndigits;
-  bool one_time_slice;
 };
 
 #endif //itc_tools_h

@@ -3,12 +3,16 @@
 #include <algorithm>
 #include <iostream>
 
-#ifndef __DIGIT_TIME_VERBOSE__
-//#define __DIGIT_TIME_VERBOSE__
-#endif
+using std::sort;
+using std::cout;
+using std::endl;
+using std::cerr;
 
-trigger_tools::trigger_tools()
+trigger_tools::trigger_tools(TFile * f, bool onetimeslice, int verbosity) :
+  f(f), one_time_slice(onetimeslice), verbosity(verbosity)
 {
+  f->cd();
+
   digit_times         = NULL;
   digit_times_physics = NULL;
   digit_times_noise   = NULL;
@@ -21,12 +25,16 @@ trigger_tools::trigger_tools()
   digit_position_q = NULL;
   digit_position_r = NULL;
   digit_position_z = NULL;
+
+  CreateVectors();
+  CreateDigitTimes();
 }
 
 trigger_tools::~trigger_tools()
 {
   CleanupDigitTimes();
   CleanupVectors();
+  f = NULL;
 }
 
 void trigger_tools::CleanupVectors()
@@ -122,6 +130,25 @@ void trigger_tools::CreateDigitTimes()
   }
 }
 
+void trigger_tools::ClearVectors()
+{
+  digit_times_nosort->clear();
+  digit_charges->clear();
+  digit_ipmt->clear();
+  digit_pmtvec->clear();
+  digit_position_q->clear();
+  digit_position_r->clear();
+  digit_position_z->clear();
+}
+
+void trigger_tools::ClearDigitTimes()
+{
+  digit_times->clear();
+  digit_times_physics->clear();
+  digit_times_noise->clear();
+  digit_times_mix->clear();
+}
+
 void trigger_tools::SortDigitTimes()
 {
   if(digit_times != NULL) {
@@ -195,17 +222,18 @@ void trigger_tools::FillDigitTimes(double digitime, DigiType_t digitype)
 
 void trigger_tools::PopulateVectors(WCSimRootTrigger * trigger, bool append, WCSimRootGeom * geo)
 {
+  if(verbosity > 2)
+    cout << "Starting PopulateVectors()" << endl;
+  
   if(!append)
-    CleanupVectors();
-  CreateVectors();
+    ClearVectors();
   
   // Loop through elements in the TClonesArray of WCSimRootCherenkovDigHits
   const long ncherenkovdigihits = trigger->GetNcherenkovdigihits();
   for(long idigipmt = 0; idigipmt < ncherenkovdigihits; idigipmt++) {
     //get the digit
-#ifdef __DIGIT_TIME_VERBOSE__
-    cout << "Getting digit " << idigipmt << endl;
-#endif
+    if(verbosity > 3)
+      cout << "Getting digit " << idigipmt << endl;
     TObject * Digit = (trigger->GetCherenkovDigiHits())->At(idigipmt);
     WCSimRootCherenkovDigiHit * wcsimrootcherenkovdigihit = 
       dynamic_cast<WCSimRootCherenkovDigiHit *>(Digit);
@@ -221,12 +249,12 @@ void trigger_tools::PopulateVectors(WCSimRootTrigger * trigger, bool append, WCS
       cerr << "tube_id_to_get " << tube_id_to_get << " GetWCNumPMT " << geo->GetWCNumPMT() << endl;
       exit(-1);
     }
-    WCSimRootPMT * pmtobj = geo->GetPMTPointer(tube_id_to_get);
-    if(pmtobj->GetTubeNo() != tube_id_to_get + 1) {
-      cerr << "tube_id_to_get + 1 " << tube_id_to_get + 1 << " != WCSimRootPMT->GetTubeNo() " << pmtobj->GetTubeNo() << endl;
+    WCSimRootPMT pmtobj = geo->GetPMT(tube_id_to_get);
+    if(pmtobj.GetTubeNo() != tube_id_to_get + 1) {
+      cerr << "tube_id_to_get + 1 " << tube_id_to_get + 1 << " != WCSimRootPMT->GetTubeNo() " << pmtobj.GetTubeNo() << endl;
       exit(-1);
     }
-    TVector3 tube_vec(pmtobj->GetPosition(0), pmtobj->GetPosition(1), pmtobj->GetPosition(2));
+    TVector3 tube_vec(pmtobj.GetPosition(0), pmtobj.GetPosition(1), pmtobj.GetPosition(2));
 
     //fill the vectors
     digit_times_nosort->push_back(digitime);
@@ -241,17 +269,18 @@ void trigger_tools::PopulateVectors(WCSimRootTrigger * trigger, bool append, WCS
 
 void trigger_tools::PopulateDigitTimes(WCSimRootTrigger * trigger, bool append, WCSimRootEvent * event)
 {
+  if(verbosity > 2)
+    cout << "Starting PopulateDigitTimes()" << endl;
+
   if(!append)
-    CleanupDigitTimes();
-  CreateDigitTimes();
+    ClearDigitTimes();
   
   // Loop through elements in the TClonesArray of WCSimRootCherenkovDigHits
   const long ncherenkovdigihits = trigger->GetNcherenkovdigihits();
   for(long idigipmt = 0; idigipmt < ncherenkovdigihits; idigipmt++) {
     //get the digit
-#ifdef __DIGIT_TIME_VERBOSE__
-    cout << "Getting digit " << idigipmt << endl;
-#endif
+    if(verbosity > 3)
+      cout << "Getting digit " << idigipmt << endl;
     TObject * Digit = (trigger->GetCherenkovDigiHits())->At(idigipmt);
     WCSimRootCherenkovDigiHit * wcsimrootcherenkovdigihit = 
       dynamic_cast<WCSimRootCherenkovDigiHit *>(Digit);
@@ -276,6 +305,9 @@ void trigger_tools::CopyDigitTimes(trigger_tools * t)
 
 void trigger_tools::PopulateTruthGun(WCSimRootTrigger * trigger)
 {
+  if(verbosity > 2)
+    cout << "Starting PopulateTruthGun()" << endl;
+
   //vertex
   TRUE_e_vertex.SetXYZ(trigger->GetVtx(0), trigger->GetVtx(1), trigger->GetVtx(2));
   //direction, energy
@@ -283,14 +315,22 @@ void trigger_tools::PopulateTruthGun(WCSimRootTrigger * trigger)
   for (int itrack = 0; itrack < trigger->GetNtrack(); itrack++) {
     TObject *element = (trigger->GetTracks())->At(itrack);      
     WCSimRootTrack *wcsimroottrack = dynamic_cast<WCSimRootTrack*>(element);
+    cout << "itrack " << itrack << " ipnu " << wcsimroottrack->GetIpnu() << " flag " << wcsimroottrack->GetFlag()
+	 << " total energy " << wcsimroottrack->GetE()
+	 << " kinetic energy " << wcsimroottrack->GetE() - wcsimroottrack->GetM()
+	 << " direction " << wcsimroottrack->GetDir(0) << ", " << wcsimroottrack->GetDir(1) << ", " << wcsimroottrack->GetDir(2) 
+	 << endl;
     if(itrack == 2 && wcsimroottrack->GetIpnu() == 11 && wcsimroottrack->GetFlag() == 0) {
       if(found_electron) {
 	cerr << "Found multiple true electrons" << endl;
 	exit(-1);
       }
       found_electron = true;
-      TRUE_e_direction.SetXYZ(wcsimroottrack->GetDir(0), wcsimroottrack->GetDir(1), wcsimroottrack->GetDir(2));
-      TRUE_e_energy = wcsimroottrack->GetE();
+      TRUE_e_energy = wcsimroottrack->GetE() - wcsimroottrack->GetM();
+      if(TMath::Abs(TRUE_e_energy) < 1E-6)
+	TRUE_e_direction.SetXYZ(1,0,0);
+      else
+	TRUE_e_direction.SetXYZ(wcsimroottrack->GetDir(0), wcsimroottrack->GetDir(1), wcsimroottrack->GetDir(2));
     }
   }  //itrack // End of loop over tracks
   if(!found_electron) {
@@ -314,9 +354,8 @@ trigger_tools::DigiType_t trigger_tools::GetDigitType(WCSimRootCherenkovDigiHit 
   int peForTube      = -1; //number of pe (i.e. entries) for this tube in the WCSimRootCherenkovHitTime
   const long ncherenkovhits = event->GetTrigger(0)->GetNcherenkovhits();
   for(int ipmt = 0; ipmt < ncherenkovhits; ipmt++) {
-#ifdef __DIGIT_TIME_VERBOSE__
-    cout << "Getting hit " << ipmt << " of " << ncherenkovhits << endl;
-#endif
+    if(verbosity > 3)
+      cout << "trigger_tools::GetDigitType() Getting hit " << ipmt << " of " << ncherenkovhits << endl;
     TObject * Hit = hits->At(ipmt);
     WCSimRootCherenkovHit *wcsimrootcherenkovhit =
       dynamic_cast<WCSimRootCherenkovHit *>(Hit);
@@ -334,22 +373,19 @@ trigger_tools::DigiType_t trigger_tools::GetDigitType(WCSimRootCherenkovDigiHit 
     return kDigiTypeError;
   }
 
-#ifdef __DIGIT_TIME_VERBOSE__
-    cout << peForTube << " PMT hits found for digit " << idigipmt << " with tube ID " << tube_id << endl;
-#endif
+  if(verbosity > 3)
+    cout << "trigger_tools::GetDigitType() " << peForTube << " PMT hits found for digit with tube ID " << digitubeid << endl;
 
   //loop over the rawhits ids of hits that made up the digit,
   // and use them to find the hits in the WCSimRootCherenkovHitTime
   int n_noise_hits = 0, n_photon_hits = 0;
   vector<int> rawhit_ids = wcsimrootcherenkovdigihit->GetPhotonIds();
-#ifdef __DIGIT_TIME_VERBOSE__
-    cout << rawhit_ids.size() << " rawhits made up this digit" << endl;
-#endif
-    for(unsigned int irawhit = 0; irawhit < rawhit_ids.size(); irawhit++) {
+  if(verbosity > 3)
+    cout << "trigger_tools::GetDigitType() " << rawhit_ids.size() << " rawhits made up this digit" << endl;
+  for(unsigned int irawhit = 0; irawhit < rawhit_ids.size(); irawhit++) {
     int this_rawhit = rawhit_ids[irawhit];
-#ifdef __DIGIT_TIME_VERBOSE__
-      cout << "Attempting to look for rawhit " << this_rawhit+1 << " in WCSimRootCherenkovHitTime array...";
-#endif
+    if(verbosity > 3)
+      cout << "trigger_tools::GetDigitType() Attempting to look for rawhit " << this_rawhit+1 << " in WCSimRootCherenkovHitTime array...";
     if(this_rawhit >= peForTube) {
       cerr << " There are only " << peForTube << " rawhits in this PMT" << endl;
       return kDigiTypeError;
@@ -358,11 +394,11 @@ trigger_tools::DigiType_t trigger_tools::GetDigitType(WCSimRootCherenkovDigiHit 
     TObject * Hit = (hittimes)->At(timeArrayIndex + this_rawhit);
     WCSimRootCherenkovHitTime * wcsimrootcherenkovhittime =
       dynamic_cast<WCSimRootCherenkovHitTime *>(Hit);
-    //const double hittime  = wcsimrootcherenkovhittime->GetTruetime();
     const int    parentid = wcsimrootcherenkovhittime->GetParentID();
-#ifdef __DIGIT_TIME_VERBOSE__
-      cout << " hit time " << hittime << " " << parentid << endl;
-#endif
+    if(verbosity > 4) {
+      const double hittime  = wcsimrootcherenkovhittime->GetTruetime();
+      cout << "trigger_tools::GetDigitType()  hit time " << hittime << " " << parentid << endl;
+    }
     if(parentid == -1) {
       n_noise_hits++;
     }

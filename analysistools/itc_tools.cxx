@@ -1,13 +1,16 @@
 #include "itc_tools.hxx"
 
+#include <algorithm>
+#include <iostream>
 
-#ifndef __DIGIT_TIME_VERBOSE__
-//#define __DIGIT_TIME_VERBOSE__
-#endif
+using std::sort;
+using std::cout;
+using std::endl;
+using std::cerr;
 
-itc_tools::itc_tools(TFile * f, int smallwindow, int largewindow, int offset, bool calculatendigits, bool onetimeslice) :
-  f(f), smallwindow(smallwindow), largewindow(largewindow), offset(offset),
-  calcndigits(calculatendigits), one_time_slice(onetimeslice), trigger_tools()
+itc_tools::itc_tools(TFile * f, int smallwindow, int largewindow, int offset, bool calculatendigits, bool onetimeslice, int verbosity) :
+  smallwindow(smallwindow), largewindow(largewindow), offset(offset),
+  calcndigits(calculatendigits), trigger_tools(f, onetimeslice, verbosity)
 {
   f->cd();
 
@@ -42,15 +45,10 @@ itc_tools::~itc_tools()
   delete tree;
 }
 
-#ifndef CALCMAXITC_VERB
-#define CALCMAXITC_VERB 0
-#endif
-
 void itc_tools::CalcMaxITC()
 {
-#if CALCMAXITC_VERB >= 1
-  cout << "CALCMAXITC " << smallwindow << "\t" << largewindow << endl;
-#endif
+  if(verbosity > 2)
+    cout << "Calling itc_tools::CalcMaxITC() with " << smallwindow << "\t" << largewindow << endl;
 
   //add a little bit - the start is digits smeared early - there no earlier digits smeared into this gap
   vector<double>::iterator mintime_it = std::lower_bound(digit_times->begin(), digit_times->end(), digit_times->at(0) + 10);
@@ -85,17 +83,15 @@ void itc_tools::CalcMaxITC()
     mintime_pos = mintime_it - digit_times->begin();
   }
   vector<double>::iterator first_physics_it = mintime_it;
-#if CALCMAXITC_VERB >= 1
-  cout << "Physics starts at " << first_physics << endl;
-#endif
+  if(verbosity > 3)
+    cout << "itc_tools::CalcMaxITC() Physics starts at " << first_physics << endl;
 
   double maxndigitstime = -9999, maxitctime = -9999, maxitc = -1;
   int maxndigits = -1;
   for(vector<double>::iterator it = mintime_it; it != maxtime_it && it != digit_times->end(); it++) {
     double time = *it;
-#if CALCMAXITC_VERB >= 2
-    cout << "vector position " << it - digit_times->begin() << " of " << digit_times->size() << " with time " << time << endl;
-#endif
+    if(verbosity > 4)
+      cout << "itc_tools::CalcMaxITC() vector position " << it - digit_times->begin() << " of " << digit_times->size() << " with time " << time << endl;
     int ndigits_small = std::lower_bound(it, digit_times->end(), time + smallwindow) - it;
     int ndigits_large = std::lower_bound(it, digit_times->end(), time + largewindow) - it;
     double thisitc = (double)ndigits_small / (double)ndigits_large;
@@ -103,9 +99,8 @@ void itc_tools::CalcMaxITC()
       maxitc = thisitc;
       maxitctime = time;
     }
-#if CALCMAXITC_VERB >= 2
-    cout << ndigits_small << "\t" << ndigits_large << "\t" << thisitc << "\t" << maxitc << endl;
-#endif
+    if(verbosity > 4)
+      cout << "itc_tools::CalcMaxITC() " << ndigits_small << "\t" << ndigits_large << "\t" << thisitc << "\t" << maxitc << endl;
     if(ndigits_large > maxndigits) {
       maxndigits = ndigits_large;
       maxndigitstime = time;
@@ -124,9 +119,8 @@ void itc_tools::CalcMaxITC()
     h1_max_ndigits->Fill(maxndigits);
     h1_max_ndigits_time->Fill(maxndigitstime);
   }
-#if CALCMAXITC_VERB >= 1
-  cout << "filling itc with " << maxitc << "\t" << maxitctime << endl;
-#endif
+  if(verbosity > 3)
+    cout << "itc_tools::CalcMaxITC() filling itc with " << maxitc << "\t" << maxitctime << endl;
   h1_max_itc->Fill(maxitc);
   h1_max_itc_time->Fill(maxitctime);
   var_max_ndigits = maxndigits;
