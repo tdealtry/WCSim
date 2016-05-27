@@ -8,7 +8,9 @@ parser.add_argument('-m','--macroname', type=str, default='$WCSIMDIR/sample-root
 parser.add_argument('-d','--dir', type=str, help='Directory to analyse', default='./')
 parser.add_argument('-v','--verbose', action='store_true', help='Run verbosely?')
 parser.add_argument('-f','--onlyonefile', action='store_true', help='Run only one file?')
-parser.add_argument('-t','--tag', type=str, help='Prefix of the output file', default='analysewcsim')
+parser.add_argument('-t','--tag', type=str, help='Prefix of the output file. If null, use the macroname', default='')
+parser.add_argument('--onlycreatefiles', action='store_true', help="Don't submit the job")
+parser.add_argument('--overwrite-output', action='store_true', help='Resubmit all jobs (rather than just those who have no output file')
 parser.add_argument('--additional-macro-options', type=str, default='', help='If your macro has more options than just filename & verbosity, specify the remaining arguments here. Recommended to wrap the command in \'\', then "" are dealt with correctly. WARNING: no whitespace allowed!')
 parser.add_argument('--batchmode', type=str, default='local', choices=['local','condor'], help='Where to submit the jobs')
 parser.add_argument('--notifyuseremail', type=str, default='', help='Specify this to get email notifications about jobs')
@@ -42,13 +44,23 @@ def main(args_to_parse = None):
     if args.compiled_mode:
         prefix += '+'
     
-    tag = args.tag.replace('.', '_')
+    macro = args.macroname.rsplit('/',1)[-1].rsplit('.',1)[0]
+    tag = ''
+    if len(args.tag) < 1:
+        tag = macro
+    else:
+        tag = args.tag.replace('.', '_')
     filenamestub = tag
     if args.batchmode == 'condor' and not os.path.islink('rootwc'):
         os.symlink(os.path.expandvars("$WCSIMDIR") + "/rootwc/rootwc", "rootwc")
 
     #loop through all the relevant files in the directory, and run the analysis script
     for i, file1 in enumerate(glob.glob("wcsim_*.root")):
+        #check if the output file already exists
+        if not args.overwrite_output:
+            if os.path.isfile(macro + file1):
+                continue
+
         #create the arguments passed to the executable
         commandstub = '("' + file1 + '",' + verbose + (',' + args.additional_macro_options if args.additional_macro_options else '') + ")"
 
@@ -89,7 +101,8 @@ def main(args_to_parse = None):
 
         #run the command
         print command
-        os.system(command)
+        if not args.onlycreatefiles:
+            os.system(command)
         if args.onlyonefile:
             break
 
