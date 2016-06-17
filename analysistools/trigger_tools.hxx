@@ -67,9 +67,13 @@ protected:
   vector<double>   * digit_position_r;
   vector<double>   * digit_position_z;
 
-  TVector3 TRUE_e_vertex;
-  TVector3 TRUE_e_direction;
-  double   TRUE_e_energy;
+  double TRUE_e_vertex_x;
+  double TRUE_e_vertex_y;
+  double TRUE_e_vertex_z;
+  double TRUE_e_direction_x;
+  double TRUE_e_direction_y;
+  double TRUE_e_direction_z;
+  double TRUE_e_energy;
 };
 
 #endif //trigger_tools_h

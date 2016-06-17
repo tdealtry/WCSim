@@ -309,17 +309,20 @@ void trigger_tools::PopulateTruthGun(WCSimRootTrigger * trigger)
     cout << "Starting PopulateTruthGun()" << endl;
 
   //vertex
-  TRUE_e_vertex.SetXYZ(trigger->GetVtx(0), trigger->GetVtx(1), trigger->GetVtx(2));
+  TRUE_e_vertex_x = trigger->GetVtx(0);
+  TRUE_e_vertex_y = trigger->GetVtx(1);
+  TRUE_e_vertex_z = trigger->GetVtx(2);
   //direction, energy
   bool found_electron = false;
   for (int itrack = 0; itrack < trigger->GetNtrack(); itrack++) {
     TObject *element = (trigger->GetTracks())->At(itrack);      
     WCSimRootTrack *wcsimroottrack = dynamic_cast<WCSimRootTrack*>(element);
-    cout << "itrack " << itrack << " ipnu " << wcsimroottrack->GetIpnu() << " flag " << wcsimroottrack->GetFlag()
-	 << " total energy " << wcsimroottrack->GetE()
-	 << " kinetic energy " << wcsimroottrack->GetE() - wcsimroottrack->GetM()
-	 << " direction " << wcsimroottrack->GetDir(0) << ", " << wcsimroottrack->GetDir(1) << ", " << wcsimroottrack->GetDir(2) 
-	 << endl;
+    if(verbosity > 4)
+      cout << "itrack " << itrack << " ipnu " << wcsimroottrack->GetIpnu() << " flag " << wcsimroottrack->GetFlag()
+	   << " total energy " << wcsimroottrack->GetE()
+	   << " kinetic energy " << wcsimroottrack->GetE() - wcsimroottrack->GetM()
+	   << " direction " << wcsimroottrack->GetDir(0) << ", " << wcsimroottrack->GetDir(1) << ", " << wcsimroottrack->GetDir(2) 
+	   << endl;
     if(itrack == 2 && wcsimroottrack->GetIpnu() == 11 && wcsimroottrack->GetFlag() == 0) {
       if(found_electron) {
 	cerr << "Found multiple true electrons" << endl;
@@ -327,10 +330,16 @@ void trigger_tools::PopulateTruthGun(WCSimRootTrigger * trigger)
       }
       found_electron = true;
       TRUE_e_energy = wcsimroottrack->GetE() - wcsimroottrack->GetM();
-      if(TMath::Abs(TRUE_e_energy) < 1E-6)
-	TRUE_e_direction.SetXYZ(1,0,0);
-      else
-	TRUE_e_direction.SetXYZ(wcsimroottrack->GetDir(0), wcsimroottrack->GetDir(1), wcsimroottrack->GetDir(2));
+      if(TMath::Abs(TRUE_e_energy) < 1E-6) {
+	TRUE_e_direction_x = 1; //can't have no direction, or will kill solar anisotropy calculation
+	TRUE_e_direction_y = 0;
+	TRUE_e_direction_z = 0;
+      }
+      else {
+	TRUE_e_direction_x = wcsimroottrack->GetDir(0);
+	TRUE_e_direction_y = wcsimroottrack->GetDir(1);
+	TRUE_e_direction_z = wcsimroottrack->GetDir(2);
+      }
     }
   }  //itrack // End of loop over tracks
   if(!found_electron) {

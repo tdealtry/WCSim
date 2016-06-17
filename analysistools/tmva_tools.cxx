@@ -59,8 +59,12 @@ tmva_tools::tmva_tools(TFile * f, bool onetimeslice, int verbosity) :
   tree->Branch("TRUE_last_physics_hit",  &var_TRUE_last_physics_hit);
   tree->Branch("TRUE_fraction_physics_hit_in_window", &var_TRUE_fraction_physics_hit_in_window);
   tree->Branch("TRUE_e_energy",    &TRUE_e_energy);
-  tree->Branch("TRUE_e_direction", &TRUE_e_direction);
-  tree->Branch("TRUE_e_vertex",    &TRUE_e_vertex);
+  tree->Branch("TRUE_e_direction_x", &TRUE_e_direction_x);
+  tree->Branch("TRUE_e_direction_y", &TRUE_e_direction_y);
+  tree->Branch("TRUE_e_direction_z", &TRUE_e_direction_z);
+  tree->Branch("TRUE_e_vertex_x",    &TRUE_e_vertex_x);
+  tree->Branch("TRUE_e_vertex_y",    &TRUE_e_vertex_y);
+  tree->Branch("TRUE_e_vertex_z",    &TRUE_e_vertex_z);
 
   tree->Branch("digit_charges", &tree_digit_charges);
   tree->Branch("digit_times", &tree_digit_times_nosort);
@@ -433,9 +437,9 @@ void tmva_tools::FillAnisotropyVector()
   if(verbosity > 1)
     cout << "Starting FillAnisotropyVector()" << endl;
   int nplane_hi = 0, nplane_lo = 0;
-  double a  = TRUE_e_direction.X();
-  double b  = TRUE_e_direction.Y();
-  double c  = TRUE_e_direction.Z();
+  double a  = TRUE_e_direction_x;
+  double b  = TRUE_e_direction_y;
+  double c  = TRUE_e_direction_z;
   double denominator = TMath::Sqrt(a*a + b*b + c*c);
   if(verbosity > 2)
     cout << "tmva_tools::FillAnisotropyVector() has a,b,c "
