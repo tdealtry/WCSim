@@ -31,7 +31,7 @@ void MakeApplicationTables(TString variables = "Bdt,BdtB,BdtG,BdtD,Cuts", int ve
     ofstream str(TString::Format("TMVAPlots_%d.tex", iv));
     str << "\\begin{tabular}{| l | c c c  | c | c |}" << endl
 	<< "\\hline" << endl
-	<< "Energy & $\\eta\\rho$ & $\\eta$ & $\\rho$ & "
+	<< "Energy & $\\epsilon\\rho$ & $\\epsilon$ & $\\rho$ & "
 	<< variable << " & Noise rejection \\\\" << endl
 	<< "\\hline" << endl;
 
@@ -50,7 +50,7 @@ void MakeApplicationTables(TString variables = "Bdt,BdtB,BdtG,BdtD,Cuts", int ve
 
       //populate the table
       int maxbin = h_ep[ie]->GetMaximumBin();
-      str << "$" << ie << " \\le E_{e_{\\textrm{tot}}} < " << ie+1 << "$ & "
+      str << "$" << ie << " \\le E_e^{\\textrm{tot}} < " << ie+1 << "$ & "
 	      << std::fixed << std::setprecision(1)
 	      << 100 * h_ep        [ie]->GetBinContent(maxbin) << " & "
 	      << 100 * h_efficiency[ie]->GetBinContent(maxbin) << " & "
