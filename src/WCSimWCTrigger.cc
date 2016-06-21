@@ -21,7 +21,6 @@
 #include <vector>
 // for memset
 #include <cstring>
-#include <iostream>
 #include <fstream>
 
 #define WCSIMWCTRIGGER_DEBUG_GEOM_INFO 1
