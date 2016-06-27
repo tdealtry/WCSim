@@ -53,7 +53,8 @@ vector<pair<string,char> > GetSpectatorNames();
 
 void TMVAClassification( const int runmode = 4,
 			 const bool test = true,
-			 const TString myMethodList = "Cuts",
+			 const TString myMethodList = "BDT",
+			 const TString tag = "test",
 			 const char * sigfilename = "$WCSIMDIR/runs/20160517_tmva/tmva_analysiswcsim_makekin_3.0:10.0e-*.0.root",
 			 const char * bkgfilename = "$WCSIMDIR/runs/20160517_tmva/tmva_analysiswcsim_makekin_0.0e-*.0.root")
 {
@@ -168,8 +169,12 @@ void TMVAClassification( const int runmode = 4,
    // --- Here the preparation phase begins
 
    // Create a ROOT output file where TMVA will store ntuples, histograms, etc.
-   TString outfileName( "TMVA.root" );
-   TFile* outputFile = TFile::Open( outfileName, "RECREATE" );
+   TString outfileName(TString::Format("TMVA_%s.root", tag.Data()));
+   TFile* outputFile = TFile::Open( outfileName, "CREATE" );
+   if(!outputFile || outputFile->IsZombie()) {
+     cerr << "File " << outfileName << " already exists. Exiting..." << endl;
+     return;
+   }
 
    // Create the factory object. Later you can choose the methods
    // whose performance you'd like to investigate. The factory is 
@@ -181,7 +186,7 @@ void TMVAClassification( const int runmode = 4,
    // The second argument is the output file for the training results
    // All TMVA output can be suppressed by removing the "!" (not) in
    // front of the "Silent" argument in the option string
-   TMVA::Factory *factory = new TMVA::Factory( "TMVAClassification", outputFile,
+   TMVA::Factory *factory = new TMVA::Factory( TString::Format("TMVAClassification_%s", tag.Data()), outputFile,
                                                "V:!Silent:Color:DrawProgressBar:Transformations=I;P;G,D:AnalysisType=Classification" );
 
    // If you wish to modify default settings

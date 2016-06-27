@@ -10,9 +10,9 @@
 #include "TCanvas.h"
 #include "TMath.h"
 
-void MakeApplicationTables(TString variables = "Bdt,BdtB,BdtG,BdtD,Cuts", int verbose = 1, const char * filename = "TMVAPlots.root")
+void MakeApplicationTables(TString variables = "Bdt,BdtB,BdtG,BdtD,Cuts", int verbose = 1, TString tag = "test")
 {
-  TFile f(filename);
+  TFile f(TString::Format("TMVAPlots_%s.root", tag.Data()));
   
   const int nenergies = 10;
   //book histograms
@@ -28,7 +28,7 @@ void MakeApplicationTables(TString variables = "Bdt,BdtB,BdtG,BdtD,Cuts", int ve
     cout << variable << endl;
 
     //table header
-    ofstream str(TString::Format("TMVAPlots_%d.tex", iv));
+    ofstream str(TString::Format("TMVAPlots_%s_%d.tex", tag.Data(), iv));
     str << "\\begin{tabular}{| l | c c c  | c | c |}" << endl
 	<< "\\hline" << endl
 	<< "Energy & $\\epsilon\\rho$ & $\\epsilon$ & $\\rho$ & "

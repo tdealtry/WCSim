@@ -15,9 +15,9 @@ TH1D * MakeHistogram(const int mode, const int ie,
 		     const TString hname, const TString htitle, const int nbins, const double xmax);
 TEventList * MakeEventList(TTree * t, const TString elistname, const TString ecut);
 
-void MakeApplicationPlots(TString variables = "Bdt,BdtB,BdtG,BdtD,Cuts", int verbose = 1, const char * filename = "TMVApp.root")
+void MakeApplicationPlots(TString variables = "Bdt,BdtB,BdtG,BdtD,Cuts", int verbose = 1, TString tag = "test")
 {
-  TFile f(filename);
+  TFile f(TString::Format("TMVApp_%s.root", tag.Data()));
   TTree * t = 0;
   f.GetObject("tmva_results", t);
   if(!t) {
@@ -26,10 +26,16 @@ void MakeApplicationPlots(TString variables = "Bdt,BdtB,BdtG,BdtD,Cuts", int ver
   }
   cout << "Tree contains " << t->GetEntries() << " events" << endl;
 
-  TFile fout("TMVAPlots.root", "RECREATE");
+  TString outfilename = TString::Format("TMVAPlots_%s.root", tag.Data());
+  TFile fout(outfilename, "CREATE");
+  if(fout.IsZombie()) {
+    cerr << "File " << outfilename << " already exists. Exiting..." << endl;
+    return;
+  }
   TCanvas * c = new TCanvas();
   c->SetTopMargin(0.2);
-  c->SaveAs("TMVAPlots.pdf[");
+  TString pdfname = TString::Format("TMVAPlots_%s.pdf", tag.Data());
+  c->SaveAs(pdfname + "[");
 
   const int nvariables = 10;
   const int nenergies  = 10;
@@ -55,7 +61,7 @@ void MakeApplicationPlots(TString variables = "Bdt,BdtB,BdtG,BdtD,Cuts", int ver
     hs_value[iv] = new THStack(TString::Format("hs_value_%s", variable.Data()),
 			       TString::Format("%s;%s value;Number of events", variable.Data(), variable.Data()));
     hs_efficiency[iv] = new THStack(TString::Format("hs_efficiency_%s", variable.Data()),
-			       TString::Format("%s;%s value;Efficiency", variable.Data(), variable.Data()));
+				    TString::Format("%s;%s value;Efficiency", variable.Data(), variable.Data()));
     hs_purity[iv] = new THStack(TString::Format("hs_purity_%s", variable.Data()),
 				TString::Format("%s;%s value;Purity", variable.Data(), variable.Data()));
     hs_ep[iv] = new THStack(TString::Format("hs_ep_%s", variable.Data()),
@@ -142,16 +148,16 @@ void MakeApplicationPlots(TString variables = "Bdt,BdtB,BdtG,BdtD,Cuts", int ver
 
 
     //draw the histograms & save them
-    DrawStacks(hs_value[iv], "", "TMVAPlots.pdf", c);
-    DrawStacks(hs_efficiency[iv], "NOSTACK", "TMVAPlots.pdf", c);
-    DrawStacks(hs_purity[iv], "NOSTACK", "TMVAPlots.pdf", c);
-    DrawStacks(hs_ep[iv], "NOSTACK", "TMVAPlots.pdf", c);
+    DrawStacks(hs_value[iv], "", pdfname, c);
+    DrawStacks(hs_efficiency[iv], "NOSTACK", pdfname, c);
+    DrawStacks(hs_purity[iv], "NOSTACK", pdfname, c);
+    DrawStacks(hs_ep[iv], "NOSTACK", pdfname, c);
 
     //loop
     iv++;
   }//loop over variables
 
-  c->SaveAs("TMVAPlots.pdf]");
+  c->SaveAs(pdfname + "]");
   fout.Close();
   f.Close();
 }

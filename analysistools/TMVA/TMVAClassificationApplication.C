@@ -42,7 +42,8 @@ void AnalyseEventWithMVA(TMVA::Reader * reader, TString method, TH1F * h, double
 }
 
 void TMVAClassificationApplication( bool test = true,
-				    TString myMethodList = "",
+				    TString myMethodList = "BDT",
+				    TString tag = "test",
 				    const char * filename = "$WCSIMDIR/runs/20160616_tmva_testevents/tmva_analysiswcsim_makekin_*e-*.0.root"
 				    )
 {   
@@ -146,6 +147,15 @@ void TMVAClassificationApplication( bool test = true,
 
    // --------------------------------------------------------------------------------------------------
 
+   //create output file & tree
+   TString outfilename = TString::Format("TMVApp_%s.root", tag.Data());
+   TFile *target  = new TFile( outfilename,"CREATE" );
+   if(!target || target->IsZombie()) {
+     cerr << "File " << outfilename << " already exists. Exiting..." << endl;
+     return;
+   }
+   TTree *tout = new TTree("tmva_results", "Result of trained TMVA applied to independent data");
+   
    // --- Create the Reader object
 
    TMVA::Reader *reader = new TMVA::Reader( "!Color:!Silent" );    
@@ -196,7 +206,7 @@ void TMVAClassificationApplication( bool test = true,
    // --- Book the MVA methods
 
    TString dir    = "weights/";
-   TString prefix = "TMVAClassification";
+   TString prefix = TString::Format("TMVAClassification_%s", tag.Data());
 
    // Book method(s)
    for (std::map<std::string,int>::iterator it = Use.begin(); it != Use.end(); it++) {
@@ -207,10 +217,6 @@ void TMVAClassificationApplication( bool test = true,
       }
    }
 
-   //create output file & tree
-   TFile *target  = new TFile( "TMVApp.root","RECREATE" );
-   TTree *tout = new TTree("tmva_results", "Result of trained TMVA applied to independent data");
-   
    // Book output histograms
    UInt_t nbin = 100;
    TH1F   *histLk(0), *histLkD(0), *histLkPCA(0), *histLkKDE(0), *histLkMIX(0), *histPD(0), *histPDD(0);
@@ -275,101 +281,101 @@ void TMVAClassificationApplication( bool test = true,
    if (Use["CutsPCA"])       tout->Branch("CutsPCA", &bCutsPCA );
    if (Use["CutsGA"])        tout->Branch("CutsGA",  &bCutsGA  );
    if (Use["CutsSA"])        tout->Branch("CutsSA",  &bCutsSA  );
-   if (Use["Likelihood"])    tout->Branch("Lk",      &bLk      );
-   if (Use["LikelihoodD"])   tout->Branch("LkD",     &bLkD     );
-   if (Use["LikelihoodPCA"]) tout->Branch("LkPCA",   &bLkPCA   );
-   if (Use["LikelihoodKDE"]) tout->Branch("LkKDE",   &bLkKDE   );
-   if (Use["LikelihoodMIX"]) tout->Branch("LkMIX",   &bLkMIX   );
-   if (Use["PDERS"])         tout->Branch("PD",      &bPD      );
-   if (Use["PDERSD"])        tout->Branch("PDD",     &bPDD     );
-   if (Use["PDERSPCA"])      tout->Branch("PDPCA",   &bPDPCA   );
+   if (Use["Likelihood"])    tout->Branch("Likelihood",      &bLk      );
+   if (Use["LikelihoodD"])   tout->Branch("LikelihoodD",     &bLkD     );
+   if (Use["LikelihoodPCA"]) tout->Branch("LikelihoodPCA",   &bLkPCA   );
+   if (Use["LikelihoodKDE"]) tout->Branch("LikelihoodKDE",   &bLkKDE   );
+   if (Use["LikelihoodMIX"]) tout->Branch("LikelihoodMIX",   &bLkMIX   );
+   if (Use["PDERS"])         tout->Branch("PDERS",      &bPD      );
+   if (Use["PDERSD"])        tout->Branch("PDERSD",     &bPDD     );
+   if (Use["PDERSPCA"])      tout->Branch("PDERSPCA",   &bPDPCA   );
    if (Use["KNN"])           tout->Branch("KNN",     &bKNN     );
-   if (Use["HMatrix"])       tout->Branch("Hm",      &bHm      );
-   if (Use["Fisher"])        tout->Branch("Fi",      &bFi      );
-   if (Use["FisherG"])       tout->Branch("FiG",     &bFiG     );
-   if (Use["BoostedFisher"]) tout->Branch("FiB",     &bFiB     );
+   if (Use["HMatrix"])       tout->Branch("HMatrix",      &bHm      );
+   if (Use["Fisher"])        tout->Branch("Fisher",      &bFi      );
+   if (Use["FisherG"])       tout->Branch("FisherG",     &bFiG     );
+   if (Use["BoostedFisher"]) tout->Branch("BoostedFisher",     &bFiB     );
    if (Use["LD"])            tout->Branch("LD",      &bLD      );
-   if (Use["MLP"])           tout->Branch("Nn",      &bNn      );
-   if (Use["MLPBFGS"])       tout->Branch("Nnbfgs",  &bNnbfgs  );
-   if (Use["MLPBNN"])        tout->Branch("Nnbnn",   &bNnbnn   );
-   if (Use["CFMlpANN"])      tout->Branch("NnC",     &bNnC     );
-   if (Use["TMlpANN"])       tout->Branch("NnT",     &bNnT     );
-   if (Use["BDT"])           tout->Branch("Bdt",     &bBdt     );
-   if (Use["BDTD"])          tout->Branch("BdtD",    &bBdtD    );
-   if (Use["BDTG"])          tout->Branch("BdtG",    &bBdtG    );
-   if (Use["BDTB"])          tout->Branch("BdtB",    &bBdtB    );
-   if (Use["RuleFit"])       tout->Branch("Rf",      &bRf      );
-   if (Use["SVM_Gauss"])     tout->Branch("SVMG",    &bSVMG    );
-   if (Use["SVM_Poly"])      tout->Branch("SVMP",    &bSVMP    );
-   if (Use["SVM_Lin"])       tout->Branch("SVML",    &bSVML    );
-   if (Use["FDA_MT"])        tout->Branch("FDAMT",   &bFDAMT   );
-   if (Use["FDA_GA"])        tout->Branch("FDAGA",   &bFDAGA   );
-   if (Use["Category"])      tout->Branch("Cat",     &bCat     );
-   if (Use["Plugin"])        tout->Branch("PBdt",    &bPBdt    );
+   if (Use["MLP"])           tout->Branch("MLP",      &bNn      );
+   if (Use["MLPBFGS"])       tout->Branch("MLPBFGS",  &bNnbfgs  );
+   if (Use["MLPBNN"])        tout->Branch("MLPBNN",   &bNnbnn   );
+   if (Use["CFMlpANN"])      tout->Branch("CFMlpANN",     &bNnC     );
+   if (Use["TMlpANN"])       tout->Branch("TMlpANN",     &bNnT     );
+   if (Use["BDT"])           tout->Branch("BDT",     &bBdt     );
+   if (Use["BDTD"])          tout->Branch("BDTD",    &bBdtD    );
+   if (Use["BDTG"])          tout->Branch("BDTG",    &bBdtG    );
+   if (Use["BDTB"])          tout->Branch("BDTB",    &bBdtB    );
+   if (Use["RuleFit"])       tout->Branch("RuleFit",      &bRf      );
+   if (Use["SVM_Gauss"])     tout->Branch("SVM_Gauss",    &bSVMG    );
+   if (Use["SVM_Poly"])      tout->Branch("SVM_Poly",    &bSVMP    );
+   if (Use["SVM_Lin"])       tout->Branch("SVM_Lin",    &bSVML    );
+   if (Use["FDA_MT"])        tout->Branch("FDA_MT",   &bFDAMT   );
+   if (Use["FDA_GA"])        tout->Branch("FDA_GA",   &bFDAGA   );
+   if (Use["Category"])      tout->Branch("Category",     &bCat     );
+   if (Use["Plugin"])        tout->Branch("Plugin",    &bPBdt    );
    //prob
-   if (Use["Likelihood"])    tout->Branch("Lk_prob",      &bLk_prob      );
-   if (Use["LikelihoodD"])   tout->Branch("LkD_prob",     &bLkD_prob     );
-   if (Use["LikelihoodPCA"]) tout->Branch("LkPCA_prob",   &bLkPCA_prob   );
-   if (Use["LikelihoodKDE"]) tout->Branch("LkKDE_prob",   &bLkKDE_prob   );
-   if (Use["LikelihoodMIX"]) tout->Branch("LkMIX_prob",   &bLkMIX_prob   );
-   if (Use["PDERS"])         tout->Branch("PD_prob",      &bPD_prob      );
-   if (Use["PDERSD"])        tout->Branch("PDD_prob",     &bPDD_prob     );
-   if (Use["PDERSPCA"])      tout->Branch("PDPCA_prob",   &bPDPCA_prob   );
+   if (Use["Likelihood"])    tout->Branch("Likelihood_prob",      &bLk_prob      );
+   if (Use["LikelihoodD"])   tout->Branch("LikelihoodD_prob",     &bLkD_prob     );
+   if (Use["LikelihoodPCA"]) tout->Branch("LikelihoodPCA_prob",   &bLkPCA_prob   );
+   if (Use["LikelihoodKDE"]) tout->Branch("LikelihoodKDE_prob",   &bLkKDE_prob   );
+   if (Use["LikelihoodMIX"]) tout->Branch("LikelihoodMIX_prob",   &bLkMIX_prob   );
+   if (Use["PDERS"])         tout->Branch("PDERS_prob",      &bPD_prob      );
+   if (Use["PDERSD"])        tout->Branch("PDERSD_prob",     &bPDD_prob     );
+   if (Use["PDERSPCA"])      tout->Branch("PDERSPCA_prob",   &bPDPCA_prob   );
    if (Use["KNN"])           tout->Branch("KNN_prob",     &bKNN_prob     );
-   if (Use["HMatrix"])       tout->Branch("Hm_prob",      &bHm_prob      );
-   if (Use["Fisher"])        tout->Branch("Fi_prob",      &bFi_prob      );
-   if (Use["FisherG"])       tout->Branch("FiG_prob",     &bFiG_prob     );
-   if (Use["BoostedFisher"]) tout->Branch("FiB_prob",     &bFiB_prob     );
+   if (Use["HMatrix"])       tout->Branch("HMatrix_prob",      &bHm_prob      );
+   if (Use["Fisher"])        tout->Branch("Fisher_prob",      &bFi_prob      );
+   if (Use["FisherG"])       tout->Branch("FisherG_prob",     &bFiG_prob     );
+   if (Use["BoostedFisher"]) tout->Branch("BoostedFisher_prob",     &bFiB_prob     );
    if (Use["LD"])            tout->Branch("LD_prob",      &bLD_prob      );
-   if (Use["MLP"])           tout->Branch("Nn_prob",      &bNn_prob      );
-   if (Use["MLPBFGS"])       tout->Branch("Nnbfgs_prob",  &bNnbfgs_prob  );
-   if (Use["MLPBNN"])        tout->Branch("Nnbnn_prob",   &bNnbnn_prob   );
-   if (Use["CFMlpANN"])      tout->Branch("NnC_prob",     &bNnC_prob     );
-   if (Use["TMlpANN"])       tout->Branch("NnT_prob",     &bNnT_prob     );
-   if (Use["BDT"])           tout->Branch("Bdt_prob",     &bBdt_prob     );
-   if (Use["BDTD"])          tout->Branch("BdtD_prob",    &bBdtD_prob    );
-   if (Use["BDTG"])          tout->Branch("BdtG_prob",    &bBdtG_prob    );
-   if (Use["BDTB"])          tout->Branch("BdtB_prob",    &bBdtB_prob    );
-   if (Use["RuleFit"])       tout->Branch("Rf_prob",      &bRf_prob      );
-   if (Use["SVM_Gauss"])     tout->Branch("SVMG_prob",    &bSVMG_prob    );
-   if (Use["SVM_Poly"])      tout->Branch("SVMP_prob",    &bSVMP_prob    );
-   if (Use["SVM_Lin"])       tout->Branch("SVML_prob",    &bSVML_prob    );
-   if (Use["FDA_MT"])        tout->Branch("FDAMT_prob",   &bFDAMT_prob   );
-   if (Use["FDA_GA"])        tout->Branch("FDAGA_prob",   &bFDAGA_prob   );
-   if (Use["Category"])      tout->Branch("Cat_prob",     &bCat_prob     );
-   if (Use["Plugin"])        tout->Branch("PBdt_prob",    &bPBdt_prob    );
+   if (Use["MLP"])           tout->Branch("MLP_prob",      &bNn_prob      );
+   if (Use["MLPBFGS"])       tout->Branch("MLPBFGS_prob",  &bNnbfgs_prob  );
+   if (Use["MLPBNN"])        tout->Branch("MLPBNN_prob",   &bNnbnn_prob   );
+   if (Use["CFMlpANN"])      tout->Branch("CFMlpANN_prob",     &bNnC_prob     );
+   if (Use["TMlpANN"])       tout->Branch("TMlpANN_prob",     &bNnT_prob     );
+   if (Use["BDT"])           tout->Branch("BDT_prob",     &bBdt_prob     );
+   if (Use["BDTD"])          tout->Branch("BDTD_prob",    &bBdtD_prob    );
+   if (Use["BDTG"])          tout->Branch("BDTG_prob",    &bBdtG_prob    );
+   if (Use["BDTB"])          tout->Branch("BDTB_prob",    &bBdtB_prob    );
+   if (Use["RuleFit"])       tout->Branch("RuleFit_prob",      &bRf_prob      );
+   if (Use["SVM_Gauss"])     tout->Branch("SVM_Gauss_prob",    &bSVMG_prob    );
+   if (Use["SVM_Poly"])      tout->Branch("SVM_Poly_prob",    &bSVMP_prob    );
+   if (Use["SVM_Lin"])       tout->Branch("SVM_Lin_prob",    &bSVML_prob    );
+   if (Use["FDA_MT"])        tout->Branch("FDA_MT_prob",   &bFDAMT_prob   );
+   if (Use["FDA_GA"])        tout->Branch("FDA_GA_prob",   &bFDAGA_prob   );
+   if (Use["Category"])      tout->Branch("Category_prob",     &bCat_prob     );
+   if (Use["Plugin"])        tout->Branch("Plugin_prob",    &bPBdt_prob    );
    //rarity
-   if (Use["Likelihood"])    tout->Branch("Lk_rarity",      &bLk_rarity      );
-   if (Use["LikelihoodD"])   tout->Branch("LkD_rarity",     &bLkD_rarity     );
-   if (Use["LikelihoodPCA"]) tout->Branch("LkPCA_rarity",   &bLkPCA_rarity   );
-   if (Use["LikelihoodKDE"]) tout->Branch("LkKDE_rarity",   &bLkKDE_rarity   );
-   if (Use["LikelihoodMIX"]) tout->Branch("LkMIX_rarity",   &bLkMIX_rarity   );
-   if (Use["PDERS"])         tout->Branch("PD_rarity",      &bPD_rarity      );
-   if (Use["PDERSD"])        tout->Branch("PDD_rarity",     &bPDD_rarity     );
-   if (Use["PDERSPCA"])      tout->Branch("PDPCA_rarity",   &bPDPCA_rarity   );
+   if (Use["Likelihood"])    tout->Branch("Likelihood_rarity",      &bLk_rarity      );
+   if (Use["LikelihoodD"])   tout->Branch("LikelihoodD_rarity",     &bLkD_rarity     );
+   if (Use["LikelihoodPCA"]) tout->Branch("LikelihoodPCA_rarity",   &bLkPCA_rarity   );
+   if (Use["LikelihoodKDE"]) tout->Branch("LikelihoodKDE_rarity",   &bLkKDE_rarity   );
+   if (Use["LikelihoodMIX"]) tout->Branch("LikelihoodMIX_rarity",   &bLkMIX_rarity   );
+   if (Use["PDERS"])         tout->Branch("PDERS_rarity",      &bPD_rarity      );
+   if (Use["PDERSD"])        tout->Branch("PDERSD_rarity",     &bPDD_rarity     );
+   if (Use["PDERSPCA"])      tout->Branch("PDERSPCA_rarity",   &bPDPCA_rarity   );
    if (Use["KNN"])           tout->Branch("KNN_rarity",     &bKNN_rarity     );
-   if (Use["HMatrix"])       tout->Branch("Hm_rarity",      &bHm_rarity      );
-   if (Use["Fisher"])        tout->Branch("Fi_rarity",      &bFi_rarity      );
-   if (Use["FisherG"])       tout->Branch("FiG_rarity",     &bFiG_rarity     );
-   if (Use["BoostedFisher"]) tout->Branch("FiB_rarity",     &bFiB_rarity     );
+   if (Use["HMatrix"])       tout->Branch("HMatrix_rarity",      &bHm_rarity      );
+   if (Use["Fisher"])        tout->Branch("Fisher_rarity",      &bFi_rarity      );
+   if (Use["FisherG"])       tout->Branch("FisherG_rarity",     &bFiG_rarity     );
+   if (Use["BoostedFisher"]) tout->Branch("BoostedFisher_rarity",     &bFiB_rarity     );
    if (Use["LD"])            tout->Branch("LD_rarity",      &bLD_rarity      );
-   if (Use["MLP"])           tout->Branch("Nn_rarity",      &bNn_rarity      );
-   if (Use["MLPBFGS"])       tout->Branch("Nnbfgs_rarity",  &bNnbfgs_rarity  );
-   if (Use["MLPBNN"])        tout->Branch("Nnbnn_rarity",   &bNnbnn_rarity   );
-   if (Use["CFMlpANN"])      tout->Branch("NnC_rarity",     &bNnC_rarity     );
-   if (Use["TMlpANN"])       tout->Branch("NnT_rarity",     &bNnT_rarity     );
-   if (Use["BDT"])           tout->Branch("Bdt_rarity",     &bBdt_rarity     );
-   if (Use["BDTD"])          tout->Branch("BdtD_rarity",    &bBdtD_rarity    );
-   if (Use["BDTG"])          tout->Branch("BdtG_rarity",    &bBdtG_rarity    );
-   if (Use["BDTB"])          tout->Branch("BdtB_rarity",    &bBdtB_rarity    );
-   if (Use["RuleFit"])       tout->Branch("Rf_rarity",      &bRf_rarity      );
-   if (Use["SVM_Gauss"])     tout->Branch("SVMG_rarity",    &bSVMG_rarity    );
-   if (Use["SVM_Poly"])      tout->Branch("SVMP_rarity",    &bSVMP_rarity    );
-   if (Use["SVM_Lin"])       tout->Branch("SVML_rarity",    &bSVML_rarity    );
-   if (Use["FDA_MT"])        tout->Branch("FDAMT_rarity",   &bFDAMT_rarity   );
-   if (Use["FDA_GA"])        tout->Branch("FDAGA_rarity",   &bFDAGA_rarity   );
-   if (Use["Category"])      tout->Branch("Cat_rarity",     &bCat_rarity     );
-   if (Use["Plugin"])        tout->Branch("PBdt_rarity",    &bPBdt_rarity    );
+   if (Use["MLP"])           tout->Branch("MLP_rarity",      &bNn_rarity      );
+   if (Use["MLPBFGS"])       tout->Branch("MLPBFGS_rarity",  &bNnbfgs_rarity  );
+   if (Use["MLPBNN"])        tout->Branch("MLPBNN_rarity",   &bNnbnn_rarity   );
+   if (Use["CFMlpANN"])      tout->Branch("CFMlpANN_rarity",     &bNnC_rarity     );
+   if (Use["TMlpANN"])       tout->Branch("TMlpANN_rarity",     &bNnT_rarity     );
+   if (Use["BDT"])           tout->Branch("BDT_rarity",     &bBdt_rarity     );
+   if (Use["BDTD"])          tout->Branch("BDTD_rarity",    &bBdtD_rarity    );
+   if (Use["BDTG"])          tout->Branch("BDTG_rarity",    &bBdtG_rarity    );
+   if (Use["BDTB"])          tout->Branch("BDTB_rarity",    &bBdtB_rarity    );
+   if (Use["RuleFit"])       tout->Branch("RuleFit_rarity",      &bRf_rarity      );
+   if (Use["SVM_Gauss"])     tout->Branch("SVM_Gauss_rarity",    &bSVMG_rarity    );
+   if (Use["SVM_Poly"])      tout->Branch("SVM_Poly_rarity",    &bSVMP_rarity    );
+   if (Use["SVM_Lin"])       tout->Branch("SVM_Lin_rarity",    &bSVML_rarity    );
+   if (Use["FDA_MT"])        tout->Branch("FDA_MT_rarity",   &bFDAMT_rarity   );
+   if (Use["FDA_GA"])        tout->Branch("FDA_GA_rarity",   &bFDAGA_rarity   );
+   if (Use["Category"])      tout->Branch("Category_rarity",     &bCat_rarity     );
+   if (Use["Plugin"])        tout->Branch("Plugin_rarity",    &bPBdt_rarity    );
 
    // PDEFoam also returns per-event error, fill in histogram, and also fill significance
    if (Use["PDEFoam"]) {
@@ -653,7 +659,7 @@ void TMVAClassificationApplication( bool test = true,
    tout->Write();
    target->Close();
 
-   std::cout << "--- Created root file: \"TMVApp.root\" containing the MVA output histograms" << std::endl;
+   std::cout << "--- Created root file: \"" << outfilename << "\" containing the MVA output histograms" << std::endl;
   
    delete reader;
     
