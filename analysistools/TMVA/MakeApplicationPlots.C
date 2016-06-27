@@ -15,7 +15,7 @@ TH1D * MakeHistogram(const int mode, const int ie,
 		     const TString hname, const TString htitle, const int nbins, const double xmax);
 TEventList * MakeEventList(TTree * t, const TString elistname, const TString ecut);
 
-void MakeApplicationPlots(TString variables = "Bdt,BdtB,BdtG,BdtD,Cuts", int verbose = 1, TString tag = "test")
+void MakeApplicationPlots(TString variables = "BDT", int verbose = 1, TString tag = "test")
 {
   TFile f(TString::Format("TMVApp_%s.root", tag.Data()));
   TTree * t = 0;

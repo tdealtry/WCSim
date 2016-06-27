@@ -10,7 +10,7 @@
 #include "TCanvas.h"
 #include "TMath.h"
 
-void MakeApplicationTables(TString variables = "Bdt,BdtB,BdtG,BdtD,Cuts", int verbose = 1, TString tag = "test")
+void MakeApplicationTables(TString variables = "BDT", int verbose = 1, TString tag = "test")
 {
   TFile f(TString::Format("TMVAPlots_%s.root", tag.Data()));
   
