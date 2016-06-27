@@ -1,4 +1,4 @@
-Unix.*.Root.MacroPath:   .:$TMVASYS/test:$(ROOTSYS)/macros
+Unix.*.Root.MacroPath:   .:$(WCSIMDIR)/analysistools/TMVA:$(TMVASYS)/test:$(ROOTSYS)/macros
 
 Unix.*.Root.DynamicPath: $TMVASYS/lib:$(ROOTSYS)/lib
 
