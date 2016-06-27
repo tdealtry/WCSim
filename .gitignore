@@ -18,3 +18,7 @@ tmp/
 #ignore run results
 wcsim.root
 geofile.txt
+
+
+#ignore edited emacs files
+*~
