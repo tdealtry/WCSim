@@ -83,7 +83,7 @@ parser.add_argument('--DAQdigiintwindow', type=delim_list, default='200', help='
 #ndigits trigger
 parser.add_argument('--DAQndigitsthreshold', type=delim_list, default='25', help='What value of the ndigits trigger threshold should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
 parser.add_argument('--DAQndigitswindow', type=delim_list, default='200', help='What value of the ndigits trigger window should be used (ns)? Specify multiple with comma separated list')
-parser.add_argument('--DAQndigitsdontignorenoise', action='store_true', help='Don\'t adjust the NDigits threshold automatically for the dark noise rate?')
+parser.add_argument('--DAQndigitsignorenoise', action='store_true', help='Adjust the NDigits threshold automatically for the dark noise rate?')
 parser.add_argument('--DAQndigitssavewindow', type=delim_list, default='-400:+950', help='What value of the pre/post trigger window should digits be saved in (for the ndigits trigger)? Separate pre/post with a ":". Specify multiple pairs with a comma separated list')
 #local ndigits trigger
 parser.add_argument('--DAQlocalndigitsneighbours', type=delim_list, default='50', help='What value of the localndigits trigger neighbours should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
@@ -357,7 +357,7 @@ def main(args_to_parse = None):
         permutationDict = OrderedDict()
         permutationDict['/DAQ/TriggerNDigits/Threshold']         = [x for x in args.DAQndigitsthreshold]
         permutationDict['/DAQ/TriggerNDigits/Window']            = [x for x in args.DAQndigitswindow]
-        permutationDict['/DAQ/TriggerNDigits/AdjustForNoise']    = ['true' if not args.DAQndigitsdontignorenoise else 'false']
+        permutationDict['/DAQ/TriggerNDigits/AdjustForNoise']    = ['true' if args.DAQndigitsignorenoise else 'false']
         permutationDict['/DAQ/TriggerNDigits/PreTriggerWindow']  = [x.split(':')[0] for x in args.DAQndigitssavewindow]
         permutationDict['/DAQ/TriggerNDigits/PostTriggerWindow'] = [x.split(':')[1] for x in args.DAQndigitssavewindow]
         # create a list of dictionaries for each permutation of the parameter values

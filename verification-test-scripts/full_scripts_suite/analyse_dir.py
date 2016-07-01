@@ -55,7 +55,7 @@ def main(args_to_parse = None):
         os.symlink(os.path.expandvars("$WCSIMDIR") + "/rootwc/rootwc", "rootwc")
 
     #loop through all the relevant files in the directory, and run the analysis script
-    for i, file1 in enumerate(glob.glob("wcsim_*.root")):
+    for i, file1 in enumerate(sorted(glob.glob("wcsim_*.root"))):
         #check if the output file already exists
         if not args.overwrite_output:
             if os.path.isfile(macro + file1):
