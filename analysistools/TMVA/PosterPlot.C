@@ -8,7 +8,7 @@
 
 #include <iostream>
 
-void PosterPlot(const char * pdfname = "tmvaplot.pdf", const char * filename = "TMVAPlots.root", const char * stackname = "hs_value_Bdt", const char * drawopt = "")
+void PosterPlot(const char * pdfname = "tmvaplot.pdf", const char * filename = "TMVAPlots.root", const char * stackname = "hs_value_BDT", const char * drawopt = "")
 {
   TFile f(filename);
   THStack * hs = 0;
@@ -18,11 +18,15 @@ void PosterPlot(const char * pdfname = "tmvaplot.pdf", const char * filename = "
   TIter next(list);
   TObject * o;
   TH1D * htemp;
+  int ctemp = 0;
   while(o = next.Next()) {
     htemp = (TH1D*)o;
     htemp->GetXaxis()->SetTitle("Separation Variable");
     //htemp->SetFillColor(kBlue);
     cout << htemp << endl;
+    if(!ctemp)
+      htemp->SetTitle("Dark noise only");
+    ctemp++;
   }
 
 

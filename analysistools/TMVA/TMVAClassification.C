@@ -54,6 +54,8 @@ vector<pair<string,char> > GetSpectatorNames();
 void TMVAClassification( const int runmode = 4,
 			 const bool test = true,
 			 const TString myMethodList = "BDT",
+			 const int eminsig = -99999,
+			 const int emaxsig = +99999,
 			 const TString tag = "test",
 			 const char * sigfilename = "$WCSIMDIR/runs/20160517_tmva/tmva_analysiswcsim_makekin_3.0:10.0e-*.0.root",
 			 const char * bkgfilename = "$WCSIMDIR/runs/20160517_tmva/tmva_analysiswcsim_makekin_0.0e-*.0.root")
@@ -354,7 +356,7 @@ void TMVAClassification( const int runmode = 4,
    //factory->SetBackgroundWeightExpression( "weight" );
 
    // Apply additional cuts on the signal and background samples (can be different)
-   TCut mycuts = ""; // for example: TCut mycuts = "abs(var1)<0.5 && abs(var2-0.5)<1";
+   TCut mycuts (TString::Format("TRUE_e_energy>%d && TRUE_e_energy<%d", eminsig, emaxsig)); // for example: TCut mycuts = "abs(var1)<0.5 && abs(var2-0.5)<1";
    TCut mycutb = ""; // for example: TCut mycutb = "abs(var1)<0.5";
 
    // Tell the factory how to use the training and testing events

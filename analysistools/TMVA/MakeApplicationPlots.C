@@ -74,18 +74,20 @@ void MakeApplicationPlots(TString variables = "BDT", int verbose = 1, TString ta
       //apply energy cut
       if(iv == 0) {
 	eventlists[ie] = MakeEventList(t, TString::Format("elist%d", ie),
-				       TString::Format("TRUE_e_energy>=%d&&TRUE_e_energy<%d", ie, ie+1));
+				       TString::Format("TRUE_e_energy>=%f&&TRUE_e_energy<%f", ie-0.5, ie+1-0.5));
 	nentries[ie] = eventlists[ie]->GetN();
 
 	//and for the purities...
 	eventlists_sig[ie] = MakeEventList(t, TString::Format("elist_sig%d", ie),
-					   TString::Format("TRUE_e_energy>=%d", ie));
+					   TString::Format("TRUE_e_energy>=%f", ie-0.5));
 	eventlists_bkg[ie] = MakeEventList(t, TString::Format("elist_bkg%d", ie),
-					   TString::Format("TRUE_e_energy<%d", ie));
+					   TString::Format("TRUE_e_energy<%f", ie-0.5));
       }
 
       //make the histograms & make them pretty
       TString htitle_ecut = TString::Format("E = %d-%d MeV", ie, ie+1);
+      if(ie == 0)
+	htitle_ecut = "Dark noise only";
       TString htitle_ecut_purity = TString::Format("E >= %d MeV", ie);
       //value
       h_value[iv][ie] = MakeHistogram(0, ie, TString::Format("h_value_%s_e%d", variable.Data(), ie),
