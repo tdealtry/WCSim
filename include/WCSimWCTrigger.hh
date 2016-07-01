@@ -122,6 +122,8 @@ public:
   ///Knowledge of the dark rate (use for automatically adjusting for noise)
   void SetDarkRate(double idarkrate){ PMTDarkRate = idarkrate; }
 
+  int event_number;
+  bool output_txt;
 
 protected:
 
@@ -306,6 +308,7 @@ private:
 
   ///takes all trigger times, then loops over all Digits & fills the output DigitsCollection
   void FillDigitsCollection(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, TriggerType_t save_triggerType);
+  void FillDigitsCollectionNoTrigger(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, TriggerType_t save_triggerType);
 
   static const double offset;        ///< Hit time offset (ns)
   static const double LongTime;      ///< An arbitrary long time to use in loops (ns)
@@ -440,6 +443,20 @@ private:
   void ReadGeomInfo()  {}
 };
 
+class WCSimWCTriggerNoTrigger : public WCSimWCTriggerBase
+{
+public:
+  
+  ///Create WCSimWCTriggerNDigits instance with knowledge of the detector and DAQ options
+  WCSimWCTriggerNoTrigger(G4String name, WCSimDetectorConstruction*, WCSimWCDAQMessenger*);
+  
+  ~WCSimWCTriggerNoTrigger();
+  
+private:
+  ///Calls the workhorse of this class: AlgNDigits
+  void DoTheWork(WCSimWCDigitsCollection* WCDCPMT);
+  
+};
 
 /**
  * \class WCSimWCTriggerNDigits2
