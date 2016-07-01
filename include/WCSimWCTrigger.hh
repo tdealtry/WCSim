@@ -308,7 +308,6 @@ private:
 
   ///takes all trigger times, then loops over all Digits & fills the output DigitsCollection
   void FillDigitsCollection(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, TriggerType_t save_triggerType);
-  void FillDigitsCollectionNoTrigger(WCSimWCDigitsCollection* WCDCPMT, bool remove_hits, TriggerType_t save_triggerType);
 
   static const double offset;        ///< Hit time offset (ns)
   static const double LongTime;      ///< An arbitrary long time to use in loops (ns)
@@ -441,21 +440,6 @@ private:
 
   void WriteGeomInfo() {}
   void ReadGeomInfo()  {}
-};
-
-class WCSimWCTriggerNoTrigger : public WCSimWCTriggerBase
-{
-public:
-  
-  ///Create WCSimWCTriggerNDigits instance with knowledge of the detector and DAQ options
-  WCSimWCTriggerNoTrigger(G4String name, WCSimDetectorConstruction*, WCSimWCDAQMessenger*);
-  
-  ~WCSimWCTriggerNoTrigger();
-  
-private:
-  ///Calls the workhorse of this class: AlgNDigits
-  void DoTheWork(WCSimWCDigitsCollection* WCDCPMT);
-  
 };
 
 /**
@@ -608,16 +592,18 @@ private:
 class WCSimWCTriggerNoTrigger : public WCSimWCTriggerBase
 {
 public:
-
+  
   ///Create WCSimWCTriggerNDigits instance with knowledge of the detector and DAQ options
   WCSimWCTriggerNoTrigger(G4String name, WCSimDetectorConstruction*, WCSimWCDAQMessenger*);
-
+  
   ~WCSimWCTriggerNoTrigger();
   
 private:
-  ///Calls the workhorse of this class: AlgNDigits
+  ///Calls the workhorse of this class: AlgNoTrigger
   void DoTheWork(WCSimWCDigitsCollection* WCDCPMT);
-
+  ///Write out all hit and geometry information in txt format
+  void WriteOutTxtNova(WCSimWCDigitsCollection* WCDCPMT);
+  
   bool GetDefaultMultiDigitsPerTrigger()    { return true; }
 
   void WriteGeomInfo() {};
