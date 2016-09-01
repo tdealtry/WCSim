@@ -6,6 +6,7 @@
 #include "G4ParticleGun.hh"
 #include "G4GeneralParticleSource.hh"
 #include "G4ParticleTable.hh"
+#include "G4IonTable.hh"
 #include "G4ParticleDefinition.hh"
 #include "G4ThreeVector.hh"
 #include "globals.hh"
@@ -56,7 +57,7 @@ WCSimPrimaryGeneratorAction::WCSimPrimaryGeneratorAction(
   
   G4int n_particle = 1;
   particleGun = new G4ParticleGun(n_particle);
-  particleGun->SetParticleEnergy(1.0*GeV);
+  particleGun->SetParticleEnergy(1.0*CLHEP::GeV);
   particleGun->SetParticleMomentumDirection(G4ThreeVector(0.,0.,1.0));
   G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
   G4String particleName;
@@ -64,7 +65,7 @@ WCSimPrimaryGeneratorAction::WCSimPrimaryGeneratorAction(
     SetParticleDefinition(particleTable->FindParticle(particleName="mu+"));
 
   particleGun->
-    SetParticlePosition(G4ThreeVector(0.*m,0.*m,0.*m));
+    SetParticlePosition(G4ThreeVector(0.*CLHEP::m,0.*CLHEP::m,0.*CLHEP::m));
     
   messenger = new WCSimPrimaryGeneratorMessenger(this);
   useMulineEvt = true;
@@ -91,6 +92,7 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 
   // We will need a particle table
   G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+  G4IonTable* ionTable = G4IonTable::GetIonTable();
 
   // Temporary kludge to turn on/off vector text format 
 
@@ -142,9 +144,9 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 
 	    // Read the Vertex line
 	    token = readInLine(inputFile, lineSize, inBuf);
-	    vtxs[0] = G4ThreeVector(atof(token[1])*cm,
-				    atof(token[2])*cm,
-				    atof(token[3])*cm);
+	    vtxs[0] = G4ThreeVector(atof(token[1])*CLHEP::cm,
+				    atof(token[2])*CLHEP::cm,
+				    atof(token[3])*CLHEP::cm);
 	    
             // true : Generate vertex in Rock , false : Generate vertex in WC tank
             SetGenerateVertexInRock(false);
@@ -155,7 +157,7 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 
 	    token=readInLine(inputFile, lineSize, inBuf);
 	    beampdgs[0] = atoi(token[1]);
-	    beamenergies[0] = atof(token[2])*MeV;
+	    beamenergies[0] = atof(token[2])*CLHEP::MeV;
 	    beamdirs[0] = G4ThreeVector(atof(token[3]),
 					atof(token[4]),
 					atof(token[5]));
@@ -164,7 +166,7 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 
 	    token=readInLine(inputFile, lineSize, inBuf);
 	    targetpdgs[0] = atoi(token[1]);
-	    targetenergies[0] = atof(token[2])*MeV;
+	    targetenergies[0] = atof(token[2])*CLHEP::MeV;
 	    targetdirs[0] = G4ThreeVector(atof(token[3]),
 					  atof(token[4]),
 					  atof(token[5]));
@@ -188,7 +190,7 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 		if ( token[6] == "0")
 		  {
 		    G4int pdgid = atoi(token[1]);
-		    G4double energy = atof(token[2])*MeV;
+		    G4double energy = atof(token[2])*CLHEP::MeV;
 		    G4ThreeVector dir = G4ThreeVector(atof(token[3]),
 						      atof(token[4]),
 						      atof(token[5]));
@@ -214,7 +216,7 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 			A=atoi(strA);
 			Z=atoi(strZ);
 			G4ParticleDefinition* ion;
-			ion =  particleTable->GetIon(Z, A, 0.);
+			ion =  ionTable->GetIon(Z, A, 0.);
 			particleGun->SetParticleDefinition(ion);
 			particleGun->SetParticleCharge(0);
 		      }
@@ -245,12 +247,12 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 	
 	G4double random_z = ((myDetector->GetWaterTubePosition())
 			     - .5*(myDetector->GetWaterTubeLength()) 
-			     + 1.*m + 15.0*m*G4UniformRand())/m;
+			     + 1.*CLHEP::m + 15.0*CLHEP::m*G4UniformRand())/CLHEP::m;
 	zPos = random_z;
 	G4ThreeVector vtx = G4ThreeVector(xPos, yPos, random_z);
 	G4ThreeVector dir = G4ThreeVector(xDir,yDir,zDir);
 
-	particleGun->SetParticleEnergy(energy*MeV);
+	particleGun->SetParticleEnergy(energy*CLHEP::MeV);
 	particleGun->SetParticlePosition(vtx);
 	particleGun->SetParticleMomentumDirection(dir);
 	particleGun->GeneratePrimaryVertex(anEvent);
@@ -288,11 +290,11 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 	A=atoi(strA);
 	Z=atoi(strZ);
 
-	G4ParticleDefinition* ion   = G4ParticleTable::GetParticleTable()->GetIon(Z, A, 0);
+	G4ParticleDefinition* ion   = G4IonTable::GetIonTable()->GetIon(Z, A, 0);
 	ion->SetPDGStable(false);
 	ion->SetPDGLifeTime(0.);
 	
-	G4ParticleDefinition* ion2   = G4ParticleTable::GetParticleTable()->GetIon(Z, A, 0);
+	G4ParticleDefinition* ion2   = G4IonTable::GetIonTable()->GetIon(Z, A, 0);
 	std::cout<<"ion2 "<<ion2->GetPDGLifeTime()<<"\n";
       }
     
@@ -360,11 +362,11 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 	  MyGPS->SetCurrentSourceto(MyGPS->GetNumberofSource() - 1);
 	    
 	  if (IsotopeName.compareTo("Tl208") == 0)
-	    MyGPS->SetParticleDefinition(G4ParticleTable::GetParticleTable()->GetIon( 81, 208, 0));
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 81, 208, 0));
 	  else if (IsotopeName.compareTo("Bi214") == 0)
-	    MyGPS->SetParticleDefinition(G4ParticleTable::GetParticleTable()->GetIon( 83, 214, 0));
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 83, 214, 0));
 	  else if (IsotopeName.compareTo("K40") == 0)
-	    MyGPS->SetParticleDefinition(G4ParticleTable::GetParticleTable()->GetIon( 19, 40, 0));
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 19, 40, 0));
 	    
 	  if (IsotopeLocation.compareTo("water") == 0){
 	    MyGPS->GetCurrentSource()->GetEneDist()->SetEnergyDisType("Mono");
@@ -382,11 +384,11 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 	    int npmts = pmts->size();
 	    int random_pmt_id = CLHEP::RandFlat::shootInt(1,npmts);
 	    WCSimPmtInfo* pmtinfo = (WCSimPmtInfo*)pmts->at( random_pmt_id - 1 );
-	    G4ThreeVector random_pmt_center(pmtinfo->Get_transx()*cm, pmtinfo->Get_transy()*cm, pmtinfo->Get_transz()*cm);
+	    G4ThreeVector random_pmt_center(pmtinfo->Get_transx()*CLHEP::cm, pmtinfo->Get_transy()*CLHEP::cm, pmtinfo->Get_transz()*CLHEP::cm);
 	    double random_cos_theta = CLHEP::RandFlat::shoot(0., 1.);
 	    double random_sin_theta = sqrt(1. - pow(random_cos_theta,2));
 	    random_sin_theta *= (CLHEP::RandFlat::shootBit() == 0 ? -1 : 1);
-	    double random_phi = CLHEP::RandFlat::shoot(0., 2.*pi*rad);
+	    double random_phi = CLHEP::RandFlat::shoot(0., 2.*CLHEP::pi*CLHEP::rad);
 	    G4String WCIDCollectionName = myDetector->GetIDCollectionName();
 	    WCSimPMTObject *PMT = myDetector->GetPMTPointer(WCIDCollectionName);
 	    double PMT_radius = PMT->GetRadius();
