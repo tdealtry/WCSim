@@ -92,7 +92,6 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 
   // We will need a particle table
   G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
-  G4IonTable* ionTable = G4IonTable::GetIonTable();
 
   // Temporary kludge to turn on/off vector text format 
 
@@ -216,7 +215,7 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 			A=atoi(strA);
 			Z=atoi(strZ);
 			G4ParticleDefinition* ion;
-			ion =  ionTable->GetIon(Z, A, 0.);
+			ion =  G4IonTable::GetIonTable()->GetIon(Z, A, 0.);
 			particleGun->SetParticleDefinition(ion);
 			particleGun->SetParticleCharge(0);
 		      }
@@ -295,7 +294,6 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 	ion->SetPDGLifeTime(0.);
 	
 	G4ParticleDefinition* ion2   = G4IonTable::GetIonTable()->GetIon(Z, A, 0);
-	std::cout<<"ion2 "<<ion2->GetPDGLifeTime()<<"\n";
       }
     
     

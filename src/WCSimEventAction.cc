@@ -727,6 +727,7 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
   std::set<int> pionList;
   std::set<int> antipionList;
   std::set<int> primaryList;
+  std::set<int> nucleusList;
 
   // Pi0 specific variables
   Float_t pi0Vtx[3];
@@ -756,6 +757,7 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
     if ( trj->GetPDGEncoding() == -13 ) antimuonList.insert(trj->GetTrackID());
     if ( trj->GetPDGEncoding() == 211 ) pionList.insert(trj->GetTrackID());
     if ( trj->GetPDGEncoding() == -211 ) antipionList.insert(trj->GetTrackID());
+    if ( trj->GetPDGEncoding()  >= 1000000000 ) nucleusList.insert(trj->GetTrackID());
 
     if( trj->GetParentID() == 0 ) primaryList.insert(trj->GetTrackID());
 
@@ -803,6 +805,8 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 	parentType = 211;
       } else if (primaryList.count(trj->GetParentID()) ) {
 	parentType = 1;
+      } else if (nucleusList.count(trj->GetParentID())   ) {
+	parentType = 1000000000; // some nucleus
       } else {  // no identified parent, but not a primary
 	parentType = 999;
       }
@@ -828,6 +832,9 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 
       // Add the track to the TClonesArray, watching out for times
       if ( ! ( (ipnu==22)&&(parentType==999))  ) {
+	/*      if ( ((ipnu==22)) ||
+	  (! ( (ipnu==22)&&(parentType==999)))  
+	  ) {*/
 	int choose_event=0;
 
 	if (ngates)

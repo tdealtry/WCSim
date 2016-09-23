@@ -318,6 +318,8 @@ void WCSimPhysicsList::ConstructOp(){
 
 #include "G4Decay.hh"
 #include "G4RadioactiveDecay.hh"
+#include "G4UAtomicDeexcitation.hh"
+#include "G4LossTableManager.hh"
 #include "G4IonTable.hh"
 #include "G4Ions.hh"
 
@@ -342,6 +344,8 @@ void WCSimPhysicsList::ConstructGeneral()
     G4ParticleTable::GetParticleTable()->GetIonTable();
   G4RadioactiveDecay *theRadioactiveDecay = new G4RadioactiveDecay();
   theRadioactiveDecay->SetVerboseLevel(1);
+  theRadioactiveDecay->SetICM(true);                //Internal Conversion
+  theRadioactiveDecay->SetARM(false);               //Atomic Rearangement 
   for (G4int i=0; i<theIonTable->Entries(); i++) 
     {
       G4String particleName = theIonTable->GetParticle(i)->GetParticleName();
@@ -355,6 +359,14 @@ void WCSimPhysicsList::ConstructGeneral()
 	  pmanager->DumpInfo();
 	} 
     }
+
+ // Deexcitation (in case of Atomic Rearangement)
+  //
+  G4UAtomicDeexcitation* de = new G4UAtomicDeexcitation();
+  de->SetFluo(true);
+  de->SetAuger(true);   
+  de->SetPIXE(false);  
+  G4LossTableManager::Instance()->SetAtomDeexcitation(de);  
 
 }
 

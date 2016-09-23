@@ -42,6 +42,22 @@ void WCSimTrackingAction::PreUserTrackingAction(const G4Track* aTrack)
     }
   else 
     fpTrackingManager->SetStoreTrajectory(false);
+
+#if 0
+  { // kill nucleus to prevent segmentation fault
+    G4ParticleDefinition* particle = aTrack->GetDefinition();
+    G4String name   = particle->GetParticleName();
+    G4String partType= particle->GetParticleType();
+    G4int ID = aTrack->GetTrackID();
+    G4double Ekin = aTrack->GetKineticEnergy();
+    G4int PID = aTrack->GetParentID();
+    if ( partType == "nucleus") {
+      G4Track* tr = (G4Track*) aTrack;
+      tr->SetTrackStatus(fStopButAlive);
+      //tr->SetTrackStatus(fStopAndKill);
+    }
+  }
+#endif
 }
 
 void WCSimTrackingAction::PostUserTrackingAction(const G4Track* aTrack)
@@ -98,7 +114,7 @@ void WCSimTrackingAction::PostUserTrackingAction(const G4Track* aTrack)
       for(size_t i=0;i<nSeco;i++)
       { 
 	WCSimTrackInformation* infoSec = new WCSimTrackInformation(anInfo);
-                 infoSec->WillBeSaved(false); // ADDED BY MFECHNER, temporary, 30/8/06
+	infoSec->WillBeSaved(false); // ADDED BY MFECHNER, temporary, 30/8/06
 	(*secondaries)[i]->SetUserInformation(infoSec);
       }
     } 
@@ -115,6 +131,18 @@ void WCSimTrackingAction::PostUserTrackingAction(const G4Track* aTrack)
 
     currentTrajectory->SetStoppingPoint(currentPosition);
     currentTrajectory->SetStoppingVolume(currentVolume);
+
+#if 0
+    { //  enforce saving of gamma's with enough energy
+      G4double      mass   = currentTrajectory->GetParticleDefinition()->GetPDGMass();
+      G4ThreeVector mom    = currentTrajectory->GetInitialMomentum();
+      G4double      mommag = mom.mag();
+      G4double      energy = sqrt(mom.mag2() + mass*mass);
+      
+      if (aTrack->GetDefinition()->GetPDGEncoding()==22 && energy > 0.5*CLHEP::MeV)
+	anInfo->WillBeSaved(true);
+    }
+#endif
 
     if (anInfo->isSaved())
       currentTrajectory->SetSaveFlag(true);// mark it for WCSimEventAction ;
