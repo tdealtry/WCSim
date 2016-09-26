@@ -748,6 +748,7 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
   //n_trajectories=50;    // existed in previous versions of the code.  It also
                           // makes the ROOT file smaller.  
 
+  // fill lists
   for (int i=0; i <n_trajectories; i++) 
   {
     WCSimTrajectory* trj = (WCSimTrajectory*)(*TC)[i];
@@ -765,59 +766,81 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
     if( trj->GetParentID() == 0 ) primaryList.insert(trj->GetTrackID());
 
     // Process primary tracks or the secondaries from pizero or muons...
+  }
 
-    if ( trj->GetSaveFlag() )
-    {
-      // initial point of the trajectory
-      G4TrajectoryPoint* aa =   (G4TrajectoryPoint*)trj->GetPoint(0) ;   
-      runAction->incrementEventsGenerated();
+  for (int i=0; i <n_trajectories; i++) 
+  {
+    WCSimTrajectory* trj = (WCSimTrajectory*)(*TC)[i];
+
+    // initial point of the trajectory
+    G4TrajectoryPoint* aa =   (G4TrajectoryPoint*)trj->GetPoint(0) ;   
+    runAction->incrementEventsGenerated();
 	
-      G4int         ipnu   = trj->GetPDGEncoding();
-      G4int         id     = trj->GetTrackID();
-      G4int         flag   = 0;    // will be set later
-      G4double      mass   = trj->GetParticleDefinition()->GetPDGMass();
-      G4ThreeVector mom    = trj->GetInitialMomentum();
-      G4double      mommag = mom.mag();
-      G4double      energy = sqrt(mom.mag2() + mass*mass);
-      G4ThreeVector Stop   = trj->GetStoppingPoint();
-      G4ThreeVector Start  = aa->GetPosition();
+    G4int         ipnu   = trj->GetPDGEncoding();
+    G4int         id     = trj->GetTrackID();
+    G4int         flag   = 0;    // will be set later
+    G4double      mass   = trj->GetParticleDefinition()->GetPDGMass();
+    G4ThreeVector mom    = trj->GetInitialMomentum();
+    G4double      mommag = mom.mag();
+    G4double      energy = sqrt(mom.mag2() + mass*mass);
+    G4ThreeVector Stop   = trj->GetStoppingPoint();
+    G4ThreeVector Start  = aa->GetPosition();
 
-      G4String stopVolumeName = trj->GetStoppingVolume()->GetName();
-      G4int    stopvol     = WCSimEventFindStoppingVolume(stopVolumeName);
-      G4int    startvol    = WCSimEventFindStartingVolume(Start);
+    G4String stopVolumeName = trj->GetStoppingVolume()->GetName();
+    G4int    stopvol     = WCSimEventFindStoppingVolume(stopVolumeName);
+    G4int    startvol    = WCSimEventFindStartingVolume(Start);
 
-      G4double ttime = trj->GetGlobalTime(); 
+    G4double ttime = trj->GetGlobalTime(); 
 
-      G4int parentType;
+    G4int parentType;
 
      
-      // Right now only secondaries whose parents are pi0's are stored
-      // This may change later
-      // M Fechner : dec 16, 2004 --> added decay e- from muons
-      if (trj->GetParentID() == 0){
-	parentType = 0;
-      } else if (pizeroList.count(trj->GetParentID())   ) {
-	parentType = 111;
-      } else if (muonList.count(trj->GetParentID())     ) {
-	parentType = 13;
-      } else if (antimuonList.count(trj->GetParentID()) ) {
-	parentType = -13;
-      } else if (antipionList.count(trj->GetParentID()) ) {
-	parentType = -211;
-      } else if (pionList.count(trj->GetParentID()) ) {
-	parentType = 211;
-      } else if (primaryList.count(trj->GetParentID()) ) {
-	parentType = 1;
-      } else if (nucleusList.count(trj->GetParentID())   ) {
-	parentType = 1000000000; // some nucleus
-      } else {  // no identified parent, but not a primary
-	parentType = 999;
-      }
+    // Right now only secondaries whose parents are pi0's are stored
+    // This may change later
+    // M Fechner : dec 16, 2004 --> added decay e- from muons
+    if (trj->GetParentID() == 0){
+      parentType = 0;
+    } else if (pizeroList.count(trj->GetParentID())   ) {
+      parentType = 111;
+    } else if (muonList.count(trj->GetParentID())     ) {
+      parentType = 13;
+    } else if (antimuonList.count(trj->GetParentID()) ) {
+      parentType = -13;
+    } else if (antipionList.count(trj->GetParentID()) ) {
+      parentType = -211;
+    } else if (pionList.count(trj->GetParentID()) ) {
+      parentType = 211;
+    } else if (primaryList.count(trj->GetParentID()) ) {
+      parentType = 1;
+    } else if (nucleusList.count(trj->GetParentID())   ) {
+      parentType = 1000000000; // some nucleus
+    } else {  // no identified parent, but not a primary
+      parentType = 999;
+    }
+
+    // decide if particle is to be stored
+    bool save_this_track = trj->GetSaveFlag();
+    // remove a photon not coming from a known parent
+    if ( save_this_track && (ipnu==22) && (parentType==999) ) save_this_track = false;
+
+#if 0
+    { //  enforce saving of gamma's with enough energy
+      G4double      mass   = currentTrajectory->GetParticleDefinition()->GetPDGMass();
+      G4ThreeVector mom    = currentTrajectory->GetInitialMomentum();
+      G4double      mommag = mom.mag();
+      G4double      energy = sqrt(mom.mag2() + mass*mass);
+      
+      if (aTrack->GetDefinition()->GetPDGEncoding()==22 && energy > gamma_min_energy)
+	anInfo->WillBeSaved(true);
+    }
+#endif
+
+    if ( save_this_track ){
 
 
       // G4cout << parentType << " " << ipnu << " " 
       //	     << id << " " << energy << "\n";
-
+      
       // fill ntuple
       float dir[3];
       float pdir[3];
@@ -833,40 +856,34 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
       }
 
       // Add the track to the TClonesArray, watching out for times
-      if ( ! ( (ipnu==22)&&(parentType==999))  ) {
-	/*      if ( ((ipnu==22)) ||
-	  (! ( (ipnu==22)&&(parentType==999)))  
-	  ) {*/
-	int choose_event=0;
-
-	if (ngates)
+      int choose_event=0;
+      
+      if (ngates)
 	{
-
+	  
 	  if ( ttime > WCTM->GetTriggerTime(0)+950. && WCTM->GetTriggerTime(1)+950. > ttime ) choose_event=1; 
 	  if ( ttime > WCTM->GetTriggerTime(1)+950. && WCTM->GetTriggerTime(2)+950. > ttime ) choose_event=2; 
 	  if (choose_event >= ngates) choose_event = ngates-1; // do not overflow the number of events
-	
+	  
 	}
-
-	wcsimrootevent= wcsimrootsuperevent->GetTrigger(choose_event);
-	wcsimrootevent->AddTrack(ipnu, 
-				  flag, 
-				  mass, 
-				  mommag, 
-				  energy,
-				  startvol, 
-				  stopvol, 
-				  dir, 
-				  pdir, 
-				  stop,
-				  start,
-				  parentType,
-				 ttime,id); 
-      }
       
-
+      wcsimrootevent= wcsimrootsuperevent->GetTrigger(choose_event);
+      wcsimrootevent->AddTrack(ipnu, 
+			       flag, 
+			       mass, 
+			       mommag, 
+			       energy,
+			       startvol, 
+			       stopvol, 
+			       dir, 
+			       pdir, 
+			       stop,
+			       start,
+			       parentType,
+			       ttime,id); 
+    
       if (detectorConstructor->SavePi0Info() == true)
-      {
+	{
 	G4cout<<"Pi0 parentType: " << parentType <<G4endl;
 	if (parentType == 111)
 	{

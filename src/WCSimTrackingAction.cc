@@ -73,7 +73,7 @@ void WCSimTrackingAction::PostUserTrackingAction(const G4Track* aTrack)
     anInfo = (WCSimTrackInformation*)(aTrack->GetUserInformation());
   else anInfo = new WCSimTrackInformation();
 
-  double gamma_min_energy = 0.1*CLHEP::MeV;
+  double gamma_min_energy = 50.*CLHEP::MeV;
 
   // is it a primary ?
   // is the process in the set ? 
@@ -134,17 +134,6 @@ void WCSimTrackingAction::PostUserTrackingAction(const G4Track* aTrack)
     currentTrajectory->SetStoppingPoint(currentPosition);
     currentTrajectory->SetStoppingVolume(currentVolume);
 
-#if 0
-    { //  enforce saving of gamma's with enough energy
-      G4double      mass   = currentTrajectory->GetParticleDefinition()->GetPDGMass();
-      G4ThreeVector mom    = currentTrajectory->GetInitialMomentum();
-      G4double      mommag = mom.mag();
-      G4double      energy = sqrt(mom.mag2() + mass*mass);
-      
-      if (aTrack->GetDefinition()->GetPDGEncoding()==22 && energy > gamma_min_energy)
-	anInfo->WillBeSaved(true);
-    }
-#endif
 
     if (anInfo->isSaved())
       currentTrajectory->SetSaveFlag(true);// mark it for WCSimEventAction ;
