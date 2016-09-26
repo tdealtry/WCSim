@@ -64,6 +64,9 @@ public:
   G4double GetYDir() {return yDir;};
   G4double GetZDir() {return zDir;};
 
+  G4bool GetStorePhotons() {return storephotons;}
+  void SetStorePhotons(G4double tparam) {storephotons=tparam;}
+
 private:
   WCSimDetectorConstruction*      myDetector;
   G4ParticleGun*                  particleGun;
@@ -99,6 +102,9 @@ private:
 
   G4int    _counterRock; 
   G4int    _counterCublic; 
+
+  G4bool storephotons;
+
 public:
 
   inline void SetMulineEvtGenerator(G4bool choice) { useMulineEvt = choice; }

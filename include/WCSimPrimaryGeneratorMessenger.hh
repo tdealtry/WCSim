@@ -6,6 +6,7 @@ class WCSimPrimaryGeneratorAction;
 class G4UIdirectory;
 class G4UIcmdWithAString;
 class G4UIcmdWithADouble;
+class G4UIcmdWithABool; //jl145
 
 #include "G4UImessenger.hh"
 #include "globals.hh"
@@ -30,6 +31,9 @@ class WCSimPrimaryGeneratorMessenger: public G4UImessenger
   G4UIcmdWithAString* fileNameCmd;
   G4UIcmdWithAString* isotopeCmd;
   G4UIcmdWithADouble* radioactive_time_window_Cmd;
+
+  G4UIcmdWithABool* StorePhotons;
+
   void IsotopeCommand(G4String newValue);
 
 };

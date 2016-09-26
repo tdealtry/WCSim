@@ -71,6 +71,9 @@ WCSimPrimaryGeneratorAction::WCSimPrimaryGeneratorAction(
   useMulineEvt = true;
   useNormalEvt = false;
   radioactive_sources.clear();
+
+  storephotons = false;
+
 }
 
 WCSimPrimaryGeneratorAction::~WCSimPrimaryGeneratorAction()

@@ -730,7 +730,6 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
   std::set<int> pionList;
   std::set<int> antipionList;
   std::set<int> primaryList;
-  std::set<int> nucleusList;
 
   // Pi0 specific variables
   Float_t pi0Vtx[3];
@@ -761,7 +760,6 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
     if ( trj->GetPDGEncoding() == -13 ) antimuonList.insert(trj->GetTrackID());
     if ( trj->GetPDGEncoding() == 211 ) pionList.insert(trj->GetTrackID());
     if ( trj->GetPDGEncoding() == -211 ) antipionList.insert(trj->GetTrackID());
-    if ( trj->GetPDGEncoding()  >= 1000000000 ) nucleusList.insert(trj->GetTrackID());
 
     if( trj->GetParentID() == 0 ) primaryList.insert(trj->GetTrackID());
 
@@ -812,28 +810,17 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
       parentType = 211;
     } else if (primaryList.count(trj->GetParentID()) ) {
       parentType = 1;
-    } else if (nucleusList.count(trj->GetParentID())   ) {
-      parentType = 1000000000; // some nucleus
     } else {  // no identified parent, but not a primary
       parentType = 999;
     }
 
     // decide if particle is to be stored
     bool save_this_track = trj->GetSaveFlag();
-    // remove a photon not coming from a known parent
-    if ( save_this_track && (ipnu==22) && (parentType==999) ) save_this_track = false;
-
-#if 0
-    { //  enforce saving of gamma's with enough energy
-      G4double      mass   = currentTrajectory->GetParticleDefinition()->GetPDGMass();
-      G4ThreeVector mom    = currentTrajectory->GetInitialMomentum();
-      G4double      mommag = mom.mag();
-      G4double      energy = sqrt(mom.mag2() + mass*mass);
-      
-      if (aTrack->GetDefinition()->GetPDGEncoding()==22 && energy > gamma_min_energy)
-	anInfo->WillBeSaved(true);
-    }
-#endif
+    // store photons coming from a known parent if required
+    if( !save_this_track && 
+	generatorAction->GetStorePhotons() && 
+	ipnu == 22 &&
+	parentType != 999 ) save_this_track = true;
 
     if ( save_this_track ){
 

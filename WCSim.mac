@@ -66,6 +66,8 @@
 #/mygen/vecfile h2o.2km.001-009x3_G4.kin
 #/mygen/vecfile mu+.out
 
+### do you want to store photons?
+/mygen/storephotons 1
 
 #choose the Trigger & Digitizer type (and options)
 /DAQ/Digitizer SKI

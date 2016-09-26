@@ -3,6 +3,7 @@
 #include "G4UIdirectory.hh"
 #include "G4UIcmdWithAString.hh"
 #include "G4ios.hh"
+#include "G4UIcmdWithABool.hh" //jl145
 
 WCSimPrimaryGeneratorMessenger::WCSimPrimaryGeneratorMessenger(WCSimPrimaryGeneratorAction* pointerToAction)
 :myAction(pointerToAction)
@@ -47,6 +48,11 @@ WCSimPrimaryGeneratorMessenger::WCSimPrimaryGeneratorMessenger(WCSimPrimaryGener
   param->SetDefaultValue("0");
   isotopeCmd->SetParameter(param);
 
+  StorePhotons = new G4UIcmdWithABool("/mygen/storephotons",this);
+  StorePhotons->SetGuidance("Turn Storing of phtons on/off");
+  StorePhotons->SetParameterName("StorePhotons",false);
+  StorePhotons->SetDefaultValue(0);
+
 }
 
 WCSimPrimaryGeneratorMessenger::~WCSimPrimaryGeneratorMessenger()
@@ -55,6 +61,7 @@ WCSimPrimaryGeneratorMessenger::~WCSimPrimaryGeneratorMessenger()
   delete radioactive_time_window_Cmd;
   delete mydetDirectory;
   delete isotopeCmd;
+  delete StorePhotons;
 }
 
 void WCSimPrimaryGeneratorMessenger::SetNewValue(G4UIcommand * command,G4String newValue)
@@ -107,6 +114,13 @@ void WCSimPrimaryGeneratorMessenger::SetNewValue(G4UIcommand * command,G4String 
       myAction->SetRadioactiveTimeWindow(StoD(newValue));
     }
 
+  if(command == StorePhotons) {
+    myAction->SetStorePhotons(StorePhotons->GetNewBoolValue(newValue));
+    if(StorePhotons->GetNewBoolValue(newValue))
+      printf("Setting Store Photons On\n");
+    else
+      printf("Setting Store Photons Off\n");
+  }
 
 }
 
