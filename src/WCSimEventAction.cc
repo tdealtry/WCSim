@@ -382,6 +382,7 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
      npar++;
    }
 
+   /*
   ////////////////////////
   // npar > nvertices  ///
   ////////////////////////
@@ -440,7 +441,7 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
       
       npar++; 
     }
-    
+      
     if(idx_v_e != INT_MAX) {
       WCSimTrajectory* trj =
 	(WCSimTrajectory*)((*(evt->GetTrajectoryContainer()))[idx_v_e]);
@@ -515,6 +516,8 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
    // G4cout << "FGDyHC: " << &FGDyHC << G4endl;
    // G4cout << "MRDxHC: " << &MRDxHC << G4endl;
    // G4cout << "MRDyHC: " << &MRDyHC << G4endl;
+
+   */
    
    jhfNtuple.npar = npar;
 
@@ -828,7 +831,6 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 	start[l]=Start[l]/CLHEP::cm; // starting point 
 	//G4cout<<"part 2 start["<<l<<"]: "<< start[l] <<G4endl;
       }
-
 
       // Add the track to the TClonesArray, watching out for times
       if ( ! ( (ipnu==22)&&(parentType==999))  ) {
