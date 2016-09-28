@@ -67,7 +67,7 @@
 #/mygen/vecfile mu+.out
 
 ### do you want to store photons?
-/mygen/storephotons 1
+/mygen/storephotons 0
 
 #choose the Trigger & Digitizer type (and options)
 /DAQ/Digitizer SKI

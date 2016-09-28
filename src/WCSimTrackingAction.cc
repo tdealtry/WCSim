@@ -58,6 +58,20 @@ void WCSimTrackingAction::PreUserTrackingAction(const G4Track* aTrack)
     }
   }
 #endif
+
+#if 1
+  { // kill alphas to prevent segmentation fault
+    G4ParticleDefinition* particle = aTrack->GetDefinition();
+    G4String name   = particle->GetParticleName();
+    
+    if( name == "alpha" ){
+      G4Track* tr = (G4Track*) aTrack;
+      tr->SetTrackStatus(fStopButAlive);
+      //tr->SetTrackStatus(fStopAndKill);
+    }
+  }
+#endif
+
 }
 
 void WCSimTrackingAction::PostUserTrackingAction(const G4Track* aTrack)
