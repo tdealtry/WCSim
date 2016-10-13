@@ -1,0 +1,5 @@
+TMVA_*.root
+TMVApp_*.root
+TMVAPlots_*.root
+TMVAPlots_*.pdf
+TMVAPlots_*.tex

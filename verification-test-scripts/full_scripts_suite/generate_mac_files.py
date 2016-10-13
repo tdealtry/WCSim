@@ -27,8 +27,11 @@ delim_list = lambda s: list(set(s.split(',')))
 delim_list_str = lambda s: s.split(',') if len(s.split(',')) == 3 else s
 
 DAQdigitizer_choices = ['SKI', 'SKI_SKDETSIM']
-DAQtrigger_choices = ['NDigits', 'NDigits2', 'SKI_SKDETSIM']
-DAQtrigger_ndigits_choices = ['NDigits', 'NDigits2', 'SKI_SKDETSIM']
+DAQtrigger_choices = ['NDigits', 'SKI_SKDETSIM', 'NDigits2', 'NHitsThenLocalNHits', 'NHitsThenRegions', 'NHitsThenITC', 'NoTrigger']
+DAQtrigger_ndigits_choices = ['NDigits', 'SKI_SKDETSIM', 'NDigits2', 'NHitsThenLocalNHits', 'NHitsThenRegions', 'NHitsThenITC']
+DAQtrigger_localndigits_choices = ['NDigitsThenLocalNDigits']
+DAQtrigger_regions_choices = ['NHitsThenRegions']
+DAQtrigger_itc_choices = ['NHitsThenITC']
 WCgeom_choices = ['HyperK', \
                       'HyperK_withHPD', \
                       'SuperK', \
@@ -49,6 +52,16 @@ BatchChoices=['local','condor']
 
 def ListAsString(l):
     return ' '.join(str(o)+',' for o in l)[:-1]
+def pair_or_single(arg):
+    pair = list(set(float(x) for x in arg.split(':')))
+    pair.sort()
+    print pair, arg
+    if len(pair) > 2 or len(pair) < 1:
+        print "Argument %s is not a colon-separted pair of floats, or a single float" % arg
+    elif len(pair) == 1:
+        return pair, "%.1f" % (pair[0])
+    elif len(pair) == 2:
+        return pair, "%.1f:%.1f" % (pair[0], pair[1])
 
 parser = argparse.ArgumentParser(description='Run many WCSim jobs with different options. Use , to delimit multiple options', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 #options about how to run this script
@@ -70,8 +83,23 @@ parser.add_argument('--DAQdigiintwindow', type=delim_list, default='200', help='
 #ndigits trigger
 parser.add_argument('--DAQndigitsthreshold', type=delim_list, default='25', help='What value of the ndigits trigger threshold should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
 parser.add_argument('--DAQndigitswindow', type=delim_list, default='200', help='What value of the ndigits trigger window should be used (ns)? Specify multiple with comma separated list')
-parser.add_argument('--DAQndigitsdontignorenoise', action='store_true', help='Don\'t adjust the NDigits threshold automatically for the dark noise rate?')
+parser.add_argument('--DAQndigitsignorenoise', action='store_true', help='Adjust the NDigits threshold automatically for the dark noise rate?')
 parser.add_argument('--DAQndigitssavewindow', type=delim_list, default='-400:+950', help='What value of the pre/post trigger window should digits be saved in (for the ndigits trigger)? Separate pre/post with a ":". Specify multiple pairs with a comma separated list')
+#local ndigits trigger
+parser.add_argument('--DAQlocalndigitsneighbours', type=delim_list, default='50', help='What value of the localndigits trigger neighbours should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
+parser.add_argument('--DAQlocalndigitsthreshold', type=delim_list, default='10', help='What value of the localndigits trigger threshold should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
+parser.add_argument('--DAQlocalndigitswindow', type=delim_list, default='50', help='What value of the localndigits trigger window should be used (ns)? Specify multiple with comma separated list')
+#regions trigger
+parser.add_argument('--DAQregionsnbinsphi', type=delim_list, default='5', help='How many phi bins for the sides in the regions trigger should be used? Specify multiple with comma separated list')
+parser.add_argument('--DAQregionsnbinsz', type=delim_list, default='7', help='How many Z bins for the sides in the regions trigger should be used? Specify multiple with comma separated list')
+parser.add_argument('--DAQregionsnrings', type=delim_list, default='2', help='How many rings for the top/bottom in the regions trigger should be used? The central circle is not classed as a ring, therefore NRings=0 is valid.  Specify multiple with comma separated list')
+parser.add_argument('--DAQregionsncentralsectors', type=delim_list, default='1', help='How many sectors in the central circle for the top/bottom in the regions trigger should be used? Specify multiple with comma separated list')
+parser.add_argument('--DAQregionsnringsectors', type=delim_list, default='2', help='Multiplicative factor for how many more sectors per ring for the top/bottom in the regions trigger should be used? Specify multiple with comma separated list')
+#ITC ratio trigger
+parser.add_argument('--DAQitcthreshold', type=delim_list, default='0.3', help='What value of the ITC ratio trigger threshold should be used? Specify multiple with comma separated list')
+parser.add_argument('--DAQitcsmallwindow', type=delim_list, default='200', help='What value of the ITC ratio trigger small window should be used (i.e. duration of the numerator)? Specify multiple with comma separated list')
+parser.add_argument('--DAQitclargewindowlo', type=delim_list, default='200', help='What value of the ITC ratio trigger large window low edge should be used (i.e. start time of the denominator, relative to small window start time)? Specify multiple with comma separated list')
+parser.add_argument('--DAQitclargewindowhi', type=delim_list, default='1000', help='What value of the ITC ratio trigger large window high edge should be used (i.e. end time of the denominator, relative to small window start time)? Specify multiple with comma separated list')
 #save failures trigger
 parser.add_argument('--DAQsavefailuresmode', type=delim_list, default='0', help='Save failed triggers mode. 0: save only events which pass the trigger. 1: save both. 2: save only events which fail the trigger')
 parser.add_argument('--DAQsavefailurestime', type=delim_list, default='200', help='For mode 1 & 2, give events which fail the trigger the trigger time')
@@ -150,6 +178,18 @@ def main(args_to_parse = None):
         print "Must use consistent GunPosition and GunDirection options (i.e. both 3 vectors or both MakeKin.py str options)"
         sys.exit(1)
     if args.DarkNoiseMode == 0:
+        for w in args.DarkNoiseWindow:
+            if len(w.split(':')) != 2:
+                parser.print_help()
+                print "DarkNoiseWindow must be a (comma separated list of) colon separated int pair(s) when running in mode 0"
+                sys.exit(1)
+            for i in w.split(':'):
+                try:
+                    int(i)
+                except:
+                    parser.print_help()
+                    print "DarkNoiseWindow must be a (comma separated list of) colon separated int pair(s) when running in mode 0"
+                    sys.exit(1)
         check_input_pairs(args.DarkNoiseWindow)
     elif args.DarkNoiseMode == 1:
         for w in args.DarkNoiseWindow:
@@ -279,6 +319,15 @@ def main(args_to_parse = None):
             additionaloptions   = []
             if pDict['/DAQ/Trigger'] in DAQtrigger_ndigits_choices:
                 additionaloptions.append(ConstructNDigitsTrigger(args))
+            #get the local NDigits options/filestubs
+            if pDict['/DAQ/Trigger'] in DAQtrigger_localndigits_choices:
+                additionaloptions.append(ConstructLocalNDigitsTrigger(args))
+            #get the trigger regions options/filestubs
+            if pDict['/DAQ/Trigger'] in DAQtrigger_regions_choices:
+                additionaloptions.append(ConstructRegionsTrigger(args))
+            #get the ITC options/filestubs
+            if pDict['/DAQ/Trigger'] in DAQtrigger_itc_choices:
+                additionaloptions.append(ConstructITCTrigger(args))
             #assemble the complete set of options
             permutationDictO = OrderedDict()
             permutationDictF = OrderedDict()
@@ -308,7 +357,7 @@ def main(args_to_parse = None):
         permutationDict = OrderedDict()
         permutationDict['/DAQ/TriggerNDigits/Threshold']         = [x for x in args.DAQndigitsthreshold]
         permutationDict['/DAQ/TriggerNDigits/Window']            = [x for x in args.DAQndigitswindow]
-        permutationDict['/DAQ/TriggerNDigits/AdjustForNoise']    = ['true' if not args.DAQndigitsdontignorenoise else 'false']
+        permutationDict['/DAQ/TriggerNDigits/AdjustForNoise']    = ['true' if args.DAQndigitsignorenoise else 'false']
         permutationDict['/DAQ/TriggerNDigits/PreTriggerWindow']  = [x.split(':')[0] for x in args.DAQndigitssavewindow]
         permutationDict['/DAQ/TriggerNDigits/PostTriggerWindow'] = [x.split(':')[1] for x in args.DAQndigitssavewindow]
         # create a list of dictionaries for each permutation of the parameter values
@@ -324,6 +373,85 @@ def main(args_to_parse = None):
             filestubs.append(filestub)
         return [commands, filestubs]
 
+    def ConstructLocalNDigitsTrigger(args):
+        #make the local NDigits type trigger options
+        commands  = []
+        filestubs = []
+        # permutations
+        permutationDict = OrderedDict()
+        permutationDict['/DAQ/TriggerLocalNDigits/Neighbours']     = [x for x in args.DAQlocalndigitsneighbours]
+        permutationDict['/DAQ/TriggerLocalNDigits/Threshold']      = [x for x in args.DAQlocalndigitsthreshold]
+        permutationDict['/DAQ/TriggerLocalNDigits/Window']         = [x for x in args.DAQlocalndigitswindow]
+        permutationDict['/DAQ/TriggerLocalNDigits/AdjustForNoise'] = ['true' if args.DAQndigitsignorenoise else 'false']
+        # create a list of dictionaries for each permutation of the parameter values
+        permutationDictList = [ OrderedDict(zip(permutationDict, v)) for v in itertools.product(*permutationDict.values()) ]
+        for pDict in permutationDictList:
+            #get the options
+            options = ''
+            for k,v in pDict.iteritems():
+                options += k + ' ' + v + '\n'
+            commands.append(options)
+            #assemble the filename
+            filestub = 'LocalNDigits' + pDict['/DAQ/TriggerLocalNDigits/Neighbours'] + '_' \
+                + pDict['/DAQ/TriggerLocalNDigits/Threshold'] + '_' \
+                + pDict['/DAQ/TriggerLocalNDigits/Window']
+            filestubs.append(filestub)
+        return [commands, filestubs]
+
+    def ConstructRegionsTrigger(args):
+        #make the regions type trigger options
+        commands  = []
+        filestubs = []
+        # permutations
+        permutationDict = OrderedDict()
+        permutationDict['/DAQ/TriggerRegions/NBinsPhi']         = [x for x in args.DAQregionsnbinsphi]
+        permutationDict['/DAQ/TriggerRegions/NBinsZ']           = [x for x in args.DAQregionsnbinsz]
+        permutationDict['/DAQ/TriggerRegions/NRings']           = [x for x in args.DAQregionsnrings]
+        permutationDict['/DAQ/TriggerRegions/NCentralSectors']  = [x for x in args.DAQregionsncentralsectors]
+        permutationDict['/DAQ/TriggerRegions/NRingSectors']     = [x for x in args.DAQregionsnringsectors]
+        # create a list of dictionaries for each permutation of the parameter values
+        permutationDictList = [ OrderedDict(zip(permutationDict, v)) for v in itertools.product(*permutationDict.values()) ]
+        for pDict in permutationDictList:
+            #get the options
+            options = ''
+            for k,v in pDict.iteritems():
+                options += k + ' ' + v + '\n'
+            commands.append(options)
+            #assemble the filename
+            filestub = 'Regions_side' + pDict['/DAQ/TriggerRegions/NBinsPhi'] + ':' \
+                + pDict['/DAQ/TriggerRegions/NBinsZ'] + '_tb' \
+                + pDict['/DAQ/TriggerRegions/NRings'] + ':' \
+                + pDict['/DAQ/TriggerRegions/NCentralSectors'] + ':' \
+                + pDict['/DAQ/TriggerRegions/NRingSectors']
+            filestubs.append(filestub)
+        return [commands, filestubs]
+
+    def ConstructITCTrigger(args):
+        #make the local NDigits type trigger options
+        commands  = []
+        filestubs = []
+        # permutations
+        permutationDict = OrderedDict()
+        permutationDict['/DAQ/TriggerITCRatio/Threshold']       = [x for x in args.DAQitcthreshold]
+        permutationDict['/DAQ/TriggerITCRatio/SmallWindow']     = [x for x in args.DAQitcsmallwindow]
+        permutationDict['/DAQ/TriggerITCRatio/LargeWindowLow']  = [x for x in args.DAQitclargewindowlo]
+        permutationDict['/DAQ/TriggerITCRatio/LargeWindowHigh'] = [x for x in args.DAQitclargewindowhi]
+        # create a list of dictionaries for each permutation of the parameter values
+        permutationDictList = [ OrderedDict(zip(permutationDict, v)) for v in itertools.product(*permutationDict.values()) ]
+        for pDict in permutationDictList:
+            #get the options
+            options = ''
+            for k,v in pDict.iteritems():
+                options += k + ' ' + v + '\n'
+            commands.append(options)
+            #assemble the filename
+            filestub = 'ITC' + pDict['/DAQ/TriggerITCRatio/Threshold'] + '_' \
+                + pDict['/DAQ/TriggerITCRatio/SmallWindow'] + '_' \
+                + pDict['/DAQ/TriggerITCRatio/LargeWindowLow'] + ':' \
+                + pDict['/DAQ/TriggerITCRatio/LargeWindowHigh']
+            filestubs.append(filestub)
+        return [commands, filestubs]
+   
     def ConstructDarkNoise(args):
         noises = []
         filestubs = []
@@ -357,16 +485,17 @@ def main(args_to_parse = None):
     def ConstructParticleGun(args, geom):
         guns = []
         filestubs = []
-        for GunEnergy in args.GunEnergy:
+        for energiesarg in args.GunEnergy:
+            GunEnergy, GunEnergyStr = pair_or_single(energiesarg)
             filestub = ''
-            if type(args.GunPosition) is str:
+            if type(args.GunPosition) is str or type(args.GunDirection) is str or len(GunEnergy) > 1:
                 #if GunPosition and GunDirection are string's
-                #we need to call MakeKin.py to generate distributions of different positions/directions
+                #we need to call MakeKin.py to generate distributions of different positions/directions/energies
                 command = '$WCSIMDIR/sample-root-scripts/MakeKin.py ' \
                     '-N ' + str(args.JobsPerConfig) + ' ' \
                     '-n ' + str(args.NEvents) + ' ' \
                     '-t ' + args.GunParticle  + ' ' \
-                    '-e ' + GunEnergy  + ' ' \
+                    '-e ' + GunEnergyStr  + ' ' \
                     '-v ' + args.GunPosition  + ' ' \
                     '-d ' + args.GunDirection + ' ' \
                     '-w ' + geom
@@ -374,7 +503,7 @@ def main(args_to_parse = None):
                 os.system(command)
                 for ijob in xrange(args.JobsPerConfig):
                     #now create the .kin filename
-                    kinname = "%s_%.1fMeV_%s_%s_%s_%03i.kin" % (args.GunParticle.replace("+","plus").replace("-","minus"), float(GunEnergy), args.GunPosition, args.GunDirection, args.WCgeom[0], ijob)
+                    kinname = "%s_%sMeV_%s_%s_%s_%03i.kin" % (args.GunParticle.replace("+","plus").replace("-","minus"), GunEnergyStr, args.GunPosition, args.GunDirection, args.WCgeom[0], ijob)
                     print kinname
                     #and finally get the .mac options
                     gunoptions = '/mygen/vecfile ' + os.getcwd() + '/' + kinname + '\n'
@@ -385,7 +514,7 @@ def main(args_to_parse = None):
                 #https://geant4.web.cern.ch/geant4/UserDocumentation/UsersGuides/ForApplicationDeveloper/html/ch02s07.html
                 gunoptions = "/mygen/generator laser \n" \
                     "/gps/particle " + args.GunParticle + "\n" \
-                    "/gps/energy " + GunEnergy + " MeV \n" \
+                    "/gps/energy " + GunEnergy[0] + " MeV \n" \
                     "/gps/pos/centre " + " ".join(i for i in args.GunPosition) + "\n" \
                     "/gps/pos/type Plane \n" \
                     "/gps/pos/shape Rectangle \n" \
@@ -402,7 +531,7 @@ def main(args_to_parse = None):
                 #https://geant4.web.cern.ch/geant4/UserDocumentation/UsersGuides/ForApplicationDeveloper/html/ch02s07.html
                 gunoptions = "/mygen/generator laser \n" \
                     "/gps/particle " + args.GunParticle + "\n" \
-                    "/gps/energy " + GunEnergy + " MeV \n" \
+                    "/gps/energy " + GunEnergy[0] + " MeV \n" \
                     "/gps/pos/centre " + " ".join(i for i in args.GunPosition) + "\n" \
                     "/gps/pos/type Volume \n" \
                     "/gps/pos/shape Cylinder \n" \
@@ -419,7 +548,7 @@ def main(args_to_parse = None):
                 #http://geant4.web.cern.ch/geant4/G4UsersDocuments/UsersGuides/ForApplicationDeveloper/html/Control/UIcommands/_gun_.html
                 gunoptions = "/mygen/generator normal " + "\n" \
                     "/gun/particle " + args.GunParticle + "\n" \
-                    "/gun/energy " + GunEnergy + " MeV \n" \
+                    "/gun/energy " + GunEnergy[0] + " MeV \n" \
                     "/gun/direction " + " ".join(i for i in args.GunDirection) + "\n" \
                     "/gun/position " + " ".join(i for i in args.GunPosition) + "\n"
                 guns.append(gunoptions)
@@ -427,7 +556,7 @@ def main(args_to_parse = None):
             if type(args.GunPosition) is str:
                 nappends = args.JobsPerConfig
             for i in xrange(nappends):
-                filestubs.append(filestub + GunEnergy + args.GunParticle)
+                filestubs.append(filestub + GunEnergyStr + args.GunParticle)
         return [guns, filestubs]
 
     #construct the .mac options and parts of filenames for the different groups
@@ -447,8 +576,8 @@ def main(args_to_parse = None):
     for i, optionset in enumerate(tempoptions):
         permutationDictO[i] = optionset[0]
         permutationDictF[i] = optionset[1]
-    permutationDictListO = [ OrderedDict(zip(permutationDictO, v)) for v in itertools.product(*permutationDictO.values()) ]
-    permutationDictListF = [ OrderedDict(zip(permutationDictF, v)) for v in itertools.product(*permutationDictF.values()) ]
+    permutationDictListO = [ dict(zip(permutationDictO, v)) for v in itertools.product(*permutationDictO.values()) ]
+    permutationDictListF = [ dict(zip(permutationDictF, v)) for v in itertools.product(*permutationDictF.values()) ]
     for pDictO,pDictF in itertools.izip(permutationDictListO, permutationDictListF):
         theseoptions = ''
         thesefile    = 'wcsim'
@@ -476,7 +605,7 @@ def main(args_to_parse = None):
         
     #loop over every options set
     counter = 1
-    for text, filenamestub in itertools.izip(options, filestubs):
+    for text, filenamestub in itertools.izip(options, filestubs):         
         #write the novis.mac style file
         f = open(filenamestub + '.mac', 'w')
         f.write(text)
@@ -506,7 +635,7 @@ def Submit(filenamestub, args):
                 'notify_user    = ' + args.notifyuseremail + '\n' \
                 'notification   = Always \n'
         condor += '' \
-            'executable     = WCSim \n' \
+            'executable     = $ENV(WCSIMDIR)/bin/Linux-g++/WCSim \n' \
             'universe       = vanilla \n' \
             'arguments      = ' + filenamestub + '.mac \n' \
             'output         = ' + filenamestub + '.out \n' \
@@ -530,4 +659,3 @@ if __name__ == "__main__":
     main()
 
     print "\n\n\nTODO fix defaults - certain variables should be allowed to be not written in the .mac file (e.g. if DarkRate == -99)"
-

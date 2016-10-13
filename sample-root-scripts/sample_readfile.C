@@ -101,7 +101,7 @@ void sample_readfile(char *filename=NULL, bool verbose=false, bool save_hists=fa
   // and always exists.
   WCSimRootTrigger* wcsimrootevent;
 
-  TH1F *h1 = new TH1F("h1", "PMT Hits", 200, 0, 8000);
+  TH1F *h1 = new TH1F("h1", "PMT Hits", 8000, 0, 8000);
   TH1F *hvtx0 = new TH1F("hvtx0", "Event VTX0", 200, -1500, 1500);
   TH1F *hvtx1 = new TH1F("hvtx1", "Event VTX1", 200, -1500, 1500);
   TH1F *hvtx2 = new TH1F("hvtx2", "Event VTX2", 200, -1500, 1500);
@@ -238,6 +238,10 @@ void sample_readfile(char *filename=NULL, bool verbose=false, bool save_hists=fa
      
       if(ncherenkovdigihits>0)
 	num_trig++;
+      else
+	continue;
+      std::cout<<"num_trig "<<num_trig<<"\n";
+      h1->Fill(ncherenkovdigihits);
       //for (i=0;i<(ncherenkovdigihits>4 ? 4 : ncherenkovdigihits);i++){
       for (i=0;i<ncherenkovdigihits;i++)
       {
@@ -253,7 +257,8 @@ void sample_readfile(char *filename=NULL, bool verbose=false, bool save_hists=fa
 	    printf("q, t, tubeid: %f %f %d \n",wcsimrootcherenkovdigihit->GetQ(),
 		   wcsimrootcherenkovdigihit->GetT(),wcsimrootcherenkovdigihit->GetTubeId());
 	}
-      } // End of loop over Cherenkov digihits
+      }
+      // End of loop over Cherenkov digihits
     } // End of loop over trigger
     
     // reinitialize super event between loops.
@@ -271,6 +276,8 @@ void sample_readfile(char *filename=NULL, bool verbose=false, bool save_hists=fa
   c1->cd(2); hvtx1->Draw();
   c1->cd(3); hvtx2->Draw();
   c1->cd(4); h1->Draw();
+  
+  std::cout<<"num_trig "<<num_trig<<"\n";
 
   //save histograms to an output file
   if(save_hists) {
@@ -284,5 +291,4 @@ void sample_readfile(char *filename=NULL, bool verbose=false, bool save_hists=fa
     fout->Close();
   }
   
-  std::cout<<"num_trig "<<num_trig<<"\n";
 }
