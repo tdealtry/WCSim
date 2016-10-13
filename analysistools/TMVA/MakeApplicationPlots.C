@@ -42,6 +42,8 @@ void MakeApplicationPlots(TString variables = "BDT", int verbose = 1, TString ta
   //book histograms
   TH1D * h_value[nvariables][nenergies];
   THStack * hs_value[nvariables];
+  TH1D * h_fraction[nvariables][nenergies];
+  THStack * hs_fraction[nvariables];
   TH1D * h_efficiency[nvariables][nenergies];
   THStack * hs_efficiency[nvariables];
   TH1D * h_purity[nvariables][nenergies];
@@ -60,6 +62,8 @@ void MakeApplicationPlots(TString variables = "BDT", int verbose = 1, TString ta
     cout << variable << endl;
     hs_value[iv] = new THStack(TString::Format("hs_value_%s", variable.Data()),
 			       TString::Format("%s;%s value;Number of events", variable.Data(), variable.Data()));
+    hs_fraction[iv] = new THStack(TString::Format("hs_fraction_%s", variable.Data()),
+			       TString::Format("%s;%s value;Fraction of events", variable.Data(), variable.Data()));
     hs_efficiency[iv] = new THStack(TString::Format("hs_efficiency_%s", variable.Data()),
 				    TString::Format("%s;%s value;Efficiency", variable.Data(), variable.Data()));
     hs_purity[iv] = new THStack(TString::Format("hs_purity_%s", variable.Data()),
@@ -91,6 +95,8 @@ void MakeApplicationPlots(TString variables = "BDT", int verbose = 1, TString ta
       TString htitle_ecut_purity = TString::Format("E >= %d MeV", ie);
       //value
       h_value[iv][ie] = MakeHistogram(0, ie, TString::Format("h_value_%s_e%d", variable.Data(), ie),
+				      htitle_ecut, 100, max_axis[iv]);
+      h_fraction[iv][ie] = MakeHistogram(0, ie, TString::Format("h_fraction_%s_e%d", variable.Data(), ie),
 				      htitle_ecut, 100, max_axis[iv]);
       h_efficiency[iv][ie] = MakeHistogram(1, ie, TString::Format("h_efficiency_%s_e%d", variable.Data(), ie),
 					   htitle_ecut, 100, max_axis[iv]);
@@ -148,12 +154,37 @@ void MakeApplicationPlots(TString variables = "BDT", int verbose = 1, TString ta
     }//ie
     t->SetEventList(0);
 
+    //now that we've populated all the value histograms
+    // we can fill the fraction histograms
+    // (i.e. it is the same, but normalised to 1 in each bin)
+    for(int ib = 1; ib <= h_value[iv][0]->GetNbinsX(); ib++) {
+      double bintotal = 0;
+      for(int ie = 0; ie < nenergies; ie++) {
+	bintotal += h_value[iv][ie]->GetBinContent(ib);
+      }//ie
+      cout << "bin " << ib << " " << h_value[iv][0]->GetBinCenter(ib)
+	   << "\t has total " << bintotal << endl;
+      for(int ie = 0; ie < nenergies; ie++) {
+	cout << "\tenergy" << ie << "\tcontents" << h_value[iv][ie]->GetBinContent(ib)
+	     << "\t" << h_value[iv][ie]->GetBinContent(ib) / bintotal
+	     << endl;
+	if(bintotal > 0)
+	  h_fraction[iv][ie]->SetBinContent(ib, h_value[iv][ie]->GetBinContent(ib) / bintotal);
+	else
+	  h_fraction[iv][ie]->SetBinContent(ib, 0);
+      }//ie
+    }//ib
+    for(int ie = 0; ie < nenergies; ie++) {
+      hs_fraction [iv]->Add(h_fraction[iv][ie]);
+      h_fraction  [iv][ie]->Write();
+    }//ie
 
     //draw the histograms & save them
     DrawStacks(hs_value[iv], "", pdfname, c);
     DrawStacks(hs_efficiency[iv], "NOSTACK", pdfname, c);
     DrawStacks(hs_purity[iv], "NOSTACK", pdfname, c);
     DrawStacks(hs_ep[iv], "NOSTACK", pdfname, c);
+    DrawStacks(hs_fraction[iv], "", pdfname, c);
 
     //loop
     iv++;
