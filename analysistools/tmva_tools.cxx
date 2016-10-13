@@ -334,7 +334,7 @@ void tmva_tools::FillTree(double duration)
   GetDistributionQuantities(digit_beta4,       var_distributions[9], false, 101);
   GetDistributionQuantities(digit_beta5,       var_distributions[10], false, 101);
   //https://github.com/mastbaum/gamma_discrimination/blob/master/beta14/python/beta14.py
-  var_beta14 = var_distributions[7][0] + 4 * var_distributions[7][1];
+  var_beta14 = var_distributions[6][0] + 4 * var_distributions[9][0]; // <beta1> + 4 * <beta4>
   if(verbosity > 2)
     cout << "tmva_tools::FillTree() beta14 is " << var_beta14 << endl;
   if(verbosity > 1)
@@ -408,13 +408,14 @@ void tmva_tools::FillAngleVectors()
     for(int jdigit = 0; jdigit < var_nhits; jdigit++) {
       if(jdigit > idigit) {
 	double angle = digit_pmtvec->at(idigit).Angle(digit_pmtvec->at(jdigit));
+	double cosangle = TMath::Cos(angle);
 	digit_angle->push_back(angle); //2pmt angle
 	//http://mathworld.wolfram.com/LegendrePolynomial.html
-	digit_cosangle->push_back(TMath::Cos(angle)); //cosine of 2pmt angle (1st order Legendre polynomial of cos(angle) 2pmt angle)
-	digit_beta2->push_back(0.5   * (3 *pow(angle,2) - 1)); //2nd order Legendre polynomial of cos(angle) 2pmt angle
-	digit_beta3->push_back(0.5   * (5 *pow(angle,3) - 3*angle)); //3rd order Legendre polynomial of cos(angle) 2pmt angle
-	digit_beta4->push_back(0.125 * (35*pow(angle,4) - 30*pow(angle,2) + 3)); //4th order Legendre polynomial of cos(angle) 2pmt angle
-	digit_beta5->push_back(0.125 * (63*pow(angle,5) - 70*pow(angle,3) + 15*angle)); //5th order Legendre polynomial of cos(angle) 2pmt angle
+	digit_cosangle->push_back(cosangle); //cosine of 2pmt angle (1st order Legendre polynomial of cos(angle) 2pmt angle)
+	digit_beta2->push_back(0.5   * (3 *pow(cosangle,2) - 1)); //2nd order Legendre polynomial of cos(angle) 2pmt angle
+	digit_beta3->push_back(0.5   * (5 *pow(cosangle,3) - 3*cosangle)); //3rd order Legendre polynomial of cos(angle) 2pmt angle
+	digit_beta4->push_back(0.125 * (35*pow(cosangle,4) - 30*pow(cosangle,2) + 3)); //4th order Legendre polynomial of cos(angle) 2pmt angle
+	digit_beta5->push_back(0.125 * (63*pow(cosangle,5) - 70*pow(cosangle,3) + 15*cosangle)); //5th order Legendre polynomial of cos(angle) 2pmt angle
       }
       else if(idigit == jdigit)
 	continue;
