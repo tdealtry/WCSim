@@ -929,7 +929,6 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 	  G4cout << " " << truetime[id]
 		 << ":" << smeartime[id]
 		 << ":" << primaryParentID[id];
-#endif
 	}//id
 	G4cout << G4endl;
       }
