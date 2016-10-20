@@ -11,7 +11,8 @@ pid = {"pi0":111, "pi+":211, "k0l":130, "k0s":310, "k+":321,
        "nue":12, "nuebar":-12, 
        "numu":14, "numubar":-14, 
        "nutau":16, "nutaubar":-16,
-       "p+":2212, "n0":2112}
+       "p+":2212, "n0":2112,
+       "Bi214":1000832140,"Tl208":1000812080,"K40":1000190400}
 
 #holds detector [radius, height] in cm
 detectors = {"SuperK":[3368.15/2., 3620.],
@@ -53,13 +54,18 @@ optdefault = '1000.0'
 parser.add_option("-e", "--energy", dest="energy",
                   help="Particle energy to be generated in MeV. Specify range with colon separated pair (e.g. 0:10). Default: %s" \
                       % (optdefault),
-                  metavar="ENERGY",default=optdefault)
-optchoices = ["center", "random", "minusx", "plusx", "minusz", "plusz"]
+                  metavar="ENERGY", default=optdefault)
+optchoices = ["center", "randomwater", "randompmt", "minusx", "plusx", "minusz", "plusz"]
 optdefault = optchoices[0]
 parser.add_option("-v", "--vertex", dest="vertname",
                   help="Type of vertex. Choices: %s. Default: %s" \
                       % (optchoices, optdefault),
                   choices=optchoices, default=optdefault)
+optdefault = "HKPMT_LIST.list"
+parser.add_option("-p", "--pmtlist", dest="pmtlist",
+                  help="file with list of PMT positions. Default: %s" \
+                      %(optdefault),
+                  metavar="FILE", default=optdefault)
 optchoices = ["4pi", "towall", "tocap"]
 optdefault = optchoices[0]
 parser.add_option("-d", "--direction", dest="dirname",
@@ -103,12 +109,22 @@ particle = {"vertex":(0, 0, 0),
             "energy":energy[0],
             "direction":(1,0,0)}
 
+def ReadPMTPositions(filename):
+    pmts = {}
+    with open(filename) as f:
+        for l in f.readlines():
+            pmtnum,x,y,z = l.split()
+            pmts[int(pmtnum)] = [float(x), float(y), float(z)]
+    return pmts
 
-randvert = False
+randvertwater = False
 if options.vertname == "center":
-    randvert = False
-elif options.vertname == "random":
-    randvert = True
+    randvertwater = False
+elif options.vertname == "randomwater":
+    randvertwater = True
+elif options.vertname == "randompmt":
+    pmts = ReadPMTPositions(options.pmtlist)
+    randvertpmt = True
 elif options.vertname == "wall":
     print >>sys.stderr, "Wall not implemented yet"
     sys.exit(3)
@@ -170,7 +186,7 @@ def partPrint(p, f, recno):
         thisenergy  = random.uniform(energy[0], energy[1])
         p ["energy"] = thisenergy
         nu["energy"] = thisenergy + 1000
-    if randvert:
+    if randvertwater:
         rad    = detectors[options.detector][0] - 20. #cm
         height = detectors[options.detector][1] - 20. #cm
         while True:
@@ -179,6 +195,9 @@ def partPrint(p, f, recno):
             if x**2 + y**2 < rad**2: break
         z = random.uniform(-height/2,height/2)
         f.write("$ vertex %.5f %.5f %.5f %.5f\n" % (x, y, z, p["time"]))
+    elif randvertpmt:
+        pmt = random.randint(0, len(pmts) - 1)
+        f.write("$ vertex %.5f %.5f %.5f %.5f\n" % (pmts[pmt][0], pmts[pmt][1], pmts[pmt][2], p["time"]))
     else:
         f.write("$ vertex %.5f %.5f %.5f %.5f\n" % (p["vertex"]+(p["time"],)) )
     printTrack(nu, f, -1)   # "Neutrino" Track
