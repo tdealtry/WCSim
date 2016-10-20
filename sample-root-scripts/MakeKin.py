@@ -38,6 +38,10 @@ parser.add_option("-n", "--npart", dest="npart",
                   help="number of particles to simulate per file. Default: %s" \
                   % (optdefault),
                   metavar="#", default=optdefault)
+optdefault = None
+parser.add_option("-s", "--seed", dest="seed",
+                  help="Random number seed to use. Default: None (use system time)",
+                  metavar="SEED", default=optdefault)
 optchoices = pid.keys()
 optdefault = "mu-"
 parser.add_option("-t", "--type", dest="type",
@@ -73,6 +77,7 @@ parser.add_option("-w", "--detector", dest="detector",
 
 options.vertname = options.vertname.lower()
 options.dirname = options.dirname.lower()
+random.seed(options.seed)
 
 
 
@@ -166,8 +171,8 @@ def partPrint(p, f, recno):
         p ["energy"] = thisenergy
         nu["energy"] = thisenergy + 1000
     if randvert:
-        rad    = detectors[options.detector][0] - 20.
-        height = detectors[options.detector][1] - 20.
+        rad    = detectors[options.detector][0] - 20. #cm
+        height = detectors[options.detector][1] - 20. #cm
         while True:
             x = random.uniform(-rad,rad)
             y = random.uniform(-rad,rad)
