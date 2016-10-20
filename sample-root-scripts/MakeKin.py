@@ -61,10 +61,10 @@ parser.add_option("-v", "--vertex", dest="vertname",
                   help="Type of vertex. Choices: %s. Default: %s" \
                       % (optchoices, optdefault),
                   choices=optchoices, default=optdefault)
-optdefault = "HKPMT_LIST.list"
+optdefault = "./"
 parser.add_option("-p", "--pmtlist", dest="pmtlist",
-                  help="file with list of PMT positions. Default: %s" \
-                      %(optdefault),
+                  help="file with list of PMT positions. End with a '/' for the filename to be constructed automatically as <detector>_pmts.list. Default: %s" \
+                      % (optdefault),
                   metavar="FILE", default=optdefault)
 optchoices = ["4pi", "towall", "tocap"]
 optdefault = optchoices[0]
@@ -123,7 +123,10 @@ if options.vertname == "center":
 elif options.vertname == "randomwater":
     randvertwater = True
 elif options.vertname == "randompmt":
-    pmts = ReadPMTPositions(options.pmtlist)
+    fname = options.pmtlist
+    if options.pmtlist.strip()[-1] == '/':
+        fname += options.detector + '_pmts.list'
+    pmts = ReadPMTPositions(fname)
     randvertpmt = True
 elif options.vertname == "wall":
     print >>sys.stderr, "Wall not implemented yet"
@@ -196,7 +199,7 @@ def partPrint(p, f, recno):
         z = random.uniform(-height/2,height/2)
         f.write("$ vertex %.5f %.5f %.5f %.5f\n" % (x, y, z, p["time"]))
     elif randvertpmt:
-        pmt = random.randint(0, len(pmts) - 1)
+        pmt = random.randint(1, len(pmts))
         f.write("$ vertex %.5f %.5f %.5f %.5f\n" % (pmts[pmt][0], pmts[pmt][1], pmts[pmt][2], p["time"]))
     else:
         f.write("$ vertex %.5f %.5f %.5f %.5f\n" % (p["vertex"]+(p["time"],)) )

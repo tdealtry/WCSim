@@ -25,3 +25,6 @@ geofile.txt
 
 #ignore backup files
 *~
+
+#ignore PMT lists
+*_pmts.list
