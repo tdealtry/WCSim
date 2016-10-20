@@ -20,6 +20,7 @@ import argparse
 import shutil
 import sys
 import os
+import re
 import itertools
 from collections import OrderedDict
 
@@ -30,7 +31,6 @@ DAQdigitizer_choices = ['SKI']
 DAQtrigger_choices = ['NDigits', 'NDigits2', 'NoTrigger']
 DAQtrigger_ndigits_choices = ['NDigits', 'NDigits2']
 WCgeom_choices = ['HyperK', \
-                      'HyperK_withHPD', \
                       'SuperK', \
                       'SuperK_20inchPMT_20perCent', \
                       'SuperK_20inchBandL_20perCent', \
@@ -39,7 +39,6 @@ WCgeom_choices = ['HyperK', \
                       'Cylinder_12inchHPD_15perCent', \
                       'Cylinder_60x74_20inchBandL_14perCent', \
                       'Cylinder_60x74_20inchBandL_40perCent']
-HKwatertargetlength_choices = ['HyperK', 'HyperK_withHPD']
 PMTQEMethod_choices = ['Stacking_Only', 'Stacking_And_SensitiveDetector', 'SensitiveDetector_Only']
 PMTCollEff_choices = ['on', 'off']
 GunPositionChoices = ['center', 'random', 'wall', 'minusx', 'plusx', 'minusz', 'plusz']
@@ -60,6 +59,19 @@ def pair_or_single(arg):
     elif len(pair) == 2:
         return pair, "%.1f:%.1f" % (pair[0], pair[1])
 
+def GetWCSimDefault(cfile, variable, verbose = True):
+    with open(cfile) as f:
+        for line in f:
+            if re.search("\w+ default" + variable + " *= *", line):
+                #print line
+                var = line.split('=')[-1].strip().strip(';').strip('"')
+                print var, variable, cfile
+                return str(var)
+    print 'Cannot find default value for variable', variable, 'in', cfile
+    sys.exit(-1)
+
+wcsimsrc = os.path.expandvars("$WCSIMDIR/src/")
+
 parser = argparse.ArgumentParser(description='Run many WCSim jobs with different options. Use , to delimit multiple options', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 #options about how to run this script
 parser.add_argument('--onlycreatefiles', action='store_true', help="Do a test run where you create all the files, but don't run WCSim?")
@@ -68,28 +80,29 @@ parser.add_argument('--notifyuseremail', type=str, default='', help='Specify thi
 #options for the .mac files
 # geometry
 parser.add_argument('--WCgeom', type=delim_list, default='SuperK', help='The water tank geometry. Specify multiple with comma separated list. Choices: '+ListAsString(WCgeom_choices))
-parser.add_argument('--HKwatertanklength', type=delim_list, default='49500', help='The size of a HyperK geometry (mm)')
 # trigger & digitization
-parser.add_argument('--DAQdigitizer', type=delim_list, default='SKI', help='Which digitizer class to use? Specify multiple with comma separated list. Choices: '+ListAsString(DAQdigitizer_choices))
-parser.add_argument('--DAQtrigger', type=delim_list, default='NDigits', help='Which trigger class to use? Specify multiple with comma separated list. Choices: '+ListAsString(DAQtrigger_choices))
+parser.add_argument('--DAQdigitizer', type=delim_list, default=GetWCSimDefault(wcsimsrc+"WCSimWCDAQMessenger.cc", "Digitizer"), help='Which digitizer class to use? Specify multiple with comma separated list. Choices: '+ListAsString(DAQdigitizer_choices))
+parser.add_argument('--DAQtrigger', type=delim_list, default=GetWCSimDefault(wcsimsrc+"WCSimWCDAQMessenger.cc", "Trigger"), help='Which trigger class to use? Specify multiple with comma separated list. Choices: '+ListAsString(DAQtrigger_choices))
 parser.add_argument('--DAQMultiDigitsPerTrigger', action='store_true', help='Allow multiple digits per trigger window?')
 #generic digitizer options
-parser.add_argument('--DAQdigideadtime', type=delim_list, default='0', help='What value of the digitizer deadtime should be used (i.e. how long can the digitizer not create new digits)? Specify multiple with comma separated list')
-parser.add_argument('--DAQdigiintwindow', type=delim_list, default='200', help='What value of the digitizer integration window should be used (i.e. how long does the digitizer integrate for)? Specify multiple with comma separated list')
+parser.add_argument('--DAQdigideadtime', type=delim_list, default=GetWCSimDefault(wcsimsrc+"WCSimWCDAQMessenger.cc", "DigitizerDeadTime"), help='What value of the digitizer deadtime should be used (i.e. how long can the digitizer not create new digits)? Specify multiple with comma separated list')
+parser.add_argument('--DAQdigiintwindow', type=delim_list, default=GetWCSimDefault(wcsimsrc+"WCSimWCDAQMessenger.cc", "DigitizerIntegrationWindow"), help='What value of the digitizer integration window should be used (i.e. how long does the digitizer integrate for)? Specify multiple with comma separated list')
+parser.add_argument('--DAQdigitimeprecision', type=delim_list, default=GetWCSimDefault(wcsimsrc+"WCSimWCDAQMessenger.cc", "DigitizerTimingPrecision"), help='What value of the digitizer time resolution should be used (i.e. to what level should digit time be truncated)? Specify multiple with comma separated list')
+parser.add_argument('--DAQdigichargeprecision', type=delim_list, default=GetWCSimDefault(wcsimsrc+"WCSimWCDAQMessenger.cc", "DigitizerPEPrecision"), help='What value of the digitizer charge resolution should be used (i.e. to what level should digit charge be truncated)? Specify multiple with comma separated list')
 #ndigits trigger
-parser.add_argument('--DAQndigitsthreshold', type=delim_list, default='25', help='What value of the ndigits trigger threshold should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
-parser.add_argument('--DAQndigitswindow', type=delim_list, default='200', help='What value of the ndigits trigger window should be used (ns)? Specify multiple with comma separated list')
+parser.add_argument('--DAQndigitsthreshold', type=delim_list, default=GetWCSimDefault(wcsimsrc+"WCSimWCDAQMessenger.cc", "NDigitsTriggerThreshold"), help='What value of the ndigits trigger threshold should be used (i.e. number of hits/digits)? Specify multiple with comma separated list')
+parser.add_argument('--DAQndigitswindow', type=delim_list, default=GetWCSimDefault(wcsimsrc+"WCSimWCDAQMessenger.cc", "NDigitsTriggerWindow"), help='What value of the ndigits trigger window should be used (ns)? Specify multiple with comma separated list')
 parser.add_argument('--DAQndigitsignorenoise', action='store_true', help='Adjust the NDigits threshold automatically for the dark noise rate?')
-parser.add_argument('--DAQndigitssavewindow', type=delim_list, default='-400:+950', help='What value of the pre/post trigger window should digits be saved in (for the ndigits trigger)? Separate pre/post with a ":". Specify multiple pairs with a comma separated list')
+parser.add_argument('--DAQndigitssavewindow', type=delim_list, default=GetWCSimDefault(wcsimsrc+"WCSimWCDAQMessenger.cc", "NDigitsPreTriggerWindow")+':'+GetWCSimDefault(wcsimsrc+"WCSimWCDAQMessenger.cc", "NDigitsPostTriggerWindow"), help='What value of the pre/post trigger window should digits be saved in (for the ndigits trigger)? Separate pre/post with a ":". Specify multiple pairs with a comma separated list')
 #save failures trigger
-parser.add_argument('--DAQsavefailuresmode', type=delim_list, default='0', help='Save failed triggers mode. 0: save only events which pass the trigger. 1: save both. 2: save only events which fail the trigger')
-parser.add_argument('--DAQsavefailurestime', type=delim_list, default='200', help='For mode 1 & 2, give events which fail the trigger the trigger time')
-parser.add_argument('--DAQsavefailuressavewindow', type=delim_list, default='-400:+950', help='What value of the pre/post trigger window should digits be saved in (for the save failures)? Separate pre/post with a ":". Specify multiple pairs with a comma separated list')
+parser.add_argument('--DAQsavefailuresmode', type=delim_list, default=GetWCSimDefault(wcsimsrc+"WCSimWCDAQMessenger.cc", "SaveFailuresTriggerMode"), help='Save failed triggers mode. 0: save only events which pass the trigger. 1: save both. 2: save only events which fail the trigger')
+parser.add_argument('--DAQsavefailurestime', type=delim_list, default=GetWCSimDefault(wcsimsrc+"WCSimWCDAQMessenger.cc", "SaveFailuresTriggerTime"), help='For mode 1 & 2, give events which fail the trigger the trigger time')
+parser.add_argument('--DAQsavefailuressavewindow', type=delim_list, default=GetWCSimDefault(wcsimsrc+"WCSimWCDAQMessenger.cc", "SaveFailuresPreTriggerWindow")+':'+GetWCSimDefault(wcsimsrc+"WCSimWCDAQMessenger.cc", "SaveFailuresPostTriggerWindow"), help='What value of the pre/post trigger window should digits be saved in (for the save failures)? Separate pre/post with a ":". Specify multiple pairs with a comma separated list')
 #dark noise
-parser.add_argument('--DarkNoiseRate', type=delim_list, default='4.2', help='Dark noise rate (kHz). Specify multiple with comma separated list')
-parser.add_argument('--DarkNoiseConvert', type=delim_list, default='1.367', help='Convert dark noise frequency before digitization to after digitization by setting suitable factor. Specify multiple with comma separated list')
-parser.add_argument('--DarkNoiseMode', type=int, default=1, choices=[0,1], help='0: apply noise in a specified time window. 1: apply noise around hits. Choose exactly one')
-parser.add_argument('--DarkNoiseWindow', type=delim_list, default='1500', help=' Mode 0: Apply dark noise in range x:y (use : as delimeter!). Mode 1: Apply dark noise in a window around each hit (+-window/2). Specify multiple (for the same mode) with a comma separated list')
+parser.add_argument('--DarkNoiseRate', type=delim_list, default='-99', help='Dark noise rate (kHz). Specify multiple with comma separated list')
+parser.add_argument('--DarkNoiseConvert', type=delim_list, default='-99', help='Convert dark noise frequency before digitization to after digitization by setting suitable factor. Specify multiple with comma separated list')
+parser.add_argument('--DarkNoiseMode', type=int, default=GetWCSimDefault(wcsimsrc+"WCSimDarkRateMessenger.cc","DarkMode"), choices=[0,1], help='0: apply noise in a specified time window. 1: apply noise around hits. Choose exactly one')
+parser.add_argument('--DarkNoiseWindow', type=delim_list, default=GetWCSimDefault(wcsimsrc+"WCSimDarkRateMessenger.cc","DarkLow")+':'+GetWCSimDefault(wcsimsrc+"WCSimDarkRateMessenger.cc","DarkHigh") if GetWCSimDefault(wcsimsrc+"WCSimDarkRateMessenger.cc","DarkMode") else GetWCSimDefault(wcsimsrc+"WCSimDarkRateMessenger.cc","DarkWindow"), help=' Mode 0: Apply dark noise in range x:y (use : as delimeter!). Mode 1: Apply dark noise in a window around each hit (+-window/2). Specify multiple (for the same mode) with a comma separated list')
 # pmt
 parser.add_argument('--PMTQEMethod', type=delim_list, default='Stacking_Only', help='How the QE is applied? Specify multiple with comma separated list. Choices: '+ListAsString(PMTQEMethod_choices))
 parser.add_argument('--PMTCollEff', type=delim_list, default='on', help='Turn on/off the PMT collection efficiency? Specify multiple with comma separated list. Choices: '+ListAsString(PMTCollEff_choices))
@@ -101,6 +114,7 @@ parser.add_argument('--GunParticle', type=str, default='e-', choices=GunParticle
 parser.add_argument('--GunEnergy', type=delim_list, default='500', help='Particle gun energy (MeV). Specify multiple with comma separated list')
 parser.add_argument('--GunPosition', type=delim_list_str, default='0,0,0', help='Particle gun position. Either a comma-separated 3 vector OR exactly one of '+ListAsString(GunPositionChoices))
 parser.add_argument('--GunDirection', type=delim_list_str, default='1,0,0', help='Particle gun direction. Either a comma-separated 3 vector OR exactly one of '+ListAsString(GunDirectionChoices))
+#job info
 parser.add_argument('--NEvents', type=int, default=10, help='Number of events per configuration')
 parser.add_argument('--JobsPerConfig', type=int, default=1, help='Number of jobs per configuration (total events generated = JobsPerConfig * NEvents')
 
@@ -131,6 +145,11 @@ def check_input_pairs(args):
             parser.print_help()
             print arg, "must be a (common separated list of) colon-separated monotonically-increasing int pair(s). Not monotonically-increasing"
             sys.exit(1)
+
+def IsDefault(v, l = []):
+    if v in ['true','false'] + l:
+        return False
+    return True if abs(float(v) + 99) < 1E-6 else False
 
 def main(args_to_parse = None):
 
@@ -210,7 +229,6 @@ def main(args_to_parse = None):
         # permutations
         permutationDict = OrderedDict()
         permutationDict['/WCSim/WCgeom']  = [x for x in args.WCgeom]
-        permutationDict['/WCSim/HyperK/waterTank_Length'] = [x for x in args.HKwatertanklength]
         # create a list of dictionaries for each permutation of the parameter values
         permutationDictList = [ OrderedDict(zip(permutationDict, v)) for v in itertools.product(*permutationDict.values()) ]
         for pDict in permutationDictList:
@@ -222,11 +240,6 @@ def main(args_to_parse = None):
                 #SuperK is the default
                 if k == '/WCSim/WCgeom' and v == 'SuperK':
                     break
-                #HK length only relevant for some geometries
-                if k == '/WCSim/HyperK/waterTank_Length':
-                    thisgeom = geomoptions.split()[1].strip()
-                    if thisgeom not in HKwatertargetlength_choices:
-                        break
                 geomoptions += k + ' ' + v + '\n'
             if geomoptions != '':
                 geomoptions += "/WCSim/Construct \n"
@@ -234,8 +247,6 @@ def main(args_to_parse = None):
                 geoms.append(geomoptions + gunopt)
             #assemble the filename
             filestub = pDict['/WCSim/WCgeom']
-            if filestub in HKwatertargetlength_choices:
-                filestub += '_' + pDict['/WCSim/HyperK/waterTank_Length']
             for gunstub in gunstubs:
                 filestubs.append(gunstub + '_' + filestub)
         return [geoms, filestubs]
@@ -271,6 +282,8 @@ def main(args_to_parse = None):
         permutationDict['/DAQ/Trigger']                               = [x for x in args.DAQtrigger]
         permutationDict['/DAQ/DigitizerOpt/DeadTime']                 = [x for x in args.DAQdigideadtime]
         permutationDict['/DAQ/DigitizerOpt/IntegrationWindow']        = [x for x in args.DAQdigiintwindow]
+        permutationDict['/DAQ/DigitizerOpt/TimingPrecision']          = [x for x in args.DAQdigitimeprecision]
+        permutationDict['/DAQ/DigitizerOpt/PEPrecision']              = [x for x in args.DAQdigichargeprecision]
         permutationDict['/DAQ/TriggerSaveFailures/Mode']              = [x for x in args.DAQsavefailuresmode]
         permutationDict['/DAQ/TriggerSaveFailures/TriggerTime']       = [x for x in args.DAQsavefailurestime]
         permutationDict['/DAQ/TriggerSaveFailures/PreTriggerWindow']  = [x.split(':')[0] for x in args.DAQsavefailuressavewindow]
@@ -282,7 +295,7 @@ def main(args_to_parse = None):
             #get the options
             daqoptions = ''
             for k,v in pDict.iteritems():
-                daqoptions += k + ' ' + v + '\n'
+                daqoptions += ('#' if IsDefault(v, DAQdigitizer_choices + DAQtrigger_choices) else '') + k + ' ' + v + '\n'
             #get the filename
             filestub = pDict['/DAQ/Digitizer'] + '_digi' + pDict['/DAQ/DigitizerOpt/DeadTime'] + '_' \
                 + pDict['/DAQ/DigitizerOpt/IntegrationWindow'] + '_' \
@@ -330,7 +343,7 @@ def main(args_to_parse = None):
             #get the options
             options = ''
             for k,v in pDict.iteritems():
-                options += k + ' ' + v + '\n'
+                options += ('#' if IsDefault(v) else '') + k + ' ' + v + '\n'
             commands.append(options)
             #assemble the filename
             filestub = 'NDigits' + pDict['/DAQ/TriggerNDigits/Threshold'] + '_' + pDict['/DAQ/TriggerNDigits/Window']
@@ -356,7 +369,7 @@ def main(args_to_parse = None):
             #get the options
             darkoptions = ''
             for k,v in pDict.iteritems():
-                darkoptions += k + ' ' + v + '\n'
+                darkoptions += ('#' if IsDefault(v) else '') + k + ' ' + v + '\n'
             noises.append(darkoptions)
             #assemble the filename
             filestub = 'DarkNoiseM' + pDict['/DarkRate/SetDarkMode'] + 'C' + pDict['/DarkRate/SetConvert'] + 'R' + pDict['/DarkRate/SetDarkRate'] + 'W'
@@ -399,7 +412,7 @@ def main(args_to_parse = None):
                 #https://geant4.web.cern.ch/geant4/UserDocumentation/UsersGuides/ForApplicationDeveloper/html/ch02s07.html
                 gunoptions = "/mygen/generator laser \n" \
                     "/gps/particle " + args.GunParticle + "\n" \
-                    "/gps/energy " + GunEnergy[0] + " MeV \n" \
+                    "/gps/energy " + GunEnergyStr + " MeV \n" \
                     "/gps/pos/centre " + " ".join(i for i in args.GunPosition) + "\n" \
                     "/gps/pos/type Plane \n" \
                     "/gps/pos/shape Rectangle \n" \
@@ -416,7 +429,7 @@ def main(args_to_parse = None):
                 #https://geant4.web.cern.ch/geant4/UserDocumentation/UsersGuides/ForApplicationDeveloper/html/ch02s07.html
                 gunoptions = "/mygen/generator laser \n" \
                     "/gps/particle " + args.GunParticle + "\n" \
-                    "/gps/energy " + GunEnergy[0] + " MeV \n" \
+                    "/gps/energy " + GunEnergyStr + " MeV \n" \
                     "/gps/pos/centre " + " ".join(i for i in args.GunPosition) + "\n" \
                     "/gps/pos/type Volume \n" \
                     "/gps/pos/shape Cylinder \n" \
@@ -433,7 +446,7 @@ def main(args_to_parse = None):
                 #http://geant4.web.cern.ch/geant4/G4UsersDocuments/UsersGuides/ForApplicationDeveloper/html/Control/UIcommands/_gun_.html
                 gunoptions = "/mygen/generator normal " + "\n" \
                     "/gun/particle " + args.GunParticle + "\n" \
-                    "/gun/energy " + GunEnergy[0] + " MeV \n" \
+                    "/gun/energy " + GunEnergyStr + " MeV \n" \
                     "/gun/direction " + " ".join(i for i in args.GunDirection) + "\n" \
                     "/gun/position " + " ".join(i for i in args.GunPosition) + "\n"
                 guns.append(gunoptions)
@@ -542,5 +555,3 @@ def Submit(filenamestub, args):
                                
 if __name__ == "__main__":
     main()
-
-    print "\n\n\nTODO fix defaults - certain variables should be allowed to be not written in the .mac file (e.g. if DarkRate == -99)"
