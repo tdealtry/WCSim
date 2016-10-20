@@ -16,7 +16,8 @@ pid = {"pi0":111, "pi+":211, "k0l":130, "k0s":310, "k+":321,
 #holds detector [radius, height] in cm
 detectors = {"SuperK":[3368.15/2., 3620.],
              "Cylinder_60x74_20inchBandL_14perCent":[7400./2., 6000.],
-             "Cylinder_60x74_20inchBandL_40perCent":[7400./2., 6000.]}
+             "Cylinder_60x74_20inchBandL_40perCent":[7400./2., 6000.],
+             "HyperK":[7080./2., 5480.]}
 
 for pname, no in pid.items():
     if pname.endswith('+'):
