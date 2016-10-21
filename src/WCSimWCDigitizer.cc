@@ -72,8 +72,8 @@ void WCSimWCDigitizerBase::GetVariables()
   G4cout << "Using digitizer deadtime " << DigitizerDeadTime << " ns" << G4endl;
   G4cout << "Using digitizer integration window " << DigitizerIntegrationWindow << " ns" << G4endl;
   G4cout << "Using dead PMTs:";
-  for(size_t i = 0; i < DeadPMTs.size(); i++)
-    G4cout << " " << DeadPMTs[i];
+  for(std::set<int>::iterator it = DeadPMTs.begin(); it != DeadPMTs.end(); ++it)
+    G4cout << " " << *it;
   G4cout << G4endl;
 }
 
@@ -83,13 +83,15 @@ void WCSimWCDigitizerBase::SetDeadPMTs(G4String filename)
   DeadPMTFilename = filename;
   ifstream infile(filename);
   int pmt;
+  std::vector<int> DeadPMTsVector;
   while(!infile.eof()) {
     infile >> pmt;
-    DeadPMTs.push_back(pmt);
+    DeadPMTsVector.push_back(pmt);
   }
-  std::sort(DeadPMTs.begin(), DeadPMTs.end());
-  std::vector<int>::iterator it = std::unique(DeadPMTs.begin(), DeadPMTs.end());
-  DeadPMTs.resize(std::distance(DeadPMTs.begin(), it));
+  std::sort(DeadPMTsVector.begin(), DeadPMTsVector.end());
+  std::vector<int>::iterator it = std::unique(DeadPMTsVector.begin(), DeadPMTsVector.end());
+  DeadPMTsVector.resize(std::distance(DeadPMTsVector.begin(), it));
+  DeadPMTs.insert(DeadPMTsVector.begin(), DeadPMTsVector.end());
 }
 
 void WCSimWCDigitizerBase::Digitize()
@@ -216,13 +218,7 @@ void WCSimWCDigitizerSKI::DigitizeHits(WCSimWCDigitsCollection* WCHCPMT) {
 #endif
 
       //Check whether the PMT is in the dead-PMT list
-      bool is_dead = false;
-      for(size_t ideadpmt = 0; ideadpmt < DeadPMTs.size(); ideadpmt++) {
-	if(DeadPMTs[ideadpmt] == tube) {
-	  is_dead = true;
-	  break;
-	}
-      }//ideadpmt
+      bool is_dead = DeadPMTs.find(tube) != DeadPMTs.end();
       if(is_dead) {
 #ifdef WCSIMWCDIGITIZER_VERBOSE
 	if(tube < NPMTS_VERBOSE)
