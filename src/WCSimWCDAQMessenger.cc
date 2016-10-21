@@ -61,6 +61,13 @@ WCSimWCDAQMessenger::WCSimWCDAQMessenger(WCSimEventAction* eventaction) :
   MultiDigitsPerTriggerSet = false; //this variable is bool & defaults are class specfic; use this to know if the default is overidden
   //don't SetNewValue -> defaults class-specific and taken from GetDefault*()
 
+  G4String defaultDeadPMTFilename = "";
+  DeadPMTFilename = new G4UIcmdWithAString("/DAQ/DeadPMTFile", this);
+  DeadPMTFilename->SetGuidance("File containing a list of dead PMTs");
+  DeadPMTFilename->SetParameterName("DeadPMTFilename",false);
+  DeadPMTFilename->SetDefaultValue(defaultDeadPMTFilename);
+  StoreDeadPMTFilename = defaultDeadPMTFilename;
+  SetNewValue(DeadPMTFilename, defaultDeadPMTFilename);
 
   //Generic digitizer specific options
   DigitizerDir = new G4UIdirectory("/DAQ/DigitizerOpt/");
@@ -190,6 +197,7 @@ WCSimWCDAQMessenger::~WCSimWCDAQMessenger()
   delete DigitizerChoice;
   delete TriggerChoice;
   delete MultiDigitsPerTrigger;
+  delete DeadPMTFilename;
   delete WCSimDAQDir;
 }
 
@@ -217,6 +225,10 @@ void WCSimWCDAQMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
       G4cout << "Will allow number of digits per PMT per trigger to go > 1" << initialiseString.c_str() << G4endl;
     if(initialised)
       MultiDigitsPerTriggerSet = true;
+  }
+  else if (command == DeadPMTFilename) {
+    G4cout << "Dead PMT list filename set to " << newValue << initialiseString.c_str() << G4endl;
+    StoreDeadPMTFilename = newValue;
   }
 
   //Generic digitizer options
@@ -345,5 +357,9 @@ void WCSimWCDAQMessenger::SetDigitizerOptions()
   if(StoreDigitizerIntegrationWindow >= 0) {
     WCSimDigitize->SetDigitizerIntegrationWindow(StoreDigitizerIntegrationWindow);
     G4cout << "\tDigitizer integration window set to " << StoreDigitizerIntegrationWindow << " ns" << G4endl;
+  }
+  if(!StoreDeadPMTFilename.empty()) {
+    G4cout << "\tDead PMT filename set to " << StoreDeadPMTFilename << G4endl;
+    WCSimDigitize->SetDeadPMTs(StoreDeadPMTFilename);
   }
 }

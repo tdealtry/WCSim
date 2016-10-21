@@ -33,6 +33,7 @@ public:
   //.mac file option setting methods
   void SetDigitizerDeadTime         (int deadtime) { DigitizerDeadTime = deadtime;         }; ///< Override the default digitizer deadtime (ns)
   void SetDigitizerIntegrationWindow(int inttime ) { DigitizerIntegrationWindow = inttime; }; ///< Override the default digitizer integration window (ns)
+  void SetDeadPMTs (G4String filename); ///< Fill the DeadPMTs vector using an input filename
 
 protected:
   void ReInitialize() { DigiStoreHitMap.clear(); }
@@ -45,9 +46,12 @@ protected:
   WCSimWCDigitsCollection*  DigiStore;
   std::map<int,int> DigiStoreHitMap;   ///< Used to check if a digit has already been created on a PMT
 
+  std::vector<int> DeadPMTs; ///< list of dead PMTs - digits of these will not be made
+
   //generic digitizer properties. Defaults set with the GetDefault*() methods. Overidden by .mac options
   int DigitizerDeadTime;          ///< Digitizer deadtime (ns)
   int DigitizerIntegrationWindow; ///< Digitizer integration window (ns)
+  G4String DeadPMTFilename;       ///< Filename of file storing list of dead PMTs
 
   DigitizerType_t DigitizerType; ///< Enumeration to say which digitizer we've constructed
 

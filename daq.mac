@@ -2,6 +2,9 @@
 
 #choose the Trigger & Digitizer type in novis.mac
 
+#a filename that has a list of dead PMT ids
+#/DAQ/DeadPMTFile deadpmt.list
+
 #generic digitizer options (defaults are class-specific. Can be overridden here)
 # how long is the digitizer dead before a new hit on the same PMT can be recorded (ns)?
 #/DAQ/DigitizerOpt/DeadTime 0

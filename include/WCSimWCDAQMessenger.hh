@@ -42,6 +42,8 @@ private:
   G4UIcmdWithABool*   MultiDigitsPerTrigger;
   G4bool              StoreMultiDigitsPerTrigger;
   G4bool              MultiDigitsPerTriggerSet;
+  G4UIcmdWithAString* DeadPMTFilename;
+  G4String            StoreDeadPMTFilename;
 
   G4UIdirectory*        DigitizerDir;
   G4UIcmdWithAnInteger* DigitizerDeadTime;
