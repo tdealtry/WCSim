@@ -3,6 +3,7 @@
 #choose the Trigger & Digitizer type in novis.mac
 
 #a filename that has a list of dead PMT ids
+# PMT ids run from 1->N
 #/DAQ/DeadPMTFile deadpmt.list
 
 #generic digitizer options (defaults are class-specific. Can be overridden here)
