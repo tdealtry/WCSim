@@ -41,7 +41,7 @@ WCgeom_choices = ['HyperK', \
                       'Cylinder_60x74_20inchBandL_40perCent']
 PMTQEMethod_choices = ['Stacking_Only', 'Stacking_And_SensitiveDetector', 'SensitiveDetector_Only']
 PMTCollEff_choices = ['on', 'off']
-GunPositionChoices = ['center', 'random', 'wall', 'minusx', 'plusx', 'minusz', 'plusz']
+GunPositionChoices = ['center', 'randomwater', 'randompmt', 'wall', 'minusx', 'plusx', 'minusz', 'plusz']
 GunDirectionChoices = ['towall', 'tocap', '4pi', 'wall']
 GunParticleChoices=['e-','e+','mu-','mu+','pi-','pi+','pi0','gamma','p+','n0']
 BatchChoices=['local','condor']
