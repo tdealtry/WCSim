@@ -1,7 +1,20 @@
 #include <iostream>
-#include <TH1F.h>
-#include <stdio.h>     
-#include <stdlib.h>    
+#include <stdio.h>
+#include <stdlib.h>
+#include "TH1F.h"
+#include "TFile.h"
+#include "TString.h"
+#include "TSystem.h"
+#include "TTree.h"
+#include "TCanvas.h"
+
+#if !defined(__CINT__) || defined(__MAKECINT__)
+#include "WCSimRootEvent.hh"
+#include "WCSimRootGeom.hh"
+#include "WCSimEnumerations.hh"
+#endif
+
+using namespace std;
 
 TString create_filename(const char * prefix, TString& filename_string)
 {
@@ -12,7 +25,7 @@ TString create_filename(const char * prefix, TString& filename_string)
 }
 
 // Simple example of reading a generated Root file
-void sample_readfile(char *filename=NULL, bool verbose=false, bool save_hists=false)
+int sample_readfile(char *filename=NULL, bool verbose=false, bool save_hists=false)
 {
   // Clear global scope
   //gROOT->Reset();
@@ -46,6 +59,7 @@ void sample_readfile(char *filename=NULL, bool verbose=false, bool save_hists=fa
   gStyle->SetTitleBorderSize(0);
   gStyle->SetCanvasBorderMode(0);
   */
+#if !defined(__MAKECINT__)
   // Load the library with class dictionary info
   // (create with "gmake shared")
   char* wcsimdirenv;
@@ -55,6 +69,7 @@ void sample_readfile(char *filename=NULL, bool verbose=false, bool save_hists=fa
   }else{
     gSystem->Load("../libWCSimRoot.so");
   }
+#endif
 
   TFile *file;
   // Open the file
@@ -211,10 +226,10 @@ void sample_readfile(char *filename=NULL, bool verbose=false, bool save_hists=fa
 	if(verbose) printf("Total pe: %d times( ",peForTube);
 	for (int j = timeArrayIndex; j < timeArrayIndex + peForTube; j++)
 	{
-	  WCSimRootCherenkovHitTime HitTime = 
-	    dynamic_cast<WCSimRootCherenkovHitTime>(timeArray->At(j));
+	  WCSimRootCherenkovHitTime * HitTime = 
+	    dynamic_cast<WCSimRootCherenkovHitTime*>(timeArray->At(j));
 	  
-	  if(verbose) printf("%6.2f ", HitTime.GetTruetime() );	     
+	  if(verbose) printf("%6.2f ", HitTime->GetTruetime() );	     
 	}
 	if(verbose) cout << ")" << endl;
       }
@@ -290,5 +305,6 @@ void sample_readfile(char *filename=NULL, bool verbose=false, bool save_hists=fa
     h1->Write();
     fout->Close();
   }
-  
+
+  return 0;
 }
