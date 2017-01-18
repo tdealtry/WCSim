@@ -98,7 +98,7 @@ double WCSimWCTriggerBase::GetPreTriggerWindow(TriggerType_t t)
 {
   switch(t) {
   case kTriggerNoTrig:
-    return 0;
+    return -WCSimWCTriggerBase::LongTime;
     break;
   case kTriggerNDigits:
   case kTriggerNDigitsTest:
