@@ -18,6 +18,7 @@
 #include "WCSimSteppingAction.hh"
 #include "WCSimVisManager.hh"
 #include "WCSimRandomParameters.hh"
+#include "WCSimOpticalPhotonTrackInfo.hh"
 
 void file_exists(const char * filename) {
   bool exists = access(filename, F_OK) != -1;
@@ -53,6 +54,7 @@ int main(int argc,char** argv)
   WCSimDetectorConstruction* WCSimdetector = new 
     WCSimDetectorConstruction(WCSimConfiguration,tuningpars);
 
+  WCSimOpticalPhotonTrackInfo::instance();
   runManager->SetUserInitialization(WCSimdetector);
 
   // Added selectable physics lists 2010-07 by DMW

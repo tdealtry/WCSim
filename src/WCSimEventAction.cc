@@ -9,6 +9,7 @@
 #include "WCSimWCAddDarkNoise.hh"
 #include "WCSimWCPMT.hh"
 #include "WCSimDetectorConstruction.hh"
+#include "WCSimOpticalPhotonTrackInfo.hh"
 
 #include "G4Event.hh"
 #include "G4RunManager.hh"
@@ -128,6 +129,10 @@ void WCSimEventAction::BeginOfEventAction(const G4Event*)
 {
   if(!ConstructedDAQClasses)
     CreateDAQInstances();
+  if(WCSimOpticalPhotonTrackInfo::instance()->isEnabled()) {
+    //G4cout << "Resetting WCSimOpticalPhotonTrackInfo instance" << G4endl;
+    WCSimOpticalPhotonTrackInfo::instance()->reset();
+  }
 }
 
 void WCSimEventAction::EndOfEventAction(const G4Event* evt)

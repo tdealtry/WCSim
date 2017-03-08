@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "WCSimSteppingAction.hh"
+#include "WCSimOpticalPhotonTrackInfo.hh"
 
 #include "G4Track.hh"
 #include "G4VProcess.hh"
@@ -16,6 +17,10 @@
 
 void WCSimSteppingAction::UserSteppingAction(const G4Step* aStep)
 {
+  WCSimOpticalPhotonTrackInfo* trackInfo = WCSimOpticalPhotonTrackInfo::instance();
+  // for each optical photon, record the intial position
+  trackInfo->UserSteppingAction( aStep ); // returns immediately if not enabled 
+  
   //DISTORTION must be used ONLY if INNERTUBE or INNERTUBEBIG has been defined in BidoneDetectorConstruction.cc
   
   const G4Event* evt = G4RunManager::GetRunManager()->GetCurrentEvent();

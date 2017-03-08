@@ -12,6 +12,8 @@
 # These are fixed geometries for validation
 #/WCSim/WCgeom SuperK
 
+/opInfo/Enabled True
+
 # Some other SuperK options:
 #/WCSim/WCgeom SuperK_20inchPMT_20perCent # Note: the actual coverage is 20.27%
 #/WCSim/WCgeom SuperK_20inchBandL_20perCent # Note: the actual coverage is 20.27%
@@ -73,8 +75,8 @@
 
 #choose the Trigger & Digitizer type (and options)
 /DAQ/Digitizer SKI
-/DAQ/Trigger NDigits
-#/DAQ/Trigger NoTrigger
+#/DAQ/Trigger NDigits
+/DAQ/Trigger NoTrigger
 
 #grab the other DAQ options (thresholds, timing windows, etc.)
 /control/execute daq.mac
@@ -100,9 +102,9 @@
 #/DarkRate/SetDarkMode 1 adds dark noise hits to a window of
 #width /DarkRate/SetDarkWindow [time in ns] around each hit
 #i.e. hit time ± (/DarkRate/SetDarkWindow) / 2
-/DarkRate/SetDarkMode 1
-/DarkRate/SetDarkHigh 100000
-/DarkRate/SetDarkLow 0
+/DarkRate/SetDarkMode 0
+/DarkRate/SetDarkHigh 4000
+/DarkRate/SetDarkLow -4000
 /DarkRate/SetDarkWindow 4000
 
 #Uncomment one of the lines below if you want to use the OGLSX or RayTracer visualizer
@@ -114,7 +116,7 @@
 /mygen/generator normal
 /gun/particle e-
 #/gun/particle pi0
-/gun/energy 500 MeV
+/gun/energy 5 MeV
 /gun/direction 1 0 0 
 /gun/position 0 0 0  
 
@@ -145,5 +147,5 @@
 
 /WCSimIO/RootFile wcsim.root
 
-/run/beamOn 10
+/run/beamOn 2
 #exit
