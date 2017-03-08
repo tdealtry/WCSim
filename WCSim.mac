@@ -13,6 +13,7 @@
 #/WCSim/WCgeom SuperK
 
 /opInfo/Enabled True
+#/opInfo/KillScatterRef True
 
 # Some other SuperK options:
 #/WCSim/WCgeom SuperK_20inchPMT_20perCent # Note: the actual coverage is 20.27%
@@ -84,7 +85,7 @@
 
 # default dark noise frequency (and conversion factor) is PMT property (NEW), set in the code.
 # Below gives possibility to overwrite nominal values, eg. to switch OFF the Dark Noise.
-#/DarkRate/SetDarkRate 0 kHz   #Turn dark noise off
+/DarkRate/SetDarkRate 0 kHz   #Turn dark noise off
 #/DarkRate/SetDarkRate 4.2 kHz #This is the value for SKI set in SKDETSIM.
 #/DarkRate/SetDarkRate 8.4 kHz #For 20 inch HPDs and Box and Line PMTs, based on High QE 20" R3600 dark rate from EGADS nov 2014
 #/DarkRate/SetDarkRate 3.0 kHz #For 12 inch HPDs and Box and Line PMTs, based on High QE 20" R3600 dark rate from EGADS nov 2014
