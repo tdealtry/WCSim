@@ -71,8 +71,8 @@
 
 #choose the Trigger & Digitizer type (and options)
 /DAQ/Digitizer SKI
-/DAQ/Trigger NDigits
-#/DAQ/Trigger NoTrigger
+#/DAQ/Trigger NDigits
+/DAQ/Trigger NoTrigger
 
 #grab the other DAQ options (thresholds, timing windows, etc.)
 /control/execute daq.mac
@@ -84,6 +84,7 @@
 #/DarkRate/SetDarkRate 4.2 kHz #This is the value for SKI set in SKDETSIM.
 #/DarkRate/SetDarkRate 8.4 kHz #For 20 inch HPDs and Box and Line PMTs, based on High QE 20" R3600 dark rate from EGADS nov 2014
 #/DarkRate/SetDarkRate 3.0 kHz #For 12 inch HPDs and Box and Line PMTs, based on High QE 20" R3600 dark rate from EGADS nov 2014
+#/DarkRate/SetDarkRate 3.5 kHz
 
 # command to multiply the dark rate.
 # Convert dark noise frequency before digitization to after digitization by setting suitable factor
@@ -98,7 +99,7 @@
 #/DarkRate/SetDarkMode 1 adds dark noise hits to a window of
 #width /DarkRate/SetDarkWindow [time in ns] around each hit
 #i.e. hit time ± (/DarkRate/SetDarkWindow) / 2
-/DarkRate/SetDarkMode 1
+/DarkRate/SetDarkMode 0
 /DarkRate/SetDarkHigh 100000
 /DarkRate/SetDarkLow 0
 /DarkRate/SetDarkWindow 4000
@@ -108,36 +109,41 @@
 #/control/execute visRayTracer.mac
 
 
-# Or you can use the G4 Particle Gun
-/mygen/generator normal
-/gun/particle e-
-#/gun/particle pi0
-/gun/energy 500 MeV
-/gun/direction 1 0 0 
-/gun/position 0 0 0  
+# # Or you can use the G4 Particle Gun
+# /mygen/generator normal
+# /gun/particle e-
+# #/gun/particle pi0
+# /gun/energy 500 MeV
+# /gun/direction 1 0 0 
+# /gun/position 0 0 0  
 
-# /mygen/generator radioactive
-# #this window should match the one in biasprofile.dat
-# /mygen/radioactive_time_window 1.e-4
-# /mygen/isotope Tl208 PMT 2.8
-# /mygen/isotope Bi214 PMT 27.
-# /mygen/isotope K40 PMT 94.
-# /mygen/isotope Bi214 water 264.
-# #/mygen/isotope Tl208 water 95.
-# #Clear the source and tell GPS to make multiple vertices
-# /gps/source/clear
+/mygen/generator radioactive
+#this window should match the one in biasprofile.dat
+/mygen/radioactive_time_window 1.e-4
+/mygen/isotope Tl208 PMT 2.8
+/mygen/isotope Bi214 PMT 27.
+/mygen/isotope K40 PMT 94.
+/mygen/isotope Bi214 water 264. ### HK
+###/mygen/isotope Tl208 water 95.
+# /mygen/isotope Bi214 water 50.2 ### SK
+# /mygen/isotope Tl208 PMT 0.56 ### reduced SK
+# /mygen/isotope Bi214 PMT 5.4 ### reduced SK
+# /mygen/isotope K40 PMT 18.8 ### reduced SK
+# /mygen/isotope Bi214 water 10.04 ### reduced SK
+#Clear the source and tell GPS to make multiple vertices
+/gps/source/clear
 
-# ### profile file to enforce radioactive decay time
-# ###   t(1)  I(1)
-# ###   t(2)  I(2)
-# ###   t(3)  I(3)
-# ### times t(i) are in seconds
-# ### decay intensity I(i) is distributed flat from t(i) to t(i+1)
+### profile file to enforce radioactive decay time
+###   t(1)  I(1)
+###   t(2)  I(2)
+###   t(3)  I(3)
+### times t(i) are in seconds
+### decay intensity I(i) is distributed flat from t(i) to t(i+1)
 
-# ### the window in this file should match the radioactive_time_window
-# /grdm/decayBiasProfile biasprofile.dat
-# /grdm/analogueMC 0
-# /grdm/BRbias 0
+### the window in this file should match the radioactive_time_window
+/grdm/decayBiasProfile biasprofile.dat
+/grdm/analogueMC 0
+/grdm/BRbias 0
 
 ## change the name of the output root file, default = wcsim.root
 
