@@ -29,6 +29,10 @@
 #/WCSim/WCgeom HyperK #default length is 49500 mm unless changed in /WCSim/HK/waterTankLength below.
 #/WCSim/WCgeom HyperK_withHPD #default length is 49500 mm unless changed in /WCSim/HK/waterTankLength below.
 
+
+# surface detector
+/WCSim/WCgeom surface_detector_3inchPMT_40perCent #
+
 #Changes the length of the simulated volume. Is currently only set up for HyperK. 
 #/WCSim/HyperK/waterTank_Length 24750. mm # Equivalent length for 10 partitions
 #/WCSim/HyperK/waterTank_Length 49500. mm # Equivalent length for 5 partitions
@@ -38,7 +42,7 @@
 #/WCSim/HyperK/waterTank_Length 247500. mm # Equivalent length for 1 partition
 
 
-#/WCSim/Construct # This must be uncommented in order to construct a new detector configuration. 
+/WCSim/Construct # This must be uncommented in order to construct a new detector configuration. 
 
 #Added for the PMT QE option 08/17/10 (XQ)
 # 1. Stacking only mean when the photon is generated
