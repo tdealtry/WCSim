@@ -409,15 +409,29 @@ PMT3inch::PMT3inch(){}
 PMT3inch::~PMT3inch(){}
 
 G4String PMT3inch::GetPMTName() {G4String PMTName = "3inch"; return PMTName;}
-G4double PMT3inch::GetExposeHeight() {return 34.3*CLHEP::mm;}
+G4double PMT3inch::GetExposeHeight() {return 26.19*CLHEP::mm;} //rough estimate looking at ETEL 9320KFLB specs
 G4double PMT3inch::GetRadius() {return 38.1*CLHEP::mm;}
 G4double PMT3inch::GetPMTGlassThickness() {return 0.55*CLHEP::cm;} //currently the same as 10inch
-G4float PMT3inch::HitTimeSmearing(float Q) { 
-  float timingConstant = 1.890; 
-  float timingResolution = 0.33 + sqrt(timingConstant/Q); 
-  // looking at SK's jitter function for 20" tubes
-  if (timingResolution < 0.58) timingResolution=0.58;
-  float Smearing_factor = G4RandGauss::shoot(0.0,timingResolution);
+float PMT3inch::HitTimeSmearing(float Q) {
+
+  G4float sig_param[4]={2.395,0.649,0.6002,2.307};
+          G4float lambda_param[2]={0.7782,0.05526};
+
+                  G4float sigma_lowcharge = sig_param[0]*(exp(-sig_param[1]*Q)+sig_param[2]);
+
+                  G4float highcharge_param[2];
+          highcharge_param[0]=2*sig_param[0]*sig_param[1]*sig_param[3]*sqrt(sig_param[3])*exp(-sig_param[1]*sig_param[3]);
+          highcharge_param[1]=sig_param[0]*((1-2*sig_param[1]*sig_param[3])*exp(-sig_param[1]*sig_param[3])+sig_param[2]);
+          G4float sigma_highcharge = highcharge_param[0]/sqrt(Q)+highcharge_param[1];
+
+                  G4float sigma = sigma_lowcharge*(Q<sig_param[3])+sigma_highcharge*(Q>sig_param[3]);
+          G4float lambda = lambda_param[0]+lambda_param[1]*Q;
+          G4float totalsigma = sqrt(sigma*sigma+1/lambda/lambda);
+
+                  float Smearing_factor = G4RandGauss::shoot(0.0,totalsigma);
+
+
+
   return Smearing_factor;
 }
 
@@ -542,14 +556,14 @@ G4float* PMT3inch::Getqpe() //currently uses the same as 20inch
 
 //Currenly the PMT QE info is the same as 20 inch.
 G4float* PMT3inch::GetQE(){
-  static G4float QE[20] = { 0.00, .0139, .0854, .169, .203, .206, .211, .202,.188, .167, .140, .116, .0806, .0432, .0265, .0146, .00756, .00508, .00158, 0.00};
+  static G4float QE[20] = { 0.00, .082, .2137, .2852, .2978, .2935, .2837, .2649,.2432, .2118, .1777, .1443, .1131, .07673, .04131, .0195, .008538, 0.0, 0.0, 0.00};
   return QE;
 }
 G4float* PMT3inch::GetQEWavelength(){static G4float wavelength[20] = { 280., 300., 320., 340., 360., 380., 400., 420., 440., 460., 480., 500., 520., 540., 560., 580., 600., 620., 640., 660.};
   return wavelength;}
 
 G4float  PMT3inch::GetmaxQE(){
-    const G4float maxQE = 0.211;
+  const G4float maxQE = 0.2978;
   return maxQE;
 }
 
