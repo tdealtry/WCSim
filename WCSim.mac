@@ -124,16 +124,20 @@
 /mygen/generator radioactive
 #this window should match the one in biasprofile.dat
 /mygen/radioactive_time_window 1.e-4
-/mygen/isotope Tl208 PMT 2.8
-/mygen/isotope Bi214 PMT 27.
-/mygen/isotope K40 PMT 94.
-/mygen/isotope Bi214 water 264. ### HK
+# /mygen/isotope Tl208 PMT 2.8
+# /mygen/isotope Bi214 PMT 27.
+# /mygen/isotope K40 PMT 94.
+# /mygen/isotope Bi214 water 264. ### HK
 ###/mygen/isotope Tl208 water 95.
 # /mygen/isotope Bi214 water 50.2 ### SK
 # /mygen/isotope Tl208 PMT 0.56 ### reduced SK
 # /mygen/isotope Bi214 PMT 5.4 ### reduced SK
 # /mygen/isotope K40 PMT 18.8 ### reduced SK
 # /mygen/isotope Bi214 water 10.04 ### reduced SK
+/mygen/isotope Tl208 PMT 0.067 ### surface detector
+/mygen/isotope Bi214 PMT 0.64 ### surface detector
+/mygen/isotope K40 PMT 2.2 ### surface detector
+/mygen/isotope Bi214 water 940. ### surface detector
 #Clear the source and tell GPS to make multiple vertices
 /gps/source/clear
 
