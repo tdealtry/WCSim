@@ -316,7 +316,7 @@ void WCSimDetectorConstruction::surface_detector_3inchPMT_40perCent()
   WCPMTExposeHeight   = PMT->GetExposeHeight();
   WCPMTRadius         = PMT->GetRadius();
   G4cout << " WCPMTName " << WCPMTName << G4endl;
-  WCIDDiameter          = 6.000*m; //16.900*2*cos(2*pi*rad/75)*m; //inner detector diameter
+  WCIDDiameter          = 8.000*m; //16.900*2*cos(2*pi*rad/75)*m; //inner detector diameter
   WCIDHeight            = 10.000*m; //"" "" height
   WCBarrelPMTOffset     = 0.0715*m; //offset from vertical
   WCPMTperCellHorizontal= 4;
