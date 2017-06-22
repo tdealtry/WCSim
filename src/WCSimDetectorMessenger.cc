@@ -40,6 +40,7 @@ WCSimDetectorMessenger::WCSimDetectorMessenger(WCSimDetectorConstruction* WCSimD
 			   "HyperK "
                            "HyperK_withHPD "
 			   "surface_detector_3inchPMT_40perCent "
+			   "e61_detector "
                            );
   PMTConfig->AvailableForStates(G4State_PreInit, G4State_Idle);
 
@@ -146,6 +147,8 @@ void WCSimDetectorMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
 			WCSimDetector->SetHyperKGeometry_withHPD();
 		} else if (newValue == "surface_detector_3inchPMT_40perCent" ){
 		  WCSimDetector->surface_detector_3inchPMT_40perCent();
+		} else if (newValue == "e61_detector" ){
+		  WCSimDetector->e61_detector();
 		} else
 		  G4cout << "That geometry choice not defined!" << G4endl;
 	}

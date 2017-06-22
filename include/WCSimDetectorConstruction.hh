@@ -66,6 +66,7 @@ public:
   void Cylinder_60x74_20inchBandL_40perCent();
   void Cylinder_12inchHPD_15perCent();
   void surface_detector_3inchPMT_40perCent();
+  void e61_detector();
   void UpdateGeometry();
   
 

@@ -31,7 +31,8 @@
 
 
 # surface detector
-/WCSim/WCgeom surface_detector_3inchPMT_40perCent #
+#/WCSim/WCgeom surface_detector_3inchPMT_40perCent #
+/WCSim/WCgeom e61_detector #
 
 #Changes the length of the simulated volume. Is currently only set up for HyperK. 
 #/WCSim/HyperK/waterTank_Length 24750. mm # Equivalent length for 10 partitions
@@ -84,7 +85,7 @@
 
 # default dark noise frequency (and conversion factor) is PMT property (NEW), set in the code.
 # Below gives possibility to overwrite nominal values, eg. to switch OFF the Dark Noise.
-#/DarkRate/SetDarkRate 0 kHz   #Turn dark noise off
+/DarkRate/SetDarkRate 0 kHz   #Turn dark noise off
 #/DarkRate/SetDarkRate 4.2 kHz #This is the value for SKI set in SKDETSIM.
 #/DarkRate/SetDarkRate 8.4 kHz #For 20 inch HPDs and Box and Line PMTs, based on High QE 20" R3600 dark rate from EGADS nov 2014
 #/DarkRate/SetDarkRate 3.0 kHz #For 12 inch HPDs and Box and Line PMTs, based on High QE 20" R3600 dark rate from EGADS nov 2014
@@ -134,10 +135,10 @@
 # /mygen/isotope Bi214 PMT 5.4 ### reduced SK
 # /mygen/isotope K40 PMT 18.8 ### reduced SK
 # /mygen/isotope Bi214 water 10.04 ### reduced SK
-/mygen/isotope Tl208 PMT 0.067 ### surface detector
-/mygen/isotope Bi214 PMT 0.64 ### surface detector
-/mygen/isotope K40 PMT 2.2 ### surface detector
-/mygen/isotope Bi214 water 940. ### surface detector
+/mygen/isotope Tl208 PMT 0.067 ### surface detector / e61
+/mygen/isotope Bi214 PMT 0.64 ### surface detector / e61
+/mygen/isotope K40 PMT 2.2 ### surface detector / e61
+/mygen/isotope Bi214 water 940. ### surface detector / e61
 #Clear the source and tell GPS to make multiple vertices
 /gps/source/clear
 
