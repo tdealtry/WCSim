@@ -356,6 +356,8 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 	// random poisson number of vertices based on average
 	int n_vertices = CLHEP::RandPoisson::shoot(average);
 
+	n_vertices = 1; // qqq
+
 	for(int u=0; u<n_vertices; u++){
 	    
 	  MyGPS->AddaSource(1.);
