@@ -378,10 +378,13 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 	    MyGPS->GetCurrentSource()->GetPosDist()->SetCentreCoords(G4ThreeVector(0, 0, 0));
 	    MyGPS->GetCurrentSource()->GetPosDist()->SetPosDisType("Volume");
 	    MyGPS->GetCurrentSource()->GetPosDist()->SetPosDisShape("Cylinder");
-	    MyGPS->GetCurrentSource()->GetPosDist()->SetRadius(myDetector->GetGeo_Dm(3));
-	    MyGPS->GetCurrentSource()->GetPosDist()->SetHalfZ(myDetector->GetWaterTubeLength()/2.);
+	    G4String WCIDCollectionName = myDetector->GetIDCollectionName();
+	    WCSimPMTObject *PMT = myDetector->GetPMTPointer(WCIDCollectionName);
+	    MyGPS->GetCurrentSource()->GetPosDist()->SetRadius(myDetector->GetGeo_Dm(3)*CLHEP::cm - 2.*PMT->GetRadius());
+	    MyGPS->GetCurrentSource()->GetPosDist()->SetHalfZ(myDetector->GetGeo_Dm(2)*CLHEP::cm/2. - 2.*PMT->GetRadius());
 	    MyGPS->GetCurrentSource()->GetPosDist()->SetPosRot1(G4ThreeVector(1, 0, 0));
 	    MyGPS->GetCurrentSource()->GetPosDist()->SetPosRot2(G4ThreeVector(0, 1, 0));
+
 	  }
 	  else if (IsotopeLocation.compareTo("PMT") == 0){
 	    int npmts = pmts->size();
