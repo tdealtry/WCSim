@@ -6,6 +6,7 @@
 #include "G4ParticleGun.hh"
 #include "G4GeneralParticleSource.hh"
 #include "G4ParticleTable.hh"
+#include "G4IonTable.hh"
 #include "G4ParticleDefinition.hh"
 #include "G4ThreeVector.hh"
 #include "globals.hh"
@@ -16,6 +17,9 @@
 
 #include "G4Navigator.hh"
 #include "G4TransportationManager.hh"
+
+#include "G4PhysicalConstants.hh"
+#include "G4SystemOfUnits.hh"
 
 using std::vector;
 using std::string;
@@ -35,7 +39,7 @@ inline int   atoi( const string& s ) {return std::atoi( s.c_str() );}
 
 WCSimPrimaryGeneratorAction::WCSimPrimaryGeneratorAction(
 					  WCSimDetectorConstruction* myDC)
-  :myDetector(myDC)
+  :myDetector(myDC), vectorFileName("")
 {
 
   //T. Akiri: Initialize GPS to allow for the laser use 
@@ -68,8 +72,14 @@ WCSimPrimaryGeneratorAction::WCSimPrimaryGeneratorAction(
     
   messenger = new WCSimPrimaryGeneratorMessenger(this);
   useMulineEvt = true;
-  useNormalEvt = false;
+
+  useRadioactiveEvt = false;
   radioactive_sources.clear();
+
+  useGunEvt    = false;
+  useLaserEvt  = false;
+  useGPSEvt    = false;
+
 }
 
 WCSimPrimaryGeneratorAction::~WCSimPrimaryGeneratorAction()
@@ -214,7 +224,7 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 			A=atoi(strA);
 			Z=atoi(strZ);
 			G4ParticleDefinition* ion;
-			ion =  particleTable->GetIon(Z, A, 0.);
+			ion =  particleTable->GetIonTable()->GetIon(Z, A, 0.);
 			particleGun->SetParticleDefinition(ion);
 			particleGun->SetParticleCharge(0);
 		      }
@@ -257,7 +267,7 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
       }
   }
 
-  else if (useNormalEvt)
+  else if (useGunEvt)
   {      // manual gun operation
     particleGun->GeneratePrimaryVertex(anEvent);
 
@@ -287,12 +297,11 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 	strZ[3]='\0';
 	A=atoi(strA);
 	Z=atoi(strZ);
-
-	G4ParticleDefinition* ion   = G4ParticleTable::GetParticleTable()->GetIon(Z, A, 0);
+	G4ParticleDefinition* ion   = G4IonTable::GetIonTable()->GetIon(Z, A, 0);
 	ion->SetPDGStable(false);
 	ion->SetPDGLifeTime(0.);
 	
-	G4ParticleDefinition* ion2   = G4ParticleTable::GetParticleTable()->GetIon(Z, A, 0);
+	G4ParticleDefinition* ion2   = G4IonTable::GetIonTable()->GetIon(Z, A, 0);
 	std::cout<<"ion2 "<<ion2->GetPDGLifeTime()<<"\n";
       }
     
@@ -360,11 +369,11 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 	  MyGPS->SetCurrentSourceto(MyGPS->GetNumberofSource() - 1);
 	    
 	  if (IsotopeName.compareTo("Tl208") == 0)
-	    MyGPS->SetParticleDefinition(G4ParticleTable::GetParticleTable()->GetIon( 81, 208, 0));
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 81, 208, 0));
 	  else if (IsotopeName.compareTo("Bi214") == 0)
-	    MyGPS->SetParticleDefinition(G4ParticleTable::GetParticleTable()->GetIon( 83, 214, 0));
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 83, 214, 0));
 	  else if (IsotopeName.compareTo("K40") == 0)
-	    MyGPS->SetParticleDefinition(G4ParticleTable::GetParticleTable()->GetIon( 19, 40, 0));
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 19, 40, 0));
 	    
 	  if (IsotopeLocation.compareTo("water") == 0){
 	    MyGPS->GetCurrentSource()->GetEneDist()->SetEnergyDisType("Mono");
@@ -440,6 +449,45 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
       }
 
     }
+  else if (useGPSEvt)
+    {
+      MyGPS->GeneratePrimaryVertex(anEvent);
+      
+      G4ThreeVector P   =anEvent->GetPrimaryVertex()->GetPrimary()->GetMomentum();
+      G4ThreeVector vtx =anEvent->GetPrimaryVertex()->GetPosition();
+      G4double m        =anEvent->GetPrimaryVertex()->GetPrimary()->GetMass();
+      G4int pdg         =anEvent->GetPrimaryVertex()->GetPrimary()->GetPDGcode();
+      
+      G4ThreeVector dir  = P.unit();
+      G4double E         = std::sqrt((P.dot(P))+(m*m));
+      
+      SetVtx(vtx);
+      SetBeamEnergy(E);
+      SetBeamDir(dir);
+      SetBeamPDG(pdg);
+    }
+}
+
+void WCSimPrimaryGeneratorAction::SaveOptionsToOutput(WCSimRootOptions * wcopt)
+{
+  if(useMulineEvt)
+    wcopt->SetVectorFileName(vectorFileName);
+  else
+    wcopt->SetVectorFileName("");
+  wcopt->SetGeneratorType(GetGeneratorTypeString());
+}
+
+G4String WCSimPrimaryGeneratorAction::GetGeneratorTypeString()
+{
+  if(useMulineEvt)
+    return "muline";
+  else if(useGunEvt)
+    return "gun";
+  else if(useGPSEvt)
+    return "gps";
+  else if(useLaserEvt)
+    return "laser";
+  return "";
 }
 
 // Returns a vector with the tokens

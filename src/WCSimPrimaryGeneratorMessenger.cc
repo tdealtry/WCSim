@@ -13,11 +13,12 @@ WCSimPrimaryGeneratorMessenger::WCSimPrimaryGeneratorMessenger(WCSimPrimaryGener
   genCmd = new G4UIcmdWithAString("/mygen/generator",this);
   genCmd->SetGuidance("Select primary generator.");
   //T. Akiri: Addition of laser
-  genCmd->SetGuidance(" Available generators : muline, normal, laser, radioactive");
+
+  genCmd->SetGuidance(" Available generators : muline, gun, laser, gps, radioactive");
   genCmd->SetParameterName("generator",true);
   genCmd->SetDefaultValue("muline");
   //T. Akiri: Addition of laser
-  genCmd->SetCandidates("muline normal laser radioactive");
+  genCmd->SetCandidates("muline gun laser gps radioactive");
 
   radioactive_time_window_Cmd = new G4UIcmdWithADouble("/mygen/radioactive_time_window",this);
   radioactive_time_window_Cmd->SetGuidance("Select time window for radioactivity");
@@ -64,30 +65,42 @@ void WCSimPrimaryGeneratorMessenger::SetNewValue(G4UIcommand * command,G4String 
     if (newValue == "muline")
     {
       myAction->SetMulineEvtGenerator(true);
-      myAction->SetNormalEvtGenerator(false);
+      myAction->SetGunEvtGenerator(false);
       myAction->SetLaserEvtGenerator(false);
       myAction->SetRadioactiveEvtGenerator(false);
+      myAction->SetGPSEvtGenerator(false);
     }
-    else if ( newValue == "normal")
+    else if ( newValue == "gun")
     {
       myAction->SetMulineEvtGenerator(false);
-      myAction->SetNormalEvtGenerator(true);
+      myAction->SetGunEvtGenerator(true);
       myAction->SetLaserEvtGenerator(false);
       myAction->SetRadioactiveEvtGenerator(false);
+      myAction->SetGPSEvtGenerator(false);
     }
     else if ( newValue == "laser")   //T. Akiri: Addition of laser
     {
       myAction->SetMulineEvtGenerator(false);
-      myAction->SetNormalEvtGenerator(false);
+      myAction->SetGunEvtGenerator(false);
       myAction->SetLaserEvtGenerator(true);
       myAction->SetRadioactiveEvtGenerator(false);
+      myAction->SetGPSEvtGenerator(false);
     }
     else if ( newValue == "radioactive")
     {
       myAction->SetMulineEvtGenerator(false);
-      myAction->SetNormalEvtGenerator(false);
+      myAction->SetGunEvtGenerator(false);
       myAction->SetLaserEvtGenerator(false);
       myAction->SetRadioactiveEvtGenerator(true);
+      myAction->SetGPSEvtGenerator(false);
+    }
+    else if ( newValue == "gps")
+    {
+      myAction->SetMulineEvtGenerator(false);
+      myAction->SetGunEvtGenerator(false);
+      myAction->SetLaserEvtGenerator(false);
+      myAction->SetRadioactiveEvtGenerator(false);
+      myAction->SetGPSEvtGenerator(true);
     }
   }
 
@@ -133,12 +146,14 @@ G4String WCSimPrimaryGeneratorMessenger::GetCurrentValue(G4UIcommand* command)
   {
     if(myAction->IsUsingMulineEvtGenerator())
       { cv = "muline"; }
-    else if(myAction->IsUsingNormalEvtGenerator())
-      { cv = "normal"; }
+    else if(myAction->IsUsingGunEvtGenerator())
+      { cv = "gun"; }
     else if(myAction->IsUsingLaserEvtGenerator())
       { cv = "laser"; }   //T. Akiri: Addition of laser
     else if(myAction->IsUsingRadioactiveEvtGenerator())
       { cv = "radioactive"; }
+    else if(myAction->IsUsingGPSEvtGenerator())
+      { cv = "gps"; }
   }
   
   return cv;
