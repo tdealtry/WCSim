@@ -68,10 +68,10 @@ int main(){
   angles_tree.Branch("hit_t",hit_t,"hit_t[n_hits]/F");
 
   ifstream vertices_file;
-  vertices_file.open("outputs/eminus_5MeV_random_4pi_000_40per/vertices.txt");
+  vertices_file.open("outputs/eminus_1MeV_random_4pi_000_40per/vertices.txt");
 
   ifstream directions_file;
-  directions_file.open("outputs/eminus_5MeV_random_4pi_000_40per/directions.txt");
+  directions_file.open("outputs/eminus_1MeV_random_4pi_000_40per/directions.txt");
 
   particle particles[NEVENTS];
 
@@ -105,7 +105,7 @@ int main(){
 
 
   ifstream pmts_file;
-  pmts_file.open("outputs/eminus_5MeV_random_4pi_000_40per/all_pmts.txt");
+  pmts_file.open("outputs/eminus_1MeV_random_4pi_000_40per/all_pmts.txt");
 
   pmt pmts[NPMTS];
   pmt apmt;
@@ -137,7 +137,7 @@ int main(){
 
   for(int ipart=0; ipart<nparticles; ipart++){
 
-    hits_file.open(Form("outputs/eminus_5MeV_random_4pi_000_40per/all_hits_%d.txt", ipart+1));
+    hits_file.open(Form("outputs/eminus_1MeV_random_4pi_000_40per/all_hits_%d.txt", ipart+1));
     if (hits_file.is_open()){
 
       hit hits[NHITS];
