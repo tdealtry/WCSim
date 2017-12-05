@@ -12,6 +12,7 @@
 #include <TSystem.h>
 #include "TMatrixD.h"
 #include "TVectorD.h"
+#include <TMatrixDSym.h>
 
 
 using namespace std;
@@ -59,7 +60,9 @@ void calculate_averages();
 
 void calculate_reco_dir();
 
-void calculate_reco2_dir();
+bool calculate_reco2_dir();
+
+void get_range(TH1F * h, double *m, double *M);
 
 double n = 1.336;
 double c = 30/n; // cm / ns
@@ -129,11 +132,17 @@ double tmin = 950.;
 double tmax = 970.;
 double vtx_t = (tmin + tmax)/2.;
 
-double cos_theta_min = 0.64; // reco
-double cos_theta_max = 1;
+double _cos_theta_min = 0.64; // reco
+double _cos_theta_max = 1;
 
-double cos_theta_min2 = 0.61; // reco2
-double cos_theta_max2 = 0.97;
+double _cos_theta_min2 = 0.61; // reco2
+double _cos_theta_max2 = 0.97;
+
+double cos_theta_min[5];
+double cos_theta_max[5];
+
+double cos_theta_min2[5];
+double cos_theta_max2[5];
 
 double residual_x0, residual_y0, residual_z0, residual_t0, residual_d;
 double reco_dir_x, reco_dir_y, reco_dir_z;
@@ -147,8 +156,8 @@ double B[3];
 double detA, detAA;
 double Ai[3][3];
 //double I[3][3];
-TMatrixD AA(3,3);
-TMatrixD AAi(3,3);
+TMatrixDSym AA(3);
+TMatrixDSym AAi(3);
 TVectorD AB(3);
 TVectorD A_reco2_dir(3);
 
@@ -217,35 +226,35 @@ int main(){
   TH1F h_theta_from_theta0_5("h_theta_from_theta0_5","5 MeV;#theta - #theta_{0}",200,-360.,360.);
 
 
-  TH1F h_hits_fraction_1("h_hits_fraction_1",Form("1 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",cos_theta_min,cos_theta_max),50,0,1);
+  TH1F h_hits_fraction_1("h_hits_fraction_1",Form("1 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",_cos_theta_min,_cos_theta_max),50,0,1);
   h_hits_fraction_1.SetLineColor(kGray);
   h_hits_fraction_1.SetLineWidth(2);
-  TH1F h_hits_fraction_2("h_hits_fraction_2",Form("2 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",cos_theta_min,cos_theta_max),50,0,1);
+  TH1F h_hits_fraction_2("h_hits_fraction_2",Form("2 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",_cos_theta_min,_cos_theta_max),50,0,1);
   h_hits_fraction_2.SetLineColor(kBlack);
   h_hits_fraction_2.SetLineWidth(2);
-  TH1F h_hits_fraction_3("h_hits_fraction_3",Form("3 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",cos_theta_min,cos_theta_max),50,0,1);
+  TH1F h_hits_fraction_3("h_hits_fraction_3",Form("3 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",_cos_theta_min,_cos_theta_max),50,0,1);
   h_hits_fraction_3.SetLineColor(kRed);
   h_hits_fraction_3.SetLineWidth(2);
-  TH1F h_hits_fraction_4("h_hits_fraction_4",Form("4 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",cos_theta_min,cos_theta_max),50,0,1);
+  TH1F h_hits_fraction_4("h_hits_fraction_4",Form("4 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",_cos_theta_min,_cos_theta_max),50,0,1);
   h_hits_fraction_4.SetLineColor(kBlue);
   h_hits_fraction_4.SetLineWidth(2);
-  TH1F h_hits_fraction_5("h_hits_fraction_5",Form("5 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",cos_theta_min,cos_theta_max),50,0,1);
+  TH1F h_hits_fraction_5("h_hits_fraction_5",Form("5 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",_cos_theta_min,_cos_theta_max),50,0,1);
   h_hits_fraction_5.SetLineColor(kGreen);
   h_hits_fraction_5.SetLineWidth(2);
 
-  TH1F h_hits_fraction2_1("h_hits_fraction2_1",Form("1 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",cos_theta_min2,cos_theta_max2),50,0,1);
+  TH1F h_hits_fraction2_1("h_hits_fraction2_1",Form("1 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",_cos_theta_min2,_cos_theta_max2),50,0,1);
   h_hits_fraction2_1.SetLineColor(kGray);
   h_hits_fraction2_1.SetLineWidth(2);
-  TH1F h_hits_fraction2_2("h_hits_fraction2_2",Form("2 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",cos_theta_min2,cos_theta_max2),50,0,1);
+  TH1F h_hits_fraction2_2("h_hits_fraction2_2",Form("2 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",_cos_theta_min2,_cos_theta_max2),50,0,1);
   h_hits_fraction2_2.SetLineColor(kBlack);
   h_hits_fraction2_2.SetLineWidth(2);
-  TH1F h_hits_fraction2_3("h_hits_fraction2_3",Form("3 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",cos_theta_min2,cos_theta_max2),50,0,1);
+  TH1F h_hits_fraction2_3("h_hits_fraction2_3",Form("3 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",_cos_theta_min2,_cos_theta_max2),50,0,1);
   h_hits_fraction2_3.SetLineColor(kRed);
   h_hits_fraction2_3.SetLineWidth(2);
-  TH1F h_hits_fraction2_4("h_hits_fraction2_4",Form("4 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",cos_theta_min2,cos_theta_max2),50,0,1);
+  TH1F h_hits_fraction2_4("h_hits_fraction2_4",Form("4 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",_cos_theta_min2,_cos_theta_max2),50,0,1);
   h_hits_fraction2_4.SetLineColor(kBlue);
   h_hits_fraction2_4.SetLineWidth(2);
-  TH1F h_hits_fraction2_5("h_hits_fraction2_5",Form("5 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",cos_theta_min2,cos_theta_max2),50,0,1);
+  TH1F h_hits_fraction2_5("h_hits_fraction2_5",Form("5 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",_cos_theta_min2,_cos_theta_max2),50,0,1);
   h_hits_fraction2_5.SetLineColor(kGreen);
   h_hits_fraction2_5.SetLineWidth(2);
 
@@ -326,6 +335,7 @@ int main(){
   TH2F h_reco_vtx_y__vs__vtx_y("h_reco_vtx_y__vs__vtx_y","h_reco_vtx_y__vs__vtx_y; true vtx y; reco vtx y",100,-6000,6000,100,-6000,6000);
   TH2F h_reco_vtx_z__vs__vtx_z("h_reco_vtx_z__vs__vtx_z","h_reco_vtx_z__vs__vtx_z; true vtx z; reco vtx z",100,-6000,6000,100,-6000,6000);
 
+  clog << " n entries " << angles_tree->GetEntries() << endl;
 
   for(int ientry = 0; ientry < angles_tree->GetEntries(); ientry++){
     angles_tree->GetEntry(ientry);
@@ -346,24 +356,28 @@ int main(){
     h_reco_dir_y__vs__dir_y.Fill(dir_y, reco_dir_y);
     h_reco_dir_z__vs__dir_z.Fill(dir_z, reco_dir_z);
     
-    h_residual_dir_x.Fill(reco_dir_x - dir_x);
-    h_residual_dir_y.Fill(reco_dir_y - dir_y);
-    h_residual_dir_z.Fill(reco_dir_z - dir_z);
-    
+    if( kinetic == 3. ){
+      h_residual_dir_x.Fill(reco_dir_x - dir_x);
+      h_residual_dir_y.Fill(reco_dir_y - dir_y);
+      h_residual_dir_z.Fill(reco_dir_z - dir_z);
+    }
+
     h_reco_dir_x.Fill(reco_dir_x);
     h_reco_dir_y.Fill(reco_dir_y);
     h_reco_dir_z.Fill(reco_dir_z);
     
-    calculate_reco2_dir();
-
+    if( !calculate_reco2_dir() ) continue;
+  
     h_reco2_dir_x__vs__dir_x.Fill(dir_x, reco2_dir_x);
     h_reco2_dir_y__vs__dir_y.Fill(dir_y, reco2_dir_y);
     h_reco2_dir_z__vs__dir_z.Fill(dir_z, reco2_dir_z);
     
-    h_residual2_dir_x.Fill(reco2_dir_x - dir_x);
-    h_residual2_dir_y.Fill(reco2_dir_y - dir_y);
-    h_residual2_dir_z.Fill(reco2_dir_z - dir_z);
-    
+    if( kinetic == 3. ){
+      h_residual2_dir_x.Fill(reco2_dir_x - dir_x);
+      h_residual2_dir_y.Fill(reco2_dir_y - dir_y);
+      h_residual2_dir_z.Fill(reco2_dir_z - dir_z);
+    }
+
     h_reco2_dir_x.Fill(reco2_dir_x);
     h_reco2_dir_y.Fill(reco2_dir_y);
     h_reco2_dir_z.Fill(reco2_dir_z);
@@ -425,11 +439,11 @@ int main(){
 	clog << " unknown kinetic " << kinetic << endl;
       }
 
-      if( reco_cos_theta >= cos_theta_min && reco_cos_theta <= cos_theta_max ){
+      if( reco_cos_theta >= _cos_theta_min && reco_cos_theta <= _cos_theta_max ){
 	n_hits_in_range++;
       }
       
-      if( reco2_cos_theta >= cos_theta_min2 && reco2_cos_theta <= cos_theta_max2 ){
+      if( reco2_cos_theta >= _cos_theta_min2 && reco2_cos_theta <= _cos_theta_max2 ){
 	n_hits_in_range2++;
       }
 
@@ -466,8 +480,69 @@ int main(){
 					average_t2
 					);
     h_analytic_residual_d.Fill(residual_d);
+  }
   
-    
+  get_range(&h_reco_cos_theta_1, &cos_theta_min[0], &cos_theta_max[0]);
+  get_range(&h_reco_cos_theta_2, &cos_theta_min[1], &cos_theta_max[1]);
+  get_range(&h_reco_cos_theta_3, &cos_theta_min[2], &cos_theta_max[2]);
+  get_range(&h_reco_cos_theta_4, &cos_theta_min[3], &cos_theta_max[3]);
+  get_range(&h_reco_cos_theta_5, &cos_theta_min[4], &cos_theta_max[4]);
+  
+  get_range(&h_reco2_cos_theta_1, &cos_theta_min2[0], &cos_theta_max2[0]);
+  get_range(&h_reco2_cos_theta_2, &cos_theta_min2[1], &cos_theta_max2[1]);
+  get_range(&h_reco2_cos_theta_3, &cos_theta_min2[2], &cos_theta_max2[2]);
+  get_range(&h_reco2_cos_theta_4, &cos_theta_min2[3], &cos_theta_max2[3]);
+  get_range(&h_reco2_cos_theta_5, &cos_theta_min2[4], &cos_theta_max2[4]);
+
+  h_hits_fraction_1.GetXaxis()->SetTitle(Form("fraction of hits with cos#theta #in(%.2f, %.2f)", cos_theta_min[0], cos_theta_max[0]));
+  h_hits_fraction_2.GetXaxis()->SetTitle(Form("fraction of hits with cos#theta #in(%.2f, %.2f)", cos_theta_min[1], cos_theta_max[1]));
+  h_hits_fraction_3.GetXaxis()->SetTitle(Form("fraction of hits with cos#theta #in(%.2f, %.2f)", cos_theta_min[2], cos_theta_max[2]));
+  h_hits_fraction_4.GetXaxis()->SetTitle(Form("fraction of hits with cos#theta #in(%.2f, %.2f)", cos_theta_min[3], cos_theta_max[3]));
+  h_hits_fraction_5.GetXaxis()->SetTitle(Form("fraction of hits with cos#theta #in(%.2f, %.2f)", cos_theta_min[4], cos_theta_max[4]));
+  
+  h_hits_fraction2_1.GetXaxis()->SetTitle(Form("fraction of hits with cos#theta #in(%.2f, %.2f)", cos_theta_min2[0], cos_theta_max2[0]));
+  h_hits_fraction2_2.GetXaxis()->SetTitle(Form("fraction of hits with cos#theta #in(%.2f, %.2f)", cos_theta_min2[1], cos_theta_max2[1]));
+  h_hits_fraction2_3.GetXaxis()->SetTitle(Form("fraction of hits with cos#theta #in(%.2f, %.2f)", cos_theta_min2[2], cos_theta_max2[2]));
+  h_hits_fraction2_4.GetXaxis()->SetTitle(Form("fraction of hits with cos#theta #in(%.2f, %.2f)", cos_theta_min2[3], cos_theta_max2[3]));
+  h_hits_fraction2_5.GetXaxis()->SetTitle(Form("fraction of hits with cos#theta #in(%.2f, %.2f)", cos_theta_min2[4], cos_theta_max2[4]));
+
+  for(int ientry = 0; ientry < angles_tree->GetEntries(); ientry++){
+    angles_tree->GetEntry(ientry);
+
+    if( n_hits == 0 ) continue;
+
+    smear_vtx();
+
+    calculate_averages();
+
+    calculate_reco_dir();
+
+    if( !calculate_reco2_dir() ) continue;
+  
+    n_hits_in_range=0;
+    n_hits_in_range2=0;
+
+    int ikinetic = (int)(kinetic - 1.);
+
+    for(int ihit=0; ihit < n_hits; ihit++){
+      dist_x = hit_x[ihit] - reco_vtx_x;
+      dist_y = hit_y[ihit] - reco_vtx_y;
+      dist_z = hit_z[ihit] - reco_vtx_z;
+      dist = sqrt(pow(dist_x,2) + pow(dist_y,2) + pow(dist_z,2));
+
+      reco_cos_theta = (dist_x*reco_dir_x + dist_y*reco_dir_y + dist_z*reco_dir_z)/dist;
+
+      reco2_cos_theta = (dist_x*reco2_dir_x + dist_y*reco2_dir_y + dist_z*reco2_dir_z)/dist;
+
+
+      if( reco_cos_theta >= cos_theta_min[ikinetic] && reco_cos_theta <= cos_theta_max[ikinetic] ){
+	n_hits_in_range++;
+      }
+      
+      if( reco2_cos_theta >= cos_theta_min2[ikinetic] && reco2_cos_theta <= cos_theta_max2[ikinetic] ){
+	n_hits_in_range2++;
+      }
+    }
     
     if( kinetic == 1. ){
       h_hits_fraction_1.Fill(n_hits_in_range/(double)n_hits);
@@ -729,7 +804,7 @@ void calculate_reco_dir(){
   return;
 }
 
-void calculate_reco2_dir(){
+bool calculate_reco2_dir(){
 
   B[0] = cos_theta0*average_dx;
   B[1] = cos_theta0*average_dy;
@@ -785,6 +860,11 @@ void calculate_reco2_dir(){
   Ai[2][2] = (A[0][0]*A[1][1] - pow(A[0][1],2))/detA;
     
   AAi = AA.Invert(&detAA);
+
+  if( fabs(detAA) < 1.e-10 ){
+    clog << " not invertible; skip " << endl;
+    return false;
+  }
 
   // clog << " Ai " << endl;
   // clog << Ai[0][0] << " " << Ai[0][1] << " " << Ai[0][2] << " " << endl;
@@ -846,7 +926,7 @@ void calculate_reco2_dir(){
 
   if( Delta < 0. ){
     clog << " Delta " << Delta << endl;
-    return;
+    return false;
   }
 
   double eta1 = (PQ + sqrt(Delta))/Q2;
@@ -864,7 +944,7 @@ void calculate_reco2_dir(){
   double chi2_1 = (AA*u1)*u1 - 2.* u1*AB;
   double chi2_2 = (AA*u2)*u2 - 2.* u2*AB;
 
-  // clog << " chi2_1 " << chi2_1 << " chi2_2 " << chi2_2 << endl;
+  //  clog << " eta1 " << eta1 << " chi2_1 " << chi2_1 << " eta2 " << eta2 << " chi2_2 " << chi2_2 << endl;
 
   // clog << " Areco2_dir_x " << A_reco2_dir[0] << " Areco2_dir_y " << A_reco2_dir[1] << " Areco2_dir_z " << A_reco2_dir[2] << " norm " << A_reco2_dir*A_reco2_dir << endl;
 
@@ -879,6 +959,31 @@ void calculate_reco2_dir(){
 
   // clog << " Areco2_dir_x " << A_reco2_dir[0] << " Areco2_dir_y " << A_reco2_dir[1] << " Areco2_dir_z " << A_reco2_dir[2] << " norm " << A_reco2_dir*A_reco2_dir << endl;
 
-  return;
+  return true;
 }
 
+void get_range(TH1F * h, double *m, double *M){
+
+  int imax = h->GetMaximumBin();
+  int i1 = imax;
+  int i2 = imax;
+  double total_integral = h->Integral();
+  double partial_integral = h->Integral(i1,i2);
+  double ratio = partial_integral/total_integral;
+  while( ratio < 0.5 ){
+    if( i1 > 0 )
+      i1 --;
+    if( i2 < h->GetXaxis()->GetNbins() )
+      i2 ++;
+    partial_integral = h->Integral(i1,i2);
+    ratio = partial_integral/total_integral;
+    
+  }
+
+  *m = h->GetBinCenter(i1);
+  *M = h->GetBinCenter(i2);
+
+  return;
+
+
+}
