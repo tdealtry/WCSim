@@ -19,7 +19,7 @@ using namespace std;
 
 
 #define NEVENTS 10000
-#define NHITS 200
+#define NHITS 50000
 #define NPMTS 50000
 
 
@@ -51,10 +51,6 @@ double get_residual_d(double x0, double y0, double z0, double t0,
 			     double z2,
 			     double t2
 			     );
-
-double smear(double center, double sigma);
-
-void smear_vtx();
 
 void calculate_averages();
 
@@ -149,7 +145,7 @@ double reco_dir_x, reco_dir_y, reco_dir_z;
 double reco2_dir_x, reco2_dir_y, reco2_dir_z, reco2_dir_modulus;
 double reco_cos_theta;
 double reco2_cos_theta;
-double reco_vtx_x, reco_vtx_y, reco_vtx_z;
+Float_t reco_vtx_x, reco_vtx_y, reco_vtx_z;
 
 double A[3][3];
 double B[3];
@@ -177,19 +173,22 @@ int main(){
 
   gSystem->Load("libMatrix");
 
-  TFile input("angles.root","READ");
+  TFile input("angles_detect.root","READ");
   TFile * output = new TFile("angles_plot.root","RECREATE");
 
-  TTree * angles_tree = (TTree*)input.Get("angles_tree");
+  TTree * angles_tree = (TTree*)input.Get("angles_detected_tree");
 
   angles_tree->SetBranchAddress("vtx_x",&vtx_x);
   angles_tree->SetBranchAddress("vtx_y",&vtx_y);
   angles_tree->SetBranchAddress("vtx_z",&vtx_z);
+  angles_tree->SetBranchAddress("reco_vtx_x",&reco_vtx_x);
+  angles_tree->SetBranchAddress("reco_vtx_y",&reco_vtx_y);
+  angles_tree->SetBranchAddress("reco_vtx_z",&reco_vtx_z);
   angles_tree->SetBranchAddress("dir_x",&dir_x);
   angles_tree->SetBranchAddress("dir_y",&dir_y);
   angles_tree->SetBranchAddress("dir_z",&dir_z);
   angles_tree->SetBranchAddress("kinetic",&kinetic);
-  angles_tree->SetBranchAddress("n_hits",&n_hits);
+  angles_tree->SetBranchAddress("selected_n_hits",&n_hits);
   angles_tree->SetBranchAddress("hit_x",hit_x);
   angles_tree->SetBranchAddress("hit_y",hit_y);
   angles_tree->SetBranchAddress("hit_z",hit_z);
@@ -225,6 +224,8 @@ int main(){
   TH1F h_theta_5("h_theta_5","5 MeV;#theta",200,-360.,360.);
   TH1F h_theta_from_theta0_5("h_theta_from_theta0_5","5 MeV;#theta - #theta_{0}",200,-360.,360.);
 
+
+  TH1F h_n_hits("h_n_hits","n_hits",200,-2,100);
 
   TH1F h_hits_fraction_1("h_hits_fraction_1",Form("1 MeV;fraction of hits with cos#theta #in(%.2f, %.2f)",_cos_theta_min,_cos_theta_max),50,0,1);
   h_hits_fraction_1.SetLineColor(kGray);
@@ -342,7 +343,7 @@ int main(){
 
     if( n_hits == 0 ) continue;
 
-    smear_vtx();
+    h_n_hits.Fill(n_hits);
 
     h_reco_vtx_x__vs__vtx_x.Fill(reco_vtx_x, vtx_x);
     h_reco_vtx_y__vs__vtx_y.Fill(reco_vtx_y, vtx_y);
@@ -511,8 +512,6 @@ int main(){
 
     if( n_hits == 0 ) continue;
 
-    smear_vtx();
-
     calculate_averages();
 
     calculate_reco_dir();
@@ -638,22 +637,6 @@ double get_residual_d(double x0, double y0, double z0, double t0,
 }
 
 
-double smear(double center, double sigma){
-
-  double val=gRandom->Gaus(center, sigma);
-  return val;
-
-}
-
-void smear_vtx(){
-
-  reco_vtx_x = smear(vtx_x, vtx_sigma);
-  reco_vtx_y = smear(vtx_y, vtx_sigma);
-  reco_vtx_z = smear(vtx_z, vtx_sigma);
-
-  return;
-}
-
 void calculate_averages(){
 
   average_x=0;
@@ -703,6 +686,10 @@ void calculate_averages(){
     reco_dist_y = hit_y[ihit] - reco_vtx_y;
     reco_dist_z = hit_z[ihit] - reco_vtx_z;
     reco_dist = sqrt(pow(reco_dist_x,2) + pow(reco_dist_y,2) + pow(reco_dist_z,2));
+
+
+
+
     reco_dx = reco_dist_x/reco_dist;
     reco_dy = reco_dist_y/reco_dist;
     reco_dz = reco_dist_z/reco_dist;

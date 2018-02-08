@@ -341,12 +341,12 @@ void WCSimDetectorConstruction::e61_detector()
   WCPMTExposeHeight   = PMT->GetExposeHeight();
   WCPMTRadius         = PMT->GetRadius();
   G4cout << " WCPMTName " << WCPMTName << G4endl;
-  WCIDDiameter          = 8.000*m; //16.900*2*cos(2*pi*rad/75)*m; //inner detector diameter
-  WCIDHeight            = 6.000*m; //"" "" height
+  WCIDDiameter          = 3.1*m; //16.900*2*cos(2*pi*rad/75)*m; //inner detector diameter
+  WCIDHeight            = 4.000*m; //"" "" height
   WCBarrelPMTOffset     = 0.0715*m; //offset from vertical
   WCPMTperCellHorizontal= 4;
   WCPMTperCellVertical  = 3; 
-  WCPMTPercentCoverage  = 24.7;
+  WCPMTPercentCoverage  = 28.5; // -> 3174 PMTs, in place of 3192; real coverage should be 27%
   WCBarrelNumPMTHorizontal = round(WCIDDiameter*sqrt(pi*WCPMTPercentCoverage)/(10.0*WCPMTRadius));
   WCBarrelNRings           = round(((WCBarrelNumPMTHorizontal*((WCIDHeight-2*WCBarrelPMTOffset)/(pi*WCIDDiameter)))
                                       /WCPMTperCellVertical));

@@ -88,7 +88,7 @@ int main(){
   int tube_id;
   Float_t time;
 
-  std::string event_file_base = "all_hits_";
+  std::string event_file_base = "hits/all_hits_";
   std::string event_file_suffix = ".txt";
 
   for(int ievent=0; ievent<primary_events_tree->GetEntries(); ievent++){
