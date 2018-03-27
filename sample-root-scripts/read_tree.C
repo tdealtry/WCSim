@@ -322,7 +322,7 @@ int main(){
 	    n_raw_hits_in_time ++;
 
 	  h_raw_hit_times->Fill(((raw_hit_times->at(itrigger)).at(irawhit)).at(irawhittime));
-	  h_raw_hit_parent_ids->Fill(((raw_hit_parent_ids->at(itrigger)).at(irawhit)).at(irawhittime));
+	  h_raw_hit_parent_ids->Fill((raw_hit_parent_ids->at(itrigger)).at(irawhit).at(irawhittime));
 
 	  //std::clog << " event " << ievent << " trigger " << itrigger << " rawhit " << irawhit << " of " << trigger_number_raw_hits->at(itrigger) << " tubeid s1 " << raw_hit_tube_id->size() << " s2 " << (raw_hit_tube_id->at(itrigger)).size() << " val " << (raw_hit_tube_id->at(itrigger)).at(irawhit) <<  " timeindexes " << (raw_hit_tube_times_indexes->at(itrigger)).at(irawhit) << " totalpe " << (raw_hit_tube_pe->at(itrigger)).at(irawhit) << " time " << ((raw_hit_times->at(itrigger)).at(irawhit)).at(irawhittime) << " parentid " << ((raw_hit_parent_ids->at(itrigger)).at(irawhit)).at(irawhittime) << std::endl;
 
