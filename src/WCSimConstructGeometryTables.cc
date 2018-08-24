@@ -14,6 +14,9 @@
 #include "G4Tubs.hh"
 #include "G4Sphere.hh"
 
+#include "G4PhysicalConstants.hh"
+#include "G4SystemOfUnits.hh"
+
 #include <sstream>
 #include <iomanip>
 
@@ -162,7 +165,7 @@ void WCSimDetectorConstruction::DumpGeometryTableToFile()
   innerradius = sqrt(pow(firstTransform.getTranslation().getX()/cm,2)
                             + pow(firstTransform.getTranslation().getY()/cm,2));
 
-  if (isHyperK){
+  if (isEggShapedHyperK){
     geoFile << setw(8)<< 0;
     geoFile << setw(8)<< 0;
   }else{

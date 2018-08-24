@@ -26,10 +26,14 @@
 #include "G4UnitsTable.hh"
 #include "G4UIcmdWith3VectorAndUnit.hh"
 
+#include "G4PhysicalConstants.hh"
+#include "G4SystemOfUnits.hh"
+
 #include <set>
 #include <iomanip>
 #include <string>
 #include <vector>
+#include <climits>
 
 #include "jhfNtuple.h"
 #include "TTree.h"
@@ -50,12 +54,17 @@
 //#define TIME_DAQ_STEPS
 #endif
 
+#ifndef NPMTS_VERBOSE
+#define NPMTS_VERBOSE 10
+#endif
+
 WCSimEventAction::WCSimEventAction(WCSimRunAction* myRun, 
 				   WCSimDetectorConstruction* myDetector, 
 				   WCSimPrimaryGeneratorAction* myGenerator)
   :runAction(myRun), generatorAction(myGenerator), 
    detectorConstructor(myDetector),
-   ConstructedDAQClasses(false)
+   ConstructedDAQClasses(false),
+   SavedOptions(false)
 {
   DAQMessenger = new WCSimWCDAQMessenger(this);
 
@@ -79,6 +88,7 @@ void WCSimEventAction::CreateDAQInstances()
 {
   if(ConstructedDAQClasses) {
     G4cerr << "WCSimEventAction::CreateDAQInstances() has already been called. Exiting..." << G4endl;
+    return;
     exit(-1);
   }
 
@@ -105,6 +115,10 @@ void WCSimEventAction::CreateDAQInstances()
     WCSimWCTriggerNDigits2* WCTM = new WCSimWCTriggerNDigits2("WCReadout", detectorConstructor, DAQMessenger);
     DMman->AddNewModule(WCTM);
   }
+  else if(TriggerChoice == "NoTrigger") {
+    WCSimWCTriggerNoTrigger* WCTM = new WCSimWCTriggerNoTrigger("WCReadout", detectorConstructor, DAQMessenger);
+    DMman->AddNewModule(WCTM);
+  }
   else {
     G4cerr << "Unknown TriggerChoice " << TriggerChoice << G4endl;
     exit(-1);
@@ -116,8 +130,13 @@ void WCSimEventAction::CreateDAQInstances()
 
 void WCSimEventAction::BeginOfEventAction(const G4Event*)
 {
-  if(!ConstructedDAQClasses)
+  if(!ConstructedDAQClasses) {
     CreateDAQInstances();
+
+    //and save options in output file
+    G4DigiManager* DMman = G4DigiManager::GetDMpointer();
+
+  }
 }
 
 void WCSimEventAction::EndOfEventAction(const G4Event* evt)
@@ -144,8 +163,14 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
 
   G4int         event_id = evt->GetEventID();
   G4int         mode     = generatorAction->GetMode();
-  G4ThreeVector vtx      = generatorAction->GetVtx();
-  G4int         vtxvol   = WCSimEventFindStartingVolume(vtx);
+
+  G4int         nvtxs   = generatorAction->GetNvtxs();
+  G4ThreeVector vtxs[MAX_N_PRIMARIES];
+  G4int         vtxsvol[MAX_N_PRIMARIES];
+  for( Int_t u=0; u<nvtxs; u++ ){
+    vtxs[u]      = generatorAction->GetVtx(u);
+    vtxsvol[u]   = WCSimEventFindStartingVolume(vtxs[u]);
+  }
   G4int         vecRecNumber = generatorAction->GetVecRecNumber();
 
   // ----------------------------------------------------------------------
@@ -238,7 +263,7 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
 
 #ifdef TIME_DAQ_STEPS
   ms->Stop();
-  std::cout << " Digtization :  Real = " << ms->RealTime() 
+  G4cout << " Digtization :  Real = " << ms->RealTime() 
     	    << " ; CPU = " << ms->CpuTime() << "\n";  
 #endif
 
@@ -270,14 +295,14 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
   // ----------------------------------------------------------------------
 
    jhfNtuple.mode   = mode;         // interaction mode
-   jhfNtuple.vtxvol = vtxvol;       // volume of vertex
-   // unit mismatch between geant4 and reconstruction, M Fechner
-   //  jhfNtuple.vtx[0] = vtx[0]/1000.; // interaction vertex
-   //jhfNtuple.vtx[1] = vtx[1]/1000.; // interaction vertex
-   //jhfNtuple.vtx[2] = vtx[2]/1000.; // interaction vertex
-   jhfNtuple.vtx[0] = vtx[0]/cm; // interaction vertex
-   jhfNtuple.vtx[1] = vtx[1]/cm; // interaction vertex
-   jhfNtuple.vtx[2] = vtx[2]/cm; // interaction vertex
+   jhfNtuple.nvtxs = nvtxs;       // number of vertices
+   for( Int_t u=0; u<nvtxs; u++ ){
+     jhfNtuple.vtxsvol[u] = vtxsvol[u];       // volume of vertex
+     // unit mismatch between geant4 and reconstruction, M Fechner
+     jhfNtuple.vtxs[u][0] = vtxs[u][0]/cm; // interaction vertex
+     jhfNtuple.vtxs[u][1] = vtxs[u][1]/cm; // interaction vertex
+     jhfNtuple.vtxs[u][2] = vtxs[u][2]/cm; // interaction vertex
+   }
    jhfNtuple.vecRecNumber = vecRecNumber; //vectorfile record number
    
    // mustop, pstop, npar will be filled later
@@ -288,86 +313,208 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
    G4int npar = 0;
    
    // First two tracks are special: beam and target
+
+   for( Int_t u=0; u<nvtxs; u++ ){
+     /////////////////////////////////
+     // npar = 0        NEUTRINO /////
+     /////////////////////////////////
    
-   G4int         beampdg    = generatorAction->GetBeamPDG();
-   G4double      beamenergy = generatorAction->GetBeamEnergy();
-   G4ThreeVector beamdir    = generatorAction->GetBeamDir();
-   
-   jhfNtuple.ipnu[npar]    = beampdg;               // id
-   jhfNtuple.flag[npar]    = -1;                    // incoming neutrino
-   jhfNtuple.m[npar]       = 0.0;                   // mass (always a neutrino)
-   jhfNtuple.p[npar]       = beamenergy;            // momentum magnitude
-   jhfNtuple.E[npar]       = beamenergy;            // energy 
-   jhfNtuple.startvol[npar]= -1;                    // starting volume, vtxvol should be referred
-   jhfNtuple.stopvol[npar] = -1;                    // stopping volume 
-   jhfNtuple.dir[npar][0]  = beamdir[0];            // direction 
-   jhfNtuple.dir[npar][1]  = beamdir[1];            // direction 
-   jhfNtuple.dir[npar][2]  = beamdir[2];            // direction 
-   jhfNtuple.pdir[npar][0] = beamenergy*beamdir[0]; // momentum-vector 
-   jhfNtuple.pdir[npar][1] = beamenergy*beamdir[1]; // momentum-vector 
-   jhfNtuple.pdir[npar][2] = beamenergy*beamdir[2]; // momentum-vector 
-   // M Fechner, same as above
-   jhfNtuple.stop[npar][0] = vtx[0]/cm;  // stopping point (not meaningful)
-   jhfNtuple.stop[npar][1] = vtx[1]/cm;  // stopping point (not meaningful)
-   jhfNtuple.stop[npar][2] = vtx[2]/cm;  // stopping point (not meaningful)
-   jhfNtuple.parent[npar] = 0;
-   
-   npar++;
+     G4int         beampdg;
+     G4double      beamenergy;
+     G4ThreeVector beamdir;
+     
+     beampdg    = generatorAction->GetBeamPDG(u);
+     beamenergy = generatorAction->GetBeamEnergy(u);
+     beamdir    = generatorAction->GetBeamDir(u);
+  
+     jhfNtuple.ipnu[npar]    = beampdg;               // id
+     jhfNtuple.flag[npar]    = -1;                    // incoming neutrino
+     jhfNtuple.m[npar]       = 0.0;                   // mass (always a neutrino)
+     jhfNtuple.p[npar]       = beamenergy;            // momentum magnitude
+     jhfNtuple.E[npar]       = beamenergy;            // energy 
+     jhfNtuple.startvol[npar]= -1;                    // starting volume, vtxvol should be referred
+     jhfNtuple.stopvol[npar] = -1;                    // stopping volume 
+     jhfNtuple.dir[npar][0]  = beamdir[0];            // direction 
+     jhfNtuple.dir[npar][1]  = beamdir[1];            // direction 
+     jhfNtuple.dir[npar][2]  = beamdir[2];            // direction 
+     jhfNtuple.pdir[npar][0] = beamenergy*beamdir[0]; // momentum-vector 
+     jhfNtuple.pdir[npar][1] = beamenergy*beamdir[1]; // momentum-vector 
+     jhfNtuple.pdir[npar][2] = beamenergy*beamdir[2]; // momentum-vector 
+     // M Fechner, same as above
+     jhfNtuple.stop[npar][0] = vtxs[u][0]/cm;  // stopping point (not meaningful)
+     jhfNtuple.stop[npar][1] = vtxs[u][1]/cm;  // stopping point (not meaningful)
+     jhfNtuple.stop[npar][2] = vtxs[u][2]/cm;  // stopping point (not meaningful)
+     jhfNtuple.parent[npar] = 0;
 
-  G4double      targetpmag = 0.0, targetmass = 0.0;
-  G4int         targetpdg    = generatorAction->GetTargetPDG();
-  G4double      targetenergy = generatorAction->GetTargetEnergy();
-  G4ThreeVector targetdir    = generatorAction->GetTargetDir();
+     npar++;
+     /////////////////////////////////
+     // npar = 1        TARGET ///////
+     /////////////////////////////////
+     
+     G4double      targetpmag = 0.0, targetmass = 0.0;
+     G4int         targetpdg    = generatorAction->GetTargetPDG(u);
+     G4double      targetenergy = generatorAction->GetTargetEnergy(u);
+     G4ThreeVector targetdir    = generatorAction->GetTargetDir(u);
 
-  if (targetpdg!=0) {            // protects against seg-fault
-    if (targetpdg > 999)         // 16O nucleus not in pdg table
-      targetmass = targetenergy; // 16O is at rest, so E = m
-    else
-      targetmass = particleTable->FindParticle(targetpdg)->GetPDGMass();
-    if (targetenergy > targetmass) 
-      //      targetpmag = sqrt(targetenergy*targetenergy - targetmass*targetenergy);
-      // MF : bug fix
-      targetpmag = sqrt(targetenergy*targetenergy - targetmass*targetmass);
-    else // protect against NaN
-      targetpmag = 0.0;
-  }
+     if (targetpdg!=0) {            // protects against seg-fault
+       if (targetpdg > 999)         // 16O nucleus not in pdg table
+	 targetmass = targetenergy; // 16O is at rest, so E = m
+       else
+	 targetmass = particleTable->FindParticle(targetpdg)->GetPDGMass();
+       if (targetenergy > targetmass) 
+	 //      targetpmag = sqrt(targetenergy*targetenergy - targetmass*targetenergy);
+	 // MF : bug fix
+	 targetpmag = sqrt(targetenergy*targetenergy - targetmass*targetmass);
+       else // protect against NaN
+	 targetpmag = 0.0;
+     }
+     
+     jhfNtuple.ipnu[npar]     = targetpdg;    // id
+     jhfNtuple.flag[npar]    = -2;            // target
+     jhfNtuple.m[npar]       = targetmass;    // mass (always a neutrino)
+     jhfNtuple.p[npar]       = targetpmag;    // momentum magnitude
+     jhfNtuple.E[npar]       = targetenergy;  // energy (total!) 
+     jhfNtuple.startvol[npar] = -1;           // starting volume 
+     jhfNtuple.stopvol[npar] = -1;            // stopping volume 
+     jhfNtuple.dir[npar][0]  = targetdir[0];  // direction 
+     jhfNtuple.dir[npar][1]  = targetdir[1];  // direction 
+     jhfNtuple.dir[npar][2]  = targetdir[2];  // direction 
+     // MF feb9,2006 : we want the momentum, not the energy...
+     //  jhfNtuple.pdir[npar][0] = targetenergy*targetdir[0];  // momentum-vector 
+     //  jhfNtuple.pdir[npar][1] = targetenergy*targetdir[1];  // momentum-vector 
+     //  jhfNtuple.pdir[npar][2] = targetenergy*targetdir[2];  // momentum-vector 
+     jhfNtuple.pdir[npar][0] = targetpmag*targetdir[0];  // momentum-vector 
+     jhfNtuple.pdir[npar][1] = targetpmag*targetdir[1];  // momentum-vector 
+     jhfNtuple.pdir[npar][2] = targetpmag*targetdir[2];  // momentum-vector 
+     // M Fechner, same as above
+     jhfNtuple.stop[npar][0] = vtxs[u][0]/cm;  // stopping point (not meaningful)
+     jhfNtuple.stop[npar][1] = vtxs[u][1]/cm;  // stopping point (not meaningful)
+     jhfNtuple.stop[npar][2] = vtxs[u][2]/cm;  // stopping point (not meaningful)
+     jhfNtuple.parent[npar] = 0;
 
-  jhfNtuple.ipnu[npar]     = targetpdg;    // id
-  jhfNtuple.flag[npar]    = -2;            // target
-  jhfNtuple.m[npar]       = targetmass;    // mass (always a neutrino)
-  jhfNtuple.p[npar]       = targetpmag;    // momentum magnitude
-  jhfNtuple.E[npar]       = targetenergy;  // energy (total!) 
-  jhfNtuple.startvol[npar] = -1;           // starting volume 
-  jhfNtuple.stopvol[npar] = -1;            // stopping volume 
-  jhfNtuple.dir[npar][0]  = targetdir[0];  // direction 
-  jhfNtuple.dir[npar][1]  = targetdir[1];  // direction 
-  jhfNtuple.dir[npar][2]  = targetdir[2];  // direction 
-  // MF feb9,2006 : we want the momentum, not the energy...
-  //  jhfNtuple.pdir[npar][0] = targetenergy*targetdir[0];  // momentum-vector 
-  //  jhfNtuple.pdir[npar][1] = targetenergy*targetdir[1];  // momentum-vector 
-  //  jhfNtuple.pdir[npar][2] = targetenergy*targetdir[2];  // momentum-vector 
-  jhfNtuple.pdir[npar][0] = targetpmag*targetdir[0];  // momentum-vector 
-  jhfNtuple.pdir[npar][1] = targetpmag*targetdir[1];  // momentum-vector 
-  jhfNtuple.pdir[npar][2] = targetpmag*targetdir[2];  // momentum-vector 
-  // M Fechner, same as above
-  jhfNtuple.stop[npar][0] = vtx[0]/cm;  // stopping point (not meaningful)
-  jhfNtuple.stop[npar][1] = vtx[1]/cm;  // stopping point (not meaningful)
-  jhfNtuple.stop[npar][2] = vtx[2]/cm;  // stopping point (not meaningful)
-  jhfNtuple.parent[npar] = 0;
+     npar++;
+   }
 
-  npar++;
+  ////////////////////////
+  // npar > nvertices  ///
+  ////////////////////////
 
   // Draw Charged Tracks
+  G4int PDG_e=11,PDG_v_e=12,PDG_gam=22;
+  for( Int_t u=0; u<nvtxs; u++ ){
+    G4int trkid_e=INT_MAX,trkid_v_e=INT_MAX,trkid_gam=INT_MAX;
+    G4int idx_e=INT_MAX,idx_v_e=INT_MAX,idx_gam=INT_MAX;
+    for (G4int i=0; i < n_trajectories; i++) 
+      {
+	WCSimTrajectory* trj = 
+	  (WCSimTrajectory*)((*(evt->GetTrajectoryContainer()))[i]);
+	
+	if (trj->GetCharge() != 0.)
+	  trj->DrawTrajectory(50);
+	if(abs(trj->GetPDGEncoding()) == PDG_e && trj->GetParentID() == u+1 && trj->GetTrackID() < trkid_e) {
+	  trkid_e = trj->GetTrackID();
+	  idx_e = i;
+	}
+	if(abs(trj->GetPDGEncoding()) == PDG_v_e && trj->GetParentID() == u+1 && trj->GetTrackID() < trkid_v_e) {
+	  trkid_v_e = trj->GetTrackID();
+	  idx_v_e = i;
+	}
+	if(abs(trj->GetPDGEncoding()) == PDG_gam && trj->GetParentID() == u+1 && trj->GetTrackID() < trkid_gam) {
+	  trkid_gam = trj->GetTrackID();
+	  idx_gam = i;
+	}
+      }
 
-  for (G4int i=0; i < n_trajectories; i++) 
-    {
-      WCSimTrajectory* trj = 
-	(WCSimTrajectory*)((*(evt->GetTrajectoryContainer()))[i]);
-
-      if (trj->GetCharge() != 0.)
- 	trj->DrawTrajectory(50);
+    if(idx_e != INT_MAX) {
+      WCSimTrajectory* trj =
+	(WCSimTrajectory*)((*(evt->GetTrajectoryContainer()))[idx_e]);
+      jhfNtuple.ipnu[npar]     = trj->GetPDGEncoding();    // id
+      jhfNtuple.flag[npar]    = 0;            // target
+      jhfNtuple.m[npar]       = particleTable->FindParticle(trj->GetPDGEncoding())->GetPDGMass();    // mass (always a neutrino)
+      jhfNtuple.p[npar]       = trj->GetInitialMomentum().mag();    // momentum magnitude
+      jhfNtuple.E[npar]       = sqrt(jhfNtuple.m[npar]*jhfNtuple.m[npar]+jhfNtuple.p[npar]*jhfNtuple.p[npar]);  // energy (total!) 
+      jhfNtuple.startvol[npar] = -1;           // starting volume 
+      jhfNtuple.stopvol[npar] = -1;            // stopping volume 
+      jhfNtuple.dir[npar][0]  = trj->GetInitialMomentum().unit().getX();  // direction 
+      jhfNtuple.dir[npar][1]  = trj->GetInitialMomentum().unit().getY();  // direction 
+      jhfNtuple.dir[npar][2]  = trj->GetInitialMomentum().unit().getZ();  // direction 
+      // MF feb9,2006 : we want the momentum, not the energy...
+      //  jhfNtuple.pdir[npar][0] = targetenergy*targetdir[0];  // momentum-vector 
+      //  jhfNtuple.pdir[npar][1] = targetenergy*targetdir[1];  // momentum-vector 
+      //  jhfNtuple.pdir[npar][2] = targetenergy*targetdir[2];  // momentum-vector 
+      jhfNtuple.pdir[npar][0] = trj->GetInitialMomentum().getX();  // momentum-vector 
+      jhfNtuple.pdir[npar][1] = trj->GetInitialMomentum().getY();  // momentum-vector 
+      jhfNtuple.pdir[npar][2] = trj->GetInitialMomentum().getZ();  // momentum-vector 
+      // M Fechner, same as above
+      jhfNtuple.stop[npar][0] = vtxs[u][0]/cm;  // stopping point (not meaningful)
+      jhfNtuple.stop[npar][1] = vtxs[u][1]/cm;  // stopping point (not meaningful)
+      jhfNtuple.stop[npar][2] = vtxs[u][2]/cm;  // stopping point (not meaningful)
+      jhfNtuple.parent[npar] = 0;
+      
+      npar++; 
     }
+    
+    if(idx_v_e != INT_MAX) {
+      WCSimTrajectory* trj =
+	(WCSimTrajectory*)((*(evt->GetTrajectoryContainer()))[idx_v_e]);
+      jhfNtuple.ipnu[npar]     = trj->GetPDGEncoding();    // id
+      jhfNtuple.flag[npar]    = 0;            // target
+      jhfNtuple.m[npar]       = particleTable->FindParticle(trj->GetPDGEncoding())->GetPDGMass();    // mass (always a neutrino)
+      jhfNtuple.p[npar]       = trj->GetInitialMomentum().mag();    // momentum magnitude
+      jhfNtuple.E[npar]       = sqrt(jhfNtuple.m[npar]*jhfNtuple.m[npar]+jhfNtuple.p[npar]*jhfNtuple.p[npar]);  // energy (total!) 
+      jhfNtuple.startvol[npar] = -1;           // starting volume 
+      jhfNtuple.stopvol[npar] = -1;            // stopping volume 
+      jhfNtuple.dir[npar][0]  = trj->GetInitialMomentum().unit().getX();  // direction 
+      jhfNtuple.dir[npar][1]  = trj->GetInitialMomentum().unit().getY();  // direction 
+      jhfNtuple.dir[npar][2]  = trj->GetInitialMomentum().unit().getZ();  // direction 
+      // MF feb9,2006 : we want the momentum, not the energy...
+      //  jhfNtuple.pdir[npar][0] = targetenergy*targetdir[0];  // momentum-vector 
+      //  jhfNtuple.pdir[npar][1] = targetenergy*targetdir[1];  // momentum-vector 
+      //  jhfNtuple.pdir[npar][2] = targetenergy*targetdir[2];  // momentum-vector 
+      jhfNtuple.pdir[npar][0] = trj->GetInitialMomentum().getX();  // momentum-vector 
+      jhfNtuple.pdir[npar][1] = trj->GetInitialMomentum().getY();  // momentum-vector 
+      jhfNtuple.pdir[npar][2] = trj->GetInitialMomentum().getZ();  // momentum-vector 
+      // M Fechner, same as above
+      jhfNtuple.stop[npar][0] = vtxs[u][0]/cm;  // stopping point (not meaningful)
+      jhfNtuple.stop[npar][1] = vtxs[u][1]/cm;  // stopping point (not meaningful)
+      jhfNtuple.stop[npar][2] = vtxs[u][2]/cm;  // stopping point (not meaningful)
+      jhfNtuple.parent[npar] = 0;
+      
+      npar++; 
+    }
+    
+    
+    if(idx_gam != INT_MAX) {
+      WCSimTrajectory* trj =
+	(WCSimTrajectory*)((*(evt->GetTrajectoryContainer()))[idx_gam]);
+      jhfNtuple.ipnu[npar]     = trj->GetPDGEncoding();    // id
+      jhfNtuple.flag[npar]    = 0;            // target
+      jhfNtuple.m[npar]       = particleTable->FindParticle(trj->GetPDGEncoding())->GetPDGMass();    // mass (always a neutrino)
+      jhfNtuple.p[npar]       = trj->GetInitialMomentum().mag();    // momentum magnitude
+      jhfNtuple.E[npar]       = sqrt(jhfNtuple.m[npar]*jhfNtuple.m[npar]+jhfNtuple.p[npar]*jhfNtuple.p[npar]);  // energy (total!) 
+      jhfNtuple.startvol[npar] = -1;           // starting volume 
+      jhfNtuple.stopvol[npar] = -1;            // stopping volume 
+      jhfNtuple.dir[npar][0]  = trj->GetInitialMomentum().unit().getX();  // direction 
+      jhfNtuple.dir[npar][1]  = trj->GetInitialMomentum().unit().getY();  // direction 
+      jhfNtuple.dir[npar][2]  = trj->GetInitialMomentum().unit().getZ();  // direction 
+      // MF feb9,2006 : we want the momentum, not the energy...
+      //  jhfNtuple.pdir[npar][0] = targetenergy*targetdir[0];  // momentum-vector 
+      //  jhfNtuple.pdir[npar][1] = targetenergy*targetdir[1];  // momentum-vector 
+      //  jhfNtuple.pdir[npar][2] = targetenergy*targetdir[2];  // momentum-vector 
+      jhfNtuple.pdir[npar][0] = trj->GetInitialMomentum().getX();  // momentum-vector 
+      jhfNtuple.pdir[npar][1] = trj->GetInitialMomentum().getY();  // momentum-vector 
+      jhfNtuple.pdir[npar][2] = trj->GetInitialMomentum().getZ();  // momentum-vector 
+      // M Fechner, same as above
+      jhfNtuple.stop[npar][0] = vtxs[u][0]/cm;  // stopping point (not meaningful)
+      jhfNtuple.stop[npar][1] = vtxs[u][1]/cm;  // stopping point (not meaningful)
+      jhfNtuple.stop[npar][2] = vtxs[u][2]/cm;  // stopping point (not meaningful)
+      jhfNtuple.parent[npar] = 0;
+      
+      npar++; 
+    }
+  }
 
+  //fill correct variables for track from decay
    G4cout << " Filling Root Event " << G4endl;
 
    //   G4cout << "event_id: " << &event_id << G4endl;
@@ -382,14 +529,29 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
    // G4cout << "MRDxHC: " << &MRDxHC << G4endl;
    // G4cout << "MRDyHC: " << &MRDyHC << G4endl;
    
+   jhfNtuple.npar = npar;
 
   FillRootEvent(event_id,
 		jhfNtuple,
 		trajectoryContainer,
-		WCHC,
 		WCDC_hits,
 		WCDC);
 
+  //save DAQ options here. This ensures that when the user selects a default option
+  // (e.g. with -99), the saved option value in the output reflects what was run
+  if(!SavedOptions) {
+    WCSimRootOptions * wcsimopt = runAction->GetRootOptions();
+    //Dark noise
+    WCDNM->SaveOptionsToOutput(wcsimopt);
+    //Digitizer
+    WCDM->SaveOptionsToOutput(wcsimopt);
+    //Trigger
+    WCTM->SaveOptionsToOutput(wcsimopt);
+    //Generator
+    generatorAction->SaveOptionsToOutput(wcsimopt);
+    
+    SavedOptions = true;
+  }
 }
 
 G4int WCSimEventAction::WCSimEventFindStartingVolume(G4ThreeVector vtx)
@@ -491,7 +653,6 @@ G4int WCSimEventAction::WCSimEventFindStoppingVolume(G4String stopVolumeName)
 void WCSimEventAction::FillRootEvent(G4int event_id, 
 				     const struct ntupleStruct& jhfNtuple,
 				     G4TrajectoryContainer* TC,
-				     WCSimWCHitsCollection* WCHC,
 				     WCSimWCDigitsCollection* WCDC_hits,
 				     WCSimWCTriggeredDigitsCollection* WCDC)
 {
@@ -532,10 +693,13 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
   // Fill other info for this event
 
   wcsimrootevent->SetMode(jhfNtuple.mode);
-  wcsimrootevent->SetVtxvol(jhfNtuple.vtxvol);
-  for (int j=0;j<3;j++)
-  {
-    wcsimrootevent->SetVtx(j,jhfNtuple.vtx[j]);
+  wcsimrootevent->SetNvtxs(jhfNtuple.nvtxs);
+  for( Int_t u=0; u<jhfNtuple.nvtxs; u++ ){
+    wcsimrootevent->SetVtxsvol(u,jhfNtuple.vtxsvol[u]);
+    for (int j=0;j<3;j++)
+      {
+	wcsimrootevent->SetVtxs(u,j,jhfNtuple.vtxs[u][j]);
+      }
   }
   wcsimrootevent->SetJmu(jhfNtuple.jmu);
   wcsimrootevent->SetJp(jhfNtuple.jp);
@@ -546,7 +710,8 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
   // First two tracks come from jhfNtuple, as they are special
 
   int k;
-  for (k=0;k<2;k++) // should be just 2
+  //Modify to add decay products
+  for (k=0;k<jhfNtuple.npar;k++) // should be just 2
   {
     float dir[3];
     float pdir[3];
@@ -558,7 +723,7 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
       pdir[l]=jhfNtuple.pdir[k][l];
       stop[l]=jhfNtuple.stop[k][l];
       start[l]=jhfNtuple.start[k][l];
-	G4cout<< "start[" << k << "][" << l <<"]: "<< jhfNtuple.start[k][l] <<G4endl;
+      //G4cout<< "start[" << k << "][" << l <<"]: "<< jhfNtuple.start[k][l] <<G4endl;
     }
 
     // Add the track to the TClonesArray
@@ -586,6 +751,7 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
   // same, april 7th 2005
   std::set<int> pionList;
   std::set<int> antipionList;
+  std::set<int> primaryList;
 
   // Pi0 specific variables
   Float_t pi0Vtx[3];
@@ -616,6 +782,7 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
     if ( trj->GetPDGEncoding() == 211 ) pionList.insert(trj->GetTrackID());
     if ( trj->GetPDGEncoding() == -211 ) antipionList.insert(trj->GetTrackID());
        
+    if( trj->GetParentID() == 0 ) primaryList.insert(trj->GetTrackID());
 
     // Process primary tracks or the secondaries from pizero or muons...
 
@@ -659,6 +826,8 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 	parentType = -211;
       } else if (pionList.count(trj->GetParentID()) ) {
 	parentType = 211;
+      } else if (primaryList.count(trj->GetParentID()) ) {
+	parentType = 1;
       } else {  // no identified parent, but not a primary
 	parentType = 999;
       }
@@ -677,7 +846,7 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 	pdir[l]=mom[l];        // momentum-vector 
 	stop[l]=Stop[l]/cm; // stopping point 
 	start[l]=Start[l]/cm; // starting point 
-	G4cout<<"part 2 start["<<l<<"]: "<< start[l] <<G4endl;
+	//G4cout<<"part 2 start["<<l<<"]: "<< start[l] <<G4endl;
       }
 
 
@@ -747,97 +916,63 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 
 #ifdef _SAVE_RAW_HITS
 
-  if (WCHC && WCDC_hits) 
+  if (WCDC_hits) 
   {
     //add the truth raw hits
-    //the noise is NOT in the HitsCollection
-    //therefore need to find it in the DigitsCollection from WCSimWCPMT or WCSimWCAddDarkNoise
-    //and the order of hits isn't preserved
-    //So need to hunt for the hit with the correct time
+    // Both the pre- and post-PMT smearing hit times are accessible
+    // Choose to save just the pre-smeared times for now
+#ifdef _SAVE_RAW_HITS_VERBOSE
     G4cout<<"RAW HITS"<<G4endl;
+#endif
     wcsimrootevent->SetNumTubesHit(WCDC_hits->entries());
-    int total_hits = WCHC->entries();
-    std::vector<float> truetime;
+    std::vector<float> truetime, smeartime;
     std::vector<int>   primaryParentID;
-    double hit_time, digi_time;
+    double hit_time_smear, hit_time_true;
     int hit_parentid;
     //loop over the DigitsCollection
     for(int idigi = 0; idigi < WCDC_hits->entries(); idigi++) {
       int digi_tubeid = (*WCDC_hits)[idigi]->GetTubeID();
-      if(idigi < total_hits) {
-	int hit_tubeid = (*WCHC)[idigi]->GetTubeID();
-	if(digi_tubeid == hit_tubeid) {
+      for(G4int id = 0; id < (*WCDC_hits)[idigi]->GetTotalPe(); id++){
+	hit_time_true  = (*WCDC_hits)[idigi]->GetPreSmearTime(id);
+	hit_parentid = (*WCDC_hits)[idigi]->GetParentID(id);
+	truetime.push_back(hit_time_true);
+	primaryParentID.push_back(hit_parentid);
 #ifdef _SAVE_RAW_HITS_VERBOSE
-	  G4cout << "Digi and hit tube IDs match for tube " << digi_tubeid << G4endl;
+	hit_time_smear = (*WCDC_hits)[idigi]->GetTime(id);
+	smeartime.push_back(hit_time_smear);
 #endif
-	  //We've found the correct entries in the collections, now need to line up the WCSimWCDigi hits with the WCSimWCHit hits
-	  //(hits we can't find in the WCSimWCHit are noise hits)
-	  //loop over the WCSimWCDigi
-	  for(G4int id = 0; id < (*WCDC_hits)[idigi]->GetTotalPe(); id++){
-	    digi_time = (*WCDC_hits)[idigi]->GetTime(id);
-	    //loop over the WCSimWCHit to find the corresponding hit
-	    bool found_hit = false;
-	    for(G4int ih = 0; ih < (*WCHC)[idigi]->GetTotalPe(); ih++){
-	      hit_time = (*WCHC)[idigi]->GetTime(ih);
-	      if(abs(hit_time - digi_time) < 1E-6) {
-		found_hit = true;
-		hit_parentid = (*WCHC)[idigi]->GetParentID(ih);
-		break;
-	      }
-	    }//ih
-	    if(found_hit) {
+      }//id
 #ifdef _SAVE_RAW_HITS_VERBOSE
-	      G4cout << "Hit " << id << " in the WCSimWCDigi is a photon hit with time " 
-		     << hit_time << " and parentID " << hit_parentid << G4endl;
-#endif
-	      truetime.push_back(hit_time);
-	      primaryParentID.push_back(hit_parentid);
-	    }
-	    else {
-#ifdef _SAVE_RAW_HITS_VERBOSE
-	      G4cout << "Hit " << id << " in the WCSimWCDigi is a noise hit with time "
-		     << digi_time << G4endl;
-#endif
-	      truetime.push_back(digi_time);
-	      primaryParentID.push_back(-1);
-	    }
-	  }//id
-	}//digi_tubeid == hit_tubeid
-	else {
-	  //This shouldn't happen!
-	  G4cerr << "ERROR raw hits not found for tube ID " << digi_tubeid
-		 << " Will save the hit charge output from WCSimWCPMT (parentID will be set to -9)" << G4endl;
-	  //loop over the WCSimWCDigi
-          for(G4int id = 0; id < (*WCDC_hits)[idigi]->GetTotalPe(); id++){
-	    digi_time = (*WCDC_hits)[idigi]->GetTime(id);
-	    truetime.push_back(digi_time);
-	    primaryParentID.push_back(-9);
-	  }//id
-	}//digi_tubeid != hit_tubeid
-      }//idigi < total_hits
-      else {
-#ifdef _SAVE_RAW_HITS_VERBOSE
-	G4cout << "All noise hits for tube " << digi_tubeid << G4endl;
-#endif
-	for(G4int id = 0; id < (*WCDC_hits)[idigi]->GetTotalPe(); id++){
-	  digi_time = (*WCDC_hits)[idigi]->GetTime(id);
-	  truetime.push_back(digi_time);
-	  primaryParentID.push_back(-1);
+      if(digi_tubeid < NPMTS_VERBOSE) {
+	G4cout << "Adding " << truetime.size()
+	       << " Cherenkov hits in tube " << digi_tubeid
+	       << " with truetime:smeartime:primaryparentID";
+	for(G4int id = 0; id < truetime.size(); id++) {
+	  G4cout << " " << truetime[id]
+		 << ":" << smeartime[id]
+		 << ":" << primaryParentID[id];
 	}//id
-      }//idigi >= total_hits
+	G4cout << G4endl;
+      }
+#endif
       wcsimrootevent->AddCherenkovHit(digi_tubeid,
 				      truetime,
 				      primaryParentID);
+      smeartime.clear();
       truetime.clear();
       primaryParentID.clear();
     }//idigi
-  }//if(WCHC && WCDC_hits)
+  }//if(WCDC_hits)
 #endif //_SAVE_RAW_HITS
 
   // Add the digitized hits
 
   if (WCDC) 
   {
+#ifdef SAVE_DIGITS_VERBOSE
+    G4cout << "DIGI HITS" << G4endl;
+#endif
+
     G4float sumq_tmp = 0.;
     
     for ( int index = 0 ; index < ngates ; index++)
@@ -857,14 +992,16 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 	      assert(vec_pe.size() == vec_digicomp.size());
 	      for(unsigned int iv = 0; iv < vec_pe.size(); iv++) {
 #ifdef SAVE_DIGITS_VERBOSE
-		G4cout << "Adding digit " << iv 
-		       << " for PMT " << tubeID
-		       << " pe "   << vec_pe[iv]
-		       << " time " << vec_time[iv]
-		       << " digicomp";
-		for(unsigned int ivv = 0; ivv < vec_digicomp[iv].size(); ivv++)
-		  G4cout << " " << vec_digicomp[iv][ivv];
-		G4cout << G4endl;
+		if(tubeID < NPMTS_VERBOSE) {
+		  G4cout << "Adding digit " << iv 
+			 << " for PMT " << tubeID
+			 << " pe "   << vec_pe[iv]
+			 << " time " << vec_time[iv]
+			 << " digicomp";
+		  for(unsigned int ivv = 0; ivv < vec_digicomp[iv].size(); ivv++)
+		    G4cout << " " << vec_digicomp[iv][ivv];
+		  G4cout << G4endl;
+		}
 #endif
 		assert(vec_digicomp[iv].size() > 0);
 		wcsimrootevent->AddCherenkovDigiHit(vec_pe[iv], vec_time[iv],
@@ -879,9 +1016,9 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 
 #ifdef SAVE_DIGITS_VERBOSE
 	G4cout << "checking digi hits ...\n";
-	G4cout << "hits collection size =  " << 
+	G4cout << "hits collection size (number of PMTs hit) =  " << 
 	  wcsimrootevent->GetCherenkovHits()->GetEntries() << "\n";
-	G4cout << "hits collection size =  " << 
+	G4cout << "hits collection size (number of true photon + dark noise hits) =  " << 
 	  wcsimrootevent->GetCherenkovHitTimes()->GetEntries() << "\n";
 	G4cout << "digihits collection size =  " << 
 	  wcsimrootevent->GetCherenkovDigiHits()->GetEntries() << "\n";
@@ -893,7 +1030,7 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 	gatestart = WCTM->GetTriggerTime(index);
 	WCSimRootEventHeader*HH = wcsimrootevent->GetHeader();
 	HH->SetDate(int(gatestart));
-      }
+      }//index (loop over ngates)
     
     // end of loop over WC trigger gates --> back to the main sub-event
     wcsimrootevent = wcsimrootsuperevent->GetTrigger(0);
@@ -924,11 +1061,10 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
   
   TTree* tree = GetRunAction()->GetTree();
   tree->Fill();
-  TFile* hfile = tree->GetCurrentFile();
   // MF : overwrite the trees -- otherwise we have as many copies of the tree
   // as we have events. All the intermediate copies are incomplete, only the
   // last one is useful --> huge waste of disk space.
-  hfile->Write("",TObject::kOverwrite);
+  tree->Write("",TObject::kOverwrite);
   
   // M Fechner : reinitialize the super event after the writing is over
   wcsimrootsuperevent->ReInitialize();

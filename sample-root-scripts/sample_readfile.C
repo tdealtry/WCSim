@@ -97,6 +97,17 @@ void sample_readfile(char *filename=NULL, bool verbose=false, bool save_hists=fa
   }
   geotree->GetEntry(0);
 
+  // Options tree - only need 1 "event"
+  TTree *opttree = (TTree*)file->Get("wcsimRootOptionsT");
+  WCSimRootOptions *opt = 0; 
+  opttree->SetBranchAddress("wcsimrootoptions", &opt);
+  if(verbose) std::cout << "Optree has " << opttree->GetEntries() << " entries" << std::endl;
+  if (opttree->GetEntries() == 0) {
+    exit(9);
+  }
+  opttree->GetEntry(0);
+  opt->Print();
+
   // start with the main "subevent", as it contains most of the info
   // and always exists.
   WCSimRootTrigger* wcsimrootevent;
@@ -155,6 +166,9 @@ void sample_readfile(char *filename=NULL, bool verbose=false, bool save_hists=fa
       
 	for (int j=0; j<3; j++)
 	  printf("Track dir: %d %f\n",j, wcsimroottrack->GetDir(j));
+	printf("Track energy: %f\n", wcsimroottrack->GetE());
+	printf("Track momentum: %f\n", wcsimroottrack->GetP());
+	printf("Track mass: %f\n", wcsimroottrack->GetM());
       }
 
       
@@ -167,7 +181,7 @@ void sample_readfile(char *filename=NULL, bool verbose=false, bool save_hists=fa
     // It is the number of tubes hit with Cherenkov photons.
     // The number of digitized tubes will be smaller because of the threshold.
     // Each hit "raw" tube has several photon hits.  The times are recorded.
-    // See http://nwg.phy.bnl.gov/DDRD/cgi-bin/private/ShowDocument?docid=245
+    // See chapter 5 of ../doc/DetectorDocumentation.pdf
     // for more information on the structure of the root file.
     //  
     // The following code prints out the hit times for the first 10 tubes and also
