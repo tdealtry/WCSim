@@ -97,7 +97,7 @@ int WCSimWCTriggerBase::GetPreTriggerWindow(TriggerType_t t)
 {
   switch(t) {
   case kTriggerNoTrig:
-    return 0;
+    return -WCSimWCTriggerBase::LongTime;
     break;
   case kTriggerNDigits:
   case kTriggerNDigitsTest:
@@ -548,7 +548,7 @@ WCSimWCTriggerNoTrigger::~WCSimWCTriggerNoTrigger()
 {
 }
 void WCSimWCTriggerNoTrigger::DoTheWork(WCSimWCDigitsCollection* WCDCPMT) {
-  //Apply an NDigits trigger
+  //Apply a trigger that just saves everything within -WCSimWCTriggerBase::LongTime to +WCSimWCTriggerBase::LongTime
   bool remove_hits = false;
   SetMultiDigitsPerTrigger(true);
   SetSaveFailuresMode(0);
