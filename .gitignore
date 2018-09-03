@@ -11,7 +11,7 @@ doxygen/
 
 #ignore run results
 *.root
-geofile.txt
+geofile*.txt
 
 #ignore compiled ROOT scripts
 *_C.d
