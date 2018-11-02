@@ -13,7 +13,7 @@ python generate_mac_files.py --batchmode local --WCgeom HyperK --DarkNoiseRate 0
 e.g. the same, but producing the particles at random positions and directions
 (produces 8 files total)
 
-python generate_mac_files.py --batchmode local --WCgeom HyperK --DarkNoiseRate 0,8.4 --GunParticle e- --GunEnergy 5,10,20,50 --GunPosition random --GunDirection 4pi --NEvents 10000
+python generate_mac_files.py --batchmode local --WCgeom HyperK --DarkNoiseRate 0,8.4 --GunParticle e- --GunEnergy 5,10,20,50 --GunPosition randomwater --GunDirection 4pi --NEvents 10000
 """
 
 import argparse
@@ -42,7 +42,7 @@ WCgeom_choices = ['HyperK', \
 HKwatertargetlength_choices = ['HyperK', 'HyperK_withHPD']
 PMTQEMethod_choices = ['Stacking_Only', 'Stacking_And_SensitiveDetector', 'SensitiveDetector_Only']
 PMTCollEff_choices = ['on', 'off']
-GunPositionChoices = ['center', 'random', 'wall', 'minusx', 'plusx', 'minusz', 'plusz']
+GunPositionChoices = ['center', 'randomwater', 'randompmt', 'wall', 'minusx', 'plusx', 'minusz', 'plusz']
 GunDirectionChoices = ['towall', 'tocap', '4pi', 'wall']
 GunParticleChoices=['e-','e+','mu-','mu+','pi-','pi+','pi0','gamma','p+','n0']
 BatchChoices=['local','condor']
@@ -56,9 +56,11 @@ parser.add_argument('--onlycreatefiles', action='store_true', help="Do a test ru
 parser.add_argument('--batchmode', type=str, default='local', choices=BatchChoices, help='Where to submit the jobs.')
 parser.add_argument('--notifyuseremail', type=str, default='', help='Specify this to get email notifications about jobs')
 #options for the .mac files
+#random numbers
+parser.add_argument('--randomseed', type=int, default=31415, help="Random seed for the first .mac file. Subsequent .mac files are increment by job number (set via --JobsPerConfig)")
 # geometry
 parser.add_argument('--WCgeom', type=delim_list, default='SuperK', help='The water tank geometry. Specify multiple with comma separated list. Choices: '+ListAsString(WCgeom_choices))
-parser.add_argument('--HKwatertanklength', type=delim_list, default='49500', help='The size of a HyperK geometry (mm)')
+#parser.add_argument('--HKwatertanklength', type=delim_list, default='49500', help='The size of a HyperK geometry (mm)')
 # trigger & digitization
 parser.add_argument('--DAQdigitizer', type=delim_list, default='SKI', help='Which digitizer class to use? Specify multiple with comma separated list. Choices: '+ListAsString(DAQdigitizer_choices))
 parser.add_argument('--DAQtrigger', type=delim_list, default='NDigits', help='Which trigger class to use? Specify multiple with comma separated list. Choices: '+ListAsString(DAQtrigger_choices))
@@ -166,9 +168,9 @@ def main(args_to_parse = None):
         sys.exit(1)
     
     #Grab the other .mac files
-    shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/jobOptions.mac", "./")
-    shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/jobOptions2.mac", "./")
-    shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/tuning_parameters.mac", "./")
+    shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/macros/jobOptions.mac", "./")
+    #shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/macros/jobOptions2.mac", "./")
+    shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/macros/tuning_parameters.mac", "./")
     #and the exectuable
     if args.batchmode == 'condor':
         if not os.path.islink('WCSim'):
@@ -189,7 +191,7 @@ def main(args_to_parse = None):
         # permutations
         permutationDict = OrderedDict()
         permutationDict['/WCSim/WCgeom']  = [x for x in args.WCgeom]
-        permutationDict['/WCSim/HyperK/waterTank_Length'] = [x for x in args.HKwatertanklength]
+        #permutationDict['/WCSim/HyperK/waterTank_Length'] = [x for x in args.HKwatertanklength]
         # create a list of dictionaries for each permutation of the parameter values
         permutationDictList = [ OrderedDict(zip(permutationDict, v)) for v in itertools.product(*permutationDict.values()) ]
         for pDict in permutationDictList:
@@ -214,7 +216,8 @@ def main(args_to_parse = None):
             #assemble the filename
             filestub = pDict['/WCSim/WCgeom']
             if filestub in HKwatertargetlength_choices:
-                filestub += '_' + pDict['/WCSim/HyperK/waterTank_Length']
+                #filestub += '_' + pDict['/WCSim/HyperK/waterTank_Length']
+                pass
             for gunstub in gunstubs:
                 filestubs.append(gunstub + '_' + filestub)
         return [geoms, filestubs]
@@ -369,7 +372,8 @@ def main(args_to_parse = None):
                     '-e ' + GunEnergy  + ' ' \
                     '-v ' + args.GunPosition  + ' ' \
                     '-d ' + args.GunDirection + ' ' \
-                    '-w ' + geom
+                    '-w ' + geom + ' ' \
+                    '-s ' + str(args.randomseed)
                 print command
                 os.system(command)
                 for ijob in xrange(args.JobsPerConfig):
@@ -377,7 +381,8 @@ def main(args_to_parse = None):
                     kinname = "%s_%.1fMeV_%s_%s_%s_%03i.kin" % (args.GunParticle.replace("+","plus").replace("-","minus"), float(GunEnergy), args.GunPosition, args.GunDirection, args.WCgeom[0], ijob)
                     print kinname
                     #and finally get the .mac options
-                    gunoptions = '/mygen/vecfile ' + os.getcwd() + '/' + kinname + '\n'
+                    gunoptions = "/mygen/generator muline \n" \
+                        '/mygen/vecfile ' + os.getcwd() + '/' + kinname + '\n'
                     guns.append(gunoptions)
                 filestub += 'makekin_'
             elif args.GunIsGPS == 'line':
@@ -417,7 +422,7 @@ def main(args_to_parse = None):
             else:
                 #we're using the simple GEANT4 particle gun
                 #http://geant4.web.cern.ch/geant4/G4UsersDocuments/UsersGuides/ForApplicationDeveloper/html/Control/UIcommands/_gun_.html
-                gunoptions = "/mygen/generator normal " + "\n" \
+                gunoptions = "/mygen/generator gun " + "\n" \
                     "/gun/particle " + args.GunParticle + "\n" \
                     "/gun/energy " + GunEnergy + " MeV \n" \
                     "/gun/direction " + " ".join(i for i in args.GunDirection) + "\n" \
@@ -467,7 +472,7 @@ def main(args_to_parse = None):
             #add the final bits to the options
             jobname = thesefile + '.' + str(ijob)
             joboptions = theseoptions + ""\
-                "/WCSim/random/seed " + str(ijob + 31415) + "\n" \
+                "/WCSim/random/seed " + str(ijob + args.randomseed) + "\n" \
                 "/WCSimIO/RootFile " + jobname + ".root" + "\n" \
                 "/WCSim/SavePi0 " + ("true" if args.SavePi0 else "false") + "\n" \
                 "/run/beamOn " + str(args.NEvents) + "\n"
