@@ -194,7 +194,7 @@ int main(){
   TH1F *h_raw_hit_parent_ids = new TH1F("h_raw_hit_parent_ids","h_raw_hit_parent_ids",100,1,-1);
 
   TH1F *h_digitized_hit_tube_id = new TH1F("h_digitized_hit_tube_id","h_digitized_hit_tube_id",100,1,-1);
-  TH1F *h_digitized_hit_Q = new TH1F("h_digitized_hit_Q","h_digitized_hit_Q",100,1,-1);
+  TH1F *h_digitized_hit_Q = new TH1F("h_digitized_hit_Q","h_digitized_hit_Q",201,-0.5,200.5);
   TH1F *h_digitized_hit_time = new TH1F("h_digitized_hit_time","h_digitized_hit_time",100,1,-1);
   TH1F *h_digitized_hit_photon_ids = new TH1F("h_digitized_hit_photon_ids","h_digitized_hit_photon_ids",100,1,-1);
 

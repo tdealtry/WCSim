@@ -356,7 +356,7 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 	// random poisson number of vertices based on average
 	int n_vertices = CLHEP::RandPoisson::shoot(average);
 
-	//n_vertices = 1; // qqq
+	//	n_vertices = 1; // qqq
 
 	for(int u=0; u<n_vertices; u++){
 	    
@@ -370,6 +370,52 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 83, 214, 0));
 	  else if (IsotopeName.compareTo("K40") == 0)
 	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 19, 40, 0));
+	  else if (IsotopeName.compareTo("Rn220") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 86, 220, 0));
+	  else if (IsotopeName.compareTo("Po216") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 84, 216, 0));
+	  else if (IsotopeName.compareTo("Pb212") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 82, 212, 0));
+	  else if (IsotopeName.compareTo("Bi212") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 83, 212, 0));
+	  else if (IsotopeName.compareTo("Po212") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 84, 212, 0));
+	  else if (IsotopeName.compareTo("Rn222") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 86, 222, 0));
+	  else if (IsotopeName.compareTo("Po218") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 84, 218, 0));
+	  else if (IsotopeName.compareTo("At218") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 85, 218, 0));
+	  else if (IsotopeName.compareTo("Pb214") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 82, 214, 0));
+	  else if (IsotopeName.compareTo("Po214") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 84, 214, 0));
+	  else if (IsotopeName.compareTo("Tl210") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 81, 210, 0));
+	  else if (IsotopeName.compareTo("Pb210") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 82, 210, 0));
+	  else if (IsotopeName.compareTo("Bi210") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 83, 210, 0));
+	  else if (IsotopeName.compareTo("Po210") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 84, 210, 0));
+	  else if (IsotopeName.compareTo("Hg206") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 80, 206, 0));
+	  else if (IsotopeName.compareTo("Tl206") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 81, 206, 0));
+	  else if (IsotopeName.compareTo("Rn219") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 86, 219, 0));
+	  else if (IsotopeName.compareTo("Po215") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 84, 215, 0));
+	  else if (IsotopeName.compareTo("At215") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 85, 215, 0));
+	  else if (IsotopeName.compareTo("Pb211") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 82, 211, 0));
+	  else if (IsotopeName.compareTo("Bi211") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 83, 211, 0));
+	  else if (IsotopeName.compareTo("Po211") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 84, 211, 0));
+	  else if (IsotopeName.compareTo("Tl207") == 0)
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 82, 207, 0));
 	    
 	  if (IsotopeLocation.compareTo("water") == 0){
 	    MyGPS->GetCurrentSource()->GetEneDist()->SetEnergyDisType("Mono");

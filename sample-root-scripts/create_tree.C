@@ -468,11 +468,17 @@ int main(int argc, char** argv){
       digitized_hit_photon_ids.push_back(v_digitized_hit_photon_ids);
 
       std::clog << " ievent " << ievent << " itrigger " << itrigger << " number_of_raw_cherenkov_hits " << number_of_raw_cherenkov_hits << std::endl;
-    
-    
+
+
     }
 
     primary_events_tree.Fill();
+
+#if 0
+    if( ievent == 10 )
+      break; // to only do N event and then make event display
+#endif
+    
   }
 
 

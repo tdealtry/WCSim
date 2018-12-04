@@ -231,12 +231,13 @@ void WCSimWCTriggerBase::AlgNDigits(WCSimWCDigitsCollection* WCDCPMT, bool remov
       //Loop over each Digit in this PMT
       for ( G4int ip = 0 ; ip < (*WCDCPMT)[i]->GetTotalPe() ; ip++) {
 	int digit_time = (*WCDCPMT)[i]->GetTime(ip);
+	// augment all times by 950 ms to ensure they are positive (makes sense when saving time on GPUs
+	digit_time += WCSimWCTriggerBase::offset;
 	//hit in trigger window?
 	if(digit_time >= window_start_time && digit_time <= (window_start_time + ndigitsWindow)) {
 	  n_digits++;
 	  digit_times.push_back(digit_time);
 	}
-	//G4cout << digit_time << G4endl;
 	//get the time of the last hit (to make the loop shorter)
 	if(first_loop && (digit_time > lasthit))
 	  lasthit = digit_time;
@@ -254,18 +255,22 @@ void WCSimWCTriggerBase::AlgNDigits(WCSimWCDigitsCollection* WCDCPMT, bool remov
       TriggerTypes.push_back(this_triggerType);
       TriggerInfos.push_back(std::vector<Float_t>(1, n_digits));
       triggerfound = true;
+      //      G4cout << " trigger! time " << triggertime <<  " n triggers " << ntrig << G4endl;
     }
 
 #ifdef WCSIMWCTRIGGER_VERBOSE
     if(n_digits)
-      G4cout << n_digits << " digits found in 200nsec trigger window ["
+      G4cout << n_digits << " digits found in trigger window ["
 	     << window_start_time << ", " << window_start_time + ndigitsWindow
 	     << "]. Threshold is: " << this_ndigitsThreshold << G4endl;
 #endif
 
     //move onto the next go through the timing loop
     if(triggerfound) {
-      window_start_time = triggertime + GetPostTriggerWindow(TriggerTypes.back());
+	// smarter way
+      //      window_start_time = triggertime + GetPostTriggerWindow(TriggerTypes.back());
+	// way done on GPUs where triggertime is not stored
+      window_start_time += GetPostTriggerWindow(TriggerTypes.back());
     }//triggerfound
     else {
       window_start_time += window_step_size;
@@ -433,6 +438,7 @@ void WCSimWCTriggerBase::AlgNoTrigger(WCSimWCDigitsCollection* WCDCPMT, bool rem
   TriggerTimes.push_back(0.);
 
   FillDigitsCollection(WCDCPMT, remove_hits, this_triggerType);
+
 }
 
 
