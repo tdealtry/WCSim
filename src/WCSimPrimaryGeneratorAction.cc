@@ -415,7 +415,7 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 	  else if (IsotopeName.compareTo("Po211") == 0)
 	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 84, 211, 0));
 	  else if (IsotopeName.compareTo("Tl207") == 0)
-	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 82, 207, 0));
+	    MyGPS->SetParticleDefinition(G4IonTable::GetIonTable()->GetIon( 81, 207, 0));
 	    
 	  if (IsotopeLocation.compareTo("water") == 0){
 	    MyGPS->GetCurrentSource()->GetEneDist()->SetEnergyDisType("Mono");
