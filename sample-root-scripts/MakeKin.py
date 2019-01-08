@@ -6,18 +6,19 @@ from math import pi,sin,cos,sqrt
 import sys
 
 
-
 pid = {"pi0":111, "pi+":211, "k0l":130, "k0s":310, "k+":321,
        "e+":-11, "mu+":-13, "tau+":-15, 
        "nue":12, "nuebar":-12, 
        "numu":14, "numubar":-14, 
        "nutau":16, "nutaubar":-16,
-       "p+":2212, "n0":2112}
+       "p+":2212, "n0":2112,
+       "Bi214":1000832140,"Tl208":1000812080,"K40":1000190400}
 
 #holds detector [radius, height] in cm
 detectors = {"SuperK":[3368.15/2., 3620.],
              "Cylinder_60x74_20inchBandL_14perCent":[7400./2., 6000.],
-             "Cylinder_60x74_20inchBandL_40perCent":[7400./2., 6000.]}
+             "Cylinder_60x74_20inchBandL_40perCent":[7400./2., 6000.],
+             "HyperK":[7080./2., 5480.]}
 
 for pname, no in pid.items():
     if pname.endswith('+'):
@@ -38,6 +39,10 @@ parser.add_option("-n", "--npart", dest="npart",
                   help="number of particles to simulate per file. Default: %s" \
                   % (optdefault),
                   metavar="#", default=optdefault)
+optdefault = None
+parser.add_option("-s", "--seed", dest="seed",
+                  help="Random number seed to use. Default: None (use system time)",
+                  metavar="SEED", default=optdefault)
 optchoices = pid.keys()
 optdefault = "mu-"
 parser.add_option("-t", "--type", dest="type",
@@ -45,17 +50,22 @@ parser.add_option("-t", "--type", dest="type",
                       % (optchoices, optdefault),
                   metavar="TYPE",
                   choices=optchoices, default=optdefault)
-optdefault = 1000.0
+optdefault = '1000.0'
 parser.add_option("-e", "--energy", dest="energy",
-                  help="Particle energy to be generated in MeV. Default: %s" \
+                  help="Particle energy to be generated in MeV. Specify range with colon separated pair (e.g. 0:10). Default: %s" \
                       % (optdefault),
-                  metavar="ENERGY",default=optdefault)
-optchoices = ["center", "random", "minusx", "plusx", "minusz", "plusz"]
+                  metavar="ENERGY", default=optdefault)
+optchoices = ["center", "randomwater", "randompmt", "minusx", "plusx", "minusz", "plusz"]
 optdefault = optchoices[0]
 parser.add_option("-v", "--vertex", dest="vertname",
                   help="Type of vertex. Choices: %s. Default: %s" \
                       % (optchoices, optdefault),
                   choices=optchoices, default=optdefault)
+optdefault = "./"
+parser.add_option("-p", "--pmtlist", dest="pmtlist",
+                  help="file with list of PMT positions. End with a '/' for the filename to be constructed automatically as <detector>_pmts.list. Default: %s" \
+                      % (optdefault),
+                  metavar="FILE", default=optdefault)
 optchoices = ["4pi", "towall", "tocap"]
 optdefault = optchoices[0]
 parser.add_option("-d", "--direction", dest="dirname",
@@ -73,27 +83,51 @@ parser.add_option("-w", "--detector", dest="detector",
 
 options.vertname = options.vertname.lower()
 options.dirname = options.dirname.lower()
+random.seed(options.seed)
 
 
+
+def pair_or_single(arg):
+    pair = list(set(float(x) for x in arg.split(':')))
+    pair.sort()
+    if len(pair) > 2 or len(pair) < 1:
+        print "Argument %s is not a colon-separted pair of floats, or a single float" % arg
+    elif len(pair) == 1:
+        return pair, "%.1f" % (pair[0])
+    elif len(pair) == 2:
+        return pair, "%.1f:%.1f" % (pair[0], pair[1])
 
 nfiles = int(options.nfiles)
-npart = int(options.npart)
-energy = float(options.energy)
+npart  = int(options.npart)
+energy, energystr = pair_or_single(options.energy)
 
 
 #Define the particle
 particle = {"vertex":(0, 0, 0),
             "time":0,
             "type":pid[options.type],
-            "energy":energy,
+            "energy":energy[0],
             "direction":(1,0,0)}
 
+def ReadPMTPositions(filename):
+    pmts = {}
+    with open(filename) as f:
+        for l in f.readlines():
+            pmtnum,x,y,z = l.split()
+            pmts[int(pmtnum)] = [float(x), float(y), float(z)]
+    return pmts
 
-randvert = False
+randvertwater = False
 if options.vertname == "center":
-    randvert = False
-elif options.vertname == "random":
-    randvert = True
+    randvertwater = False
+elif options.vertname == "randomwater":
+    randvertwater = True
+elif options.vertname == "randompmt":
+    fname = options.pmtlist
+    if options.pmtlist.strip()[-1] == '/':
+        fname += options.detector + '_pmts.list'
+    pmts = ReadPMTPositions(fname)
+    randvertpmt = True
 elif options.vertname == "wall":
     print >>sys.stderr, "Wall not implemented yet"
     sys.exit(3)
@@ -140,7 +174,7 @@ else:
 
 
 
-nu =   {"type":pid["numu"], "energy":energy+1000.0,
+nu =   {"type":pid["numu"], "energy":energy[0]+1000.0,
         "direction":(1, 0, 0)}
 prot = {"type":pid["p+"], "energy":935.9840,
         "direction":(0, 0, 1)}
@@ -150,15 +184,23 @@ prot = {"type":pid["p+"], "energy":935.9840,
 def partPrint(p, f, recno):
     f.write("$ begin\n")
     f.write("$ nuance 0\n")
-    if randvert:
-        rad    = detectors[options.detector][0] - 20.
-        height = detectors[options.detector][1] - 20.
+    #random energy
+    if len(energy) == 2:
+        thisenergy  = random.uniform(energy[0], energy[1])
+        p ["energy"] = thisenergy
+        nu["energy"] = thisenergy + 1000
+    if randvertwater:
+        rad    = detectors[options.detector][0] - 20. #cm
+        height = detectors[options.detector][1] - 20. #cm
         while True:
             x = random.uniform(-rad,rad)
             y = random.uniform(-rad,rad)
             if x**2 + y**2 < rad**2: break
         z = random.uniform(-height/2,height/2)
         f.write("$ vertex %.5f %.5f %.5f %.5f\n" % (x, y, z, p["time"]))
+    elif randvertpmt:
+        pmt = random.randint(1, len(pmts))
+        f.write("$ vertex %.5f %.5f %.5f %.5f\n" % (pmts[pmt][0], pmts[pmt][1], pmts[pmt][2], p["time"]))
     else:
         f.write("$ vertex %.5f %.5f %.5f %.5f\n" % (p["vertex"]+(p["time"],)) )
     printTrack(nu, f, -1)   # "Neutrino" Track
@@ -186,7 +228,8 @@ def printTrack(p, f, code=0):
 for fileno in range(nfiles):
     typestr = options.type.replace("+","plus").replace("-","minus")
     
-    filename="%s_%.0fMeV_%s_%s_%s_%03i.kin" % (typestr, energy, options.vertname, options.dirname, options.detector, fileno)
+    estring = ""
+    filename="%s_%sMeV_%s_%s_%s_%03i.kin" % (typestr, energystr, options.vertname, options.dirname, options.detector, fileno)
 
     outfile = open(filename, 'w')
 
