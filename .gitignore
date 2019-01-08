@@ -9,6 +9,11 @@ bin/
 tmp/
 doxygen/
 
+#ignore compiled ROOT or python scripts
+*_C.d
+*_C.so
+*.pyc
+
 #ignore run results
 *.root
 geofile.txt
