@@ -168,9 +168,10 @@ def main(args_to_parse = None):
         sys.exit(1)
     
     #Grab the other .mac files
-    shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/macros/jobOptions.mac", "./")
-    #shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/macros/jobOptions2.mac", "./")
-    shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/macros/tuning_parameters.mac", "./")
+    os.mkdir("./macros")
+    shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/macros/jobOptions.mac", "./macros")
+    #shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/macros/jobOptions2.mac", "./macros")
+    shutil.copy2(os.path.expandvars("$WCSIMDIR") + "/macros/tuning_parameters.mac", "./macros")
     #and the exectuable
     if args.batchmode == 'condor':
         if not os.path.islink('WCSim'):
