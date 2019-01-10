@@ -27,7 +27,7 @@ delim_list = lambda s: list(set(s.split(',')))
 delim_list_str = lambda s: s.split(',') if len(s.split(',')) == 3 else s
 
 DAQdigitizer_choices = ['SKI', 'SKI_SKDETSIM']
-DAQtrigger_choices = ['NDigits', 'NDigits2', 'SKI_SKDETSIM']
+DAQtrigger_choices = ['NDigits', 'NDigits2', 'SKI_SKDETSIM','NoTrigger']
 DAQtrigger_ndigits_choices = ['NDigits', 'NDigits2', 'SKI_SKDETSIM']
 WCgeom_choices = ['HyperK', \
                       'HyperK_withHPD', \
@@ -345,7 +345,7 @@ def main(args_to_parse = None):
         permutationDictList = [ OrderedDict(zip(permutationDict, v)) for v in itertools.product(*permutationDict.values()) ]
         for pDict in permutationDictList:
             #get the options
-            darkoptions = ''
+            darkoptions = '/DarkRate/SetDetectorElement tank \n'
             for k,v in pDict.iteritems():
                 darkoptions += k + ' ' + v + '\n'
             noises.append(darkoptions)
