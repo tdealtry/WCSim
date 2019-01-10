@@ -536,4 +536,6 @@ if __name__ == "__main__":
     main()
 
     print "\n\n\nTODO fix defaults - certain variables should be allowed to be not written in the .mac file (e.g. if DarkRate == -99)"
+    print "\nTODO allow OD dark noise rate to be set correctly, and independently to ID dark noise rate"
+
 
