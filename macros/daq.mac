@@ -1,3 +1,4 @@
+
 # Macro for controlling DAQ-like options (thresholds, time windows, etc.)
 
 #choose the Trigger & Digitizer type in novis.mac
@@ -10,7 +11,7 @@
 
 #generic trigger options (defaults are class-specfic. Can be overrideen here)
 # allow the number of digits per PMT per trigger to be > 1?
-#/DAQ/MultiDigitsPerTrigger false
+/DAQ/MultiDigitsPerTrigger true
 
 #trigger algorithm development options (defaults are set in WCSimWCDAQMessenger. Can be overidden here)
 # do we want to save only triggered events (mode 0), both triggered events & failed events (mode 1), or only failed events (mode 2)?

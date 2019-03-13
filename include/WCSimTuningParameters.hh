@@ -24,6 +24,10 @@ public:
   G4double GetRgcff() {return rgcff;}
   void SetRgcff(G4double rparam) {rgcff=rparam;}
 
+  //Added by B.Q 2018/07/25
+  G4double GetQeff() {return qeff;}
+  void SetQeff(G4double rparam) {qeff=rparam;}
+
   G4double GetMieff() {return mieff;}
   void SetMieff(G4double rparam) {mieff=rparam;}
 
@@ -49,6 +53,7 @@ private:
   G4double bsrff;
   G4double abwff;
   G4double rgcff;
+  G4double qeff;
   G4double mieff;
 
   //For Top Veto - jl145

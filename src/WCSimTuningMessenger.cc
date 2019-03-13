@@ -32,6 +32,12 @@ WCSimTuningMessenger::WCSimTuningMessenger(WCSimTuningParameters* WCTuningPars):
   Rgcff->SetParameterName("Rgcff",true);
   Rgcff->SetDefaultValue(0.32);
 
+  //Added by B. Quilain 2018/07/25
+  Qeff = new G4UIcmdWithADouble("/WCSim/tuning/qeff",this);
+  Qeff->SetGuidance("Set the correction of cathode QE parameter (nominal = 1). Used when changing the cathode reflectivity to keep the total charge constant.");
+  Qeff->SetParameterName("Qeff",true);
+  Qeff->SetDefaultValue(1.);
+
   Mieff = new G4UIcmdWithADouble("/WCSim/tuning/mieff",this);
   Mieff->SetGuidance("Set the Mie scattering parameter");
   Mieff->SetParameterName("Mieff",true);
@@ -56,6 +62,7 @@ WCSimTuningMessenger::~WCSimTuningMessenger()
   delete Bsrff;
   delete Abwff;
   delete Rgcff;
+  delete Qeff;//B.Q
   delete Mieff;
 
   //jl145 - for Top Veto
@@ -105,6 +112,16 @@ void WCSimTuningMessenger::SetNewValue(G4UIcommand* command,G4String newValue)
   WCSimTuningParams->SetRgcff(Rgcff->GetNewDoubleValue(newValue));
 
   printf("Setting cathode reflectivity parameter %f\n",Rgcff->GetNewDoubleValue(newValue));
+
+  }
+
+ if(command == Qeff) {//B. Quilain
+	  // Set the cathode QE correction parameter
+	  //	  printf("Input parameter %f\n",Qeff->GetNewDoubleValue(newValue));
+
+  WCSimTuningParams->SetQeff(Qeff->GetNewDoubleValue(newValue));
+
+  printf("Seting the correction of cathode QE parameter (nominal = 1) %f\n",Qeff->GetNewDoubleValue(newValue));
 
   }
 

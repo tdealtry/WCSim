@@ -70,14 +70,23 @@ WCSimEventAction::WCSimEventAction(WCSimRunAction* myRun,
   G4DigiManager* DMman = G4DigiManager::GetDMpointer();
 
   //create PMT response module
-  WCSimWCPMT* WCDMPMT = new WCSimWCPMT( "WCReadoutPMT", myDetector);
+  WCSimWCPMT* WCDMPMT = new WCSimWCPMT( "WCReadoutPMT", myDetector,"tank");
   DMman->AddNewModule(WCDMPMT);
 
   randGen = new TRandom3();
 
   //create dark noise module
-  WCSimWCAddDarkNoise* WCDNM = new WCSimWCAddDarkNoise("WCDarkNoise", detectorConstructor);
+  WCSimWCAddDarkNoise* WCDNM = new WCSimWCAddDarkNoise("WCDarkNoise", detectorConstructor,"tank");
   DMman->AddNewModule(WCDNM);
+
+  //B.Q: Create a digitizer and a module to add dark noise for the second type of PMTs in the hybrid configuration  
+  //create PMT response module
+  WCSimWCPMT* WCDMPMT2 = new WCSimWCPMT( "WCReadoutPMT2", myDetector,"tankPMT2");
+  DMman->AddNewModule(WCDMPMT2);
+
+  WCSimWCAddDarkNoise* WCDNM2 = new WCSimWCAddDarkNoise("WCDarkNoise2", detectorConstructor,"tankPMT2");
+  DMman->AddNewModule(WCDNM2);
+
 }
 
 WCSimEventAction::~WCSimEventAction()
@@ -98,7 +107,7 @@ void WCSimEventAction::CreateDAQInstances()
 
   //create your choice of digitizer module
   if(DigitizerChoice == "SKI") {
-    WCSimWCDigitizerSKI* WCDM = new WCSimWCDigitizerSKI("WCReadoutDigits", detectorConstructor, DAQMessenger);
+    WCSimWCDigitizerSKI* WCDM = new WCSimWCDigitizerSKI("WCReadoutDigits", detectorConstructor, DAQMessenger,"tank");
     DMman->AddNewModule(WCDM);
   }
   else {
@@ -108,18 +117,51 @@ void WCSimEventAction::CreateDAQInstances()
 
   //create your choice of trigger module
   if(TriggerChoice == "NDigits") {
-    WCSimWCTriggerNDigits* WCTM = new WCSimWCTriggerNDigits("WCReadout", detectorConstructor, DAQMessenger);
+    WCSimWCTriggerNDigits* WCTM = new WCSimWCTriggerNDigits("WCReadout", detectorConstructor, DAQMessenger,"tank");
     DMman->AddNewModule(WCTM);
   }
   else if(TriggerChoice == "NDigits2") {
-    WCSimWCTriggerNDigits2* WCTM = new WCSimWCTriggerNDigits2("WCReadout", detectorConstructor, DAQMessenger);
+    WCSimWCTriggerNDigits2* WCTM = new WCSimWCTriggerNDigits2("WCReadout", detectorConstructor, DAQMessenger,"tank");
+    DMman->AddNewModule(WCTM);
+  }
+  else if(TriggerChoice == "NoTrigger") {
+    WCSimWCTriggerNoTrigger* WCTM = new WCSimWCTriggerNoTrigger("WCReadout", detectorConstructor, DAQMessenger, "tank");
     DMman->AddNewModule(WCTM);
   }
   else {
     G4cerr << "Unknown TriggerChoice " << TriggerChoice << G4endl;
     exit(-1);
   }
+  
+  //B.Q: For the second type of PMT in the hybrid configuration
+    //create your choice of digitizer module
+  if(DigitizerChoice == "SKI") {
+    WCSimWCDigitizerSKI* WCDM2 = new WCSimWCDigitizerSKI("WCReadoutDigits2", detectorConstructor, DAQMessenger,"tankPMT2");
+    DMman->AddNewModule(WCDM2);
+  }
+  else {
+    G4cerr << "Unknown DigitizerChoice " << DigitizerChoice << G4endl;
+    exit(-1);
+  }
 
+  //create your choice of trigger module
+  if(TriggerChoice == "NDigits") {
+    WCSimWCTriggerNDigits* WCTM2 = new WCSimWCTriggerNDigits("WCReadout2", detectorConstructor, DAQMessenger,"tankPMT2");
+    DMman->AddNewModule(WCTM2);
+  }
+  else if(TriggerChoice == "NDigits2") {
+    WCSimWCTriggerNDigits2* WCTM2 = new WCSimWCTriggerNDigits2("WCReadout2", detectorConstructor, DAQMessenger,"tankPMT2");
+    DMman->AddNewModule(WCTM2);
+  }
+  else if(TriggerChoice == "NoTrigger") {
+    WCSimWCTriggerNoTrigger* WCTM2 = new WCSimWCTriggerNoTrigger("WCReadout2", detectorConstructor, DAQMessenger,"tankPMT2");
+    DMman->AddNewModule(WCTM2);
+  }
+  else {
+    G4cerr << "Unknown TriggerChoice " << TriggerChoice << G4endl;
+    exit(-1);
+  }
+  
   ConstructedDAQClasses = true;
 }
 
@@ -186,6 +228,15 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
     G4int collectionID = SDman->GetCollectionID(name);
     WCHC = (WCSimWCHitsCollection*)HCE->GetHC(collectionID);
   }
+  //B.Q for the hybrid version
+  WCSimWCHitsCollection* WCHC2 = 0;
+  G4String WCIDCollectionName2 = detectorConstructor->GetIDCollectionName2();
+  if (HCE)
+  { 
+    G4String name =   WCIDCollectionName2;
+    G4int collectionID = SDman->GetCollectionID(name);
+    WCHC2 = (WCSimWCHitsCollection*)HCE->GetHC(collectionID);
+  }
 
   // If this option is chosen
   // pe's will be generated on the pmts.
@@ -240,6 +291,8 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
 	(*WCHC)[hitIndex]->AddPe(G4RandGauss::shoot(0.0,10.));
 	(*WCHC)[hitIndex]->AddParentID(0); // Make parent a geantino (whatever that is)
       }
+
+      G4cout << "The option using pmtPoisson is not implemented for the hybrid version yet." << G4endl;
     }
   }
   
@@ -255,6 +308,9 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
   // ----------------------------------------------------------------------
   //  Get Digitized Hit Collection
   // ----------------------------------------------------------------------
+   G4cout<< "WCSimEventAction::EndOfEventAction() (WCSimWCHitsCollection*)" << WCIDCollectionName
+	 << " has " << WCHC->entries() << " entries" << G4endl;
+   G4cout << G4endl;
 
   // Get a pointer to the Digitizing Module Manager
   G4DigiManager* DMman = G4DigiManager::GetDMpointer();
@@ -262,7 +318,6 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
   // Get a pointer to the WC PMT module
   WCSimWCPMT* WCDMPMT =
     (WCSimWCPMT*)DMman->FindDigitizerModule("WCReadoutPMT");
-
  
   // new MFechner, aug 2006
   // need to clear up the old info inside PMT
@@ -287,7 +342,9 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
   //Get a pointer to the WC Dark Noise Module
   WCSimWCAddDarkNoise* WCDNM =
     (WCSimWCAddDarkNoise*)DMman->FindDigitizerModule("WCDarkNoise");
-  
+
+  //WCDNM->SetDarkMode(1);
+
   //Add the dark noise
   WCDNM->AddDarkNoise();
 
@@ -329,6 +386,100 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
    // Get the digitized collection for the WC
    G4int WCDCID = DMman->GetDigiCollectionID("WCDigitizedCollection");
    WCSimWCTriggeredDigitsCollection * WCDC = (WCSimWCTriggeredDigitsCollection*) DMman->GetDigiCollection(WCDCID);
+   /*   
+   // To use Do like This:
+   // --------------------
+   if(WCDC) 
+     for (G4int i=0; i < WCDC->entries(); i++) 
+       {
+	 G4int   tubeID         = (*WCDC)[i]->GetTubeID();
+	 G4float photoElectrons = (*WCDC)[i]->GetPe(i);
+	 G4float time           = (*WCDC)[i]->GetTime(i);
+	 //	 G4cout << "time " << i << " " <<time << G4endl; 
+	 //	 G4cout << "tubeID " << i << " " <<tubeID << G4endl; 
+	 //	 G4cout << "Pe " << i << " " <<photoElectrons << G4endl; 
+	 //   (*WCDC)[i]->Print();
+       }
+   */
+   
+  // ----------------------------------------------------------------------
+  //  Digitization for the second PMT type in the hybrid configuration, B.Q
+  // ----------------------------------------------------------------------
+   
+   G4cout<< "WCSimEventAction::EndOfEventAction() (WCSimWCHitsCollection*)" << WCIDCollectionName2
+	 << " has " << WCHC2->entries() << " entries" << G4endl;
+   G4cout << G4endl;
+   
+  // Get a pointer to the WC PMT module
+  WCSimWCPMT* WCDMPMT2 =
+    (WCSimWCPMT*)DMman->FindDigitizerModule("WCReadoutPMT2");
+
+ 
+  // new MFechner, aug 2006
+  // need to clear up the old info inside PMT
+  WCDMPMT2->ReInitialize();
+  
+  
+#ifdef TIME_DAQ_STEPS
+  TStopwatch* ms = new TStopwatch();
+  ms->Start();
+#endif
+
+  //Convert the hits to PMT pulse
+  WCDMPMT2->Digitize();
+
+  //
+  // Do the Dark Noise, then Digitization, then Trigger
+  //
+
+  //
+  // First, add Dark noise hits before digitizing
+    
+  //Get a pointer to the WC Dark Noise Module
+  WCSimWCAddDarkNoise* WCDNM2 =
+    (WCSimWCAddDarkNoise*)DMman->FindDigitizerModule("WCDarkNoise2");
+  
+  //Add the dark noise
+  WCDNM2->AddDarkNoise();
+
+  //
+  // Next, do the digitization
+  
+  //Get a pointer to the WC Digitizer Module
+  WCSimWCDigitizerBase* WCDM2 =
+    (WCSimWCDigitizerBase*)DMman->FindDigitizerModule("WCReadoutDigits2");
+
+  //Digitize the hits
+  WCDM2->Digitize();
+
+  //
+  // Finally, apply the trigger
+  
+  //Get a pointer to the WC Trigger Module
+  WCSimWCTriggerBase* WCTM2 =
+    (WCSimWCTriggerBase*)DMman->FindDigitizerModule("WCReadout2");
+  
+  //tell it the dark noise rate (for calculating the average dark occupancy -> can adjust the NDigits threshold)
+  WCTM2->SetDarkRate(WCDNM2->GetDarkRate());
+  
+  //Apply the trigger
+  // This takes the digits, and places them into trigger gates
+  // Also throws away digits not contained in an trigger gate
+  WCTM2->Digitize();
+
+#ifdef TIME_DAQ_STEPS
+  ms->Stop();
+  G4cout << " Digtization :  Real = " << ms->RealTime() 
+    	    << " ; CPU = " << ms->CpuTime() << "\n";  
+#endif
+
+   // Get the post-noise hit collection for the WC
+   G4int WCDChitsID2 = DMman->GetDigiCollectionID("WCRawPMTSignalCollection2");
+   WCSimWCDigitsCollection * WCDC_hits2 = (WCSimWCDigitsCollection*) DMman->GetDigiCollection(WCDChitsID2);
+  
+   // Get the digitized collection for the WC
+   G4int WCDCID2 = DMman->GetDigiCollectionID("WCDigitizedCollection2");
+   WCSimWCTriggeredDigitsCollection * WCDC2 = (WCSimWCTriggeredDigitsCollection*) DMman->GetDigiCollection(WCDCID2);
    /*   
    // To use Do like This:
    // --------------------
@@ -448,7 +599,6 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
  	trj->DrawTrajectory(50);
     }
 
-   G4cout << " Filling Root Event " << G4endl;
 
    //   G4cout << "event_id: " << &event_id << G4endl;
    // G4cout << "jhfNtuple: " << &jhfNtuple << G4endl;
@@ -467,28 +617,50 @@ void WCSimEventAction::EndOfEventAction(const G4Event* evt)
 		   jhfNtuple,
 		   trajectoryContainer,
 		   WCDC_hits,
-		   WCDC);
+		   WCDC,
+		   "tank");
    }
   
-  
+   /*
   FillFlatTree(event_id,
 	       jhfNtuple,
 	       trajectoryContainer,
 	       WCDC_hits,
-	       WCDC);
-
+	       WCDC,
+	       "tank");
+   */
+  if(GetRunAction()->GetRootFileOption()){
+     FillRootEvent(event_id,
+		   jhfNtuple,
+		   trajectoryContainer,
+		   WCDC_hits2,
+		   WCDC2,
+		   "tankPMT2");
+   }
+  
+  /*
+  G4cout << "Filling Root Flat tree for the second ID PMT type" << G4endl;
+  FillFlatTree(event_id,
+	       jhfNtuple,
+	       trajectoryContainer,
+	       WCDC_hits2,
+	       WCDC2,
+	       "tankPMT2");
+  */
   //save DAQ options here. This ensures that when the user selects a default option
   // (e.g. with -99), the saved option value in the output reflects what was run
   if(!SavedOptions) {
     WCSimRootOptions * wcsimopt = runAction->GetRootOptions();
     //Dark noise
-    WCDNM->SaveOptionsToOutput(wcsimopt);
+    WCDNM->SaveOptionsToOutput(wcsimopt, "tank");
     //Digitizer
     WCDM->SaveOptionsToOutput(wcsimopt);
     //Trigger
     WCTM->SaveOptionsToOutput(wcsimopt);
     //Generator
     generatorAction->SaveOptionsToOutput(wcsimopt);
+    //Generator for hybrid configuration, B.Q
+    WCDNM2->SaveOptionsToOutput(wcsimopt,"tankPMT2");
     
     SavedOptions = true;
   }
@@ -594,11 +766,12 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 				     const struct ntupleStruct& jhfNtuple,
 				     G4TrajectoryContainer* TC,
 				     WCSimWCDigitsCollection* WCDC_hits,
-				     WCSimWCTriggeredDigitsCollection* WCDC)
+				     WCSimWCTriggeredDigitsCollection* WCDC,
+				     G4String detectorElement)
 {
   // Fill up a Root event with stuff from the ntuple
 
-  WCSimRootEvent* wcsimrootsuperevent = GetRunAction()->GetRootEvent();
+  WCSimRootEvent* wcsimrootsuperevent = GetRunAction()->GetRootEvent(detectorElement);
 
   // start with the first "sub-event"
   // if the WC digitization requires it, we will add another subevent
@@ -607,10 +780,14 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
   WCSimRootTrigger* wcsimrootevent = wcsimrootsuperevent->GetTrigger(0);
   // get number of gates
   G4DigiManager* DMman = G4DigiManager::GetDMpointer();
-  WCSimWCTriggerBase* WCTM =
-    (WCSimWCTriggerBase*)DMman->FindDigitizerModule("WCReadout");
-  int ngates = WCTM->NumberOfGatesInThisEvent(); 
-  G4cout << "ngates =  " << ngates << "\n";
+  WCSimWCTriggerBase* WCTM;
+  if(detectorElement=="tank"){
+    WCTM = (WCSimWCTriggerBase*)DMman->FindDigitizerModule("WCReadout");
+  } else if(detectorElement=="tankPMT2"){
+    WCTM = (WCSimWCTriggerBase*)DMman->FindDigitizerModule("WCReadout2");
+  }
+
+  int ngates = WCTM->NumberOfGatesInThisEvent();
   for (int index = 0 ; index < ngates ; index++) 
     {
       if (index >=1 ) {
@@ -620,10 +797,16 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 				   0,index+1); // date & # of subevent 
 	wcsimrootevent->SetMode(jhfNtuple.mode);
       }
-      wcsimrootevent->SetTriggerInfo(WCTM->GetTriggerType(index),
-				     WCTM->GetTriggerInfo(index));
+      //wcsimrootevent->SetTriggerInfo(WCTM->GetTriggerType(index),
+      //			     WCTM->GetTriggerInfo(index));
+      //Added by B.Q to keep track of he trigger, 2019/01/17
+      std::vector<G4float> triggerInfo = WCTM->GetTriggerInfo(index);
+      triggerInfo.push_back(950.);
+      triggerInfo.push_back(WCTM->GetTriggerTime(index));	
+      wcsimrootevent->SetTriggerInfo(WCTM->GetTriggerType(index),triggerInfo);//Added by B.Q to keep track of he trigger, 2019/01/17
+      triggerInfo.clear();
     }
-  
+
 
   // Fill the header
   // Need to add run and date
@@ -858,7 +1041,11 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 
   wcsimrootevent->SetNumTubesHit(jhfNtuple.numTubesHit);
 
-  std::vector<WCSimPmtInfo*> *fpmts = detectorConstructor->Get_Pmts();
+  std::vector<WCSimPmtInfo*> *fpmts;
+  if(detectorElement=="tank") fpmts = detectorConstructor->Get_Pmts();
+  else if(detectorElement=="tankPMT2") fpmts = detectorConstructor->Get_Pmts2();
+
+
 #ifdef _SAVE_RAW_HITS
 
   if (WCDC_hits) 
@@ -910,8 +1097,10 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
       smeartime.clear();
       truetime.clear();
       primaryParentID.clear();
-    }//idigi
+    }//idigi 
   }//if(WCDC_hits)
+
+
 #endif //_SAVE_RAW_HITS
 
   // Add the digitized hits
@@ -1011,9 +1200,14 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
   //  }
   
   TTree* tree = GetRunAction()->GetTree();
+  TBranch* branch = GetRunAction()->GetBranch(detectorElement);
   tree->Fill();
 
+  if(detectorElement=="tank") runAction->incrementEventsGenerated();
 
+  // M Fechner : reinitialize the super event after the writing is over
+  wcsimrootsuperevent->ReInitialize();
+  /*
   // Check we are supposed to be saving the NEUT vertex and that the generator was given a NEUT vector file to process
   // If there is no NEUT vector file an empty NEUT vertex will be written to the output file
   if(GetRunAction()->GetSaveRooTracker() && generatorAction->IsUsingRootrackerEvtGenerator()){
@@ -1032,7 +1226,7 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 
   // M Fechner : reinitialize the super event after the writing is over
   wcsimrootsuperevent->ReInitialize();
-  
+  */
 }
 
 
@@ -1041,7 +1235,8 @@ void WCSimEventAction::FillFlatTree(G4int event_id,
 				    const struct ntupleStruct& jhfNtuple,  //hopefully deprecate this soon
 				    G4TrajectoryContainer* TC,
 				    WCSimWCDigitsCollection* WCDC_hits,
-				    WCSimWCTriggeredDigitsCollection* WCDC){
+				    WCSimWCTriggeredDigitsCollection* WCDC,
+				    G4String detectorElement){
   
   // For each event : primary event info and tracks are the same
   // The hits are triggers can be different per sub-event
@@ -1128,7 +1323,10 @@ void WCSimEventAction::FillFlatTree(G4int event_id,
   
   
   // Add the Cherenkov hits
-  int nMpmtID_pmts = detectorConstructor->GetmPMT_nID();
+  int nMpmtID_pmts;
+
+  if(detectorElement=="tank") nMpmtID_pmts = detectorConstructor->GetmPMT_nID();
+  else if(detectorElement=="tankPMT2")  nMpmtID_pmts = detectorConstructor->GetmPMT_nID2();
 
 #ifdef _SAVE_RAW_HITS
 
@@ -1141,8 +1339,9 @@ void WCSimEventAction::FillFlatTree(G4int event_id,
   int numTubesHit_noDN= 0;
 
   // Easier to grab PMT orientation from detector constructor than from G4RotationMatrix
-  std::vector<WCSimPmtInfo*> *fpmts = detectorConstructor->Get_Pmts();
-  
+  std::vector<WCSimPmtInfo*> *fpmts;
+  if(detectorElement=="tank") fpmts = detectorConstructor->Get_Pmts();
+  else if(detectorElement=="tankPMT2") fpmts = detectorConstructor->Get_Pmts2();
 
   if (WCDC_hits) 
   {
@@ -1210,6 +1409,88 @@ void WCSimEventAction::FillFlatTree(G4int event_id,
   thisNtuple->numTubesHit_noNoise= numTubesHit_noDN;
   thisNtuple->totalNumHits = totNumHits;
   thisNtuple->totalNumHits_noNoise = totNumHits_noDN;
+
+
+  /*
+  //Save for the second PMT type in the hybrid version
+  // Num Tubes hit : WCDC_hits ->entries()
+  // Num Tubes hit wo noise: count myself
+  // Total charge with noise
+  // Total charge without noise
+  totNumHits = 0;
+  totNumHits_noDN = 0;
+  numTubesHit_noDN = 0;
+
+  // Easier to grab PMT orientation from detector constructor than from G4RotationMatrix
+  *fpmts = detectorConstructor->Get_Pmts2();
+  
+  if (WCDC_hits) 
+  {
+    //add the truth raw hits
+    G4cout << " RAW HITS " << G4endl;
+
+    //loop over the DigitsCollection
+    // TF: whole loop is deprecated IF parentID is filled for Noise Hits
+    //     which it is now. Also a THitsMap is easier, but as all info is already
+    //     passed on to the DigitsCollection, not required.
+
+    for(int idigi = 0; idigi < WCDC_hits->entries(); idigi++) {
+      int digi_tubeid = (*WCDC_hits)[idigi]->GetTubeID();
+      int numNoiseHits = 0;
+#ifdef _SAVE_RAW_HITS_VERBOSE
+      G4cout << "=========================================================================" << G4endl;
+      G4cout << "TubeID " << digi_tubeid << " (TrackID " << (*WCDC_hits)[idigi]->GetTrackID() << 
+	") has " << (*WCDC_hits)[idigi]->GetTotalPe() << " CherenkovHits (Dark noise included)" << G4endl;
+#endif
+      
+      WCSimPmtInfo *pmt = ((WCSimPmtInfo*)fpmts->at(digi_tubeid -1));
+
+      for(G4int id = 0; id < (*WCDC_hits)[idigi]->GetTotalPe(); id++){
+	float digi_time = (*WCDC_hits)[idigi]->GetTime(id);
+	int hit_parentid = (*WCDC_hits)[idigi]->GetParentID(id);
+#ifdef _SAVE_RAW_HITS_VERBOSE
+	G4cout << "Hit " << id << " with time " << digi_time << " and parentID " << hit_parentid << G4endl;
+#endif
+       //I want to know for each HIT : 
+	 //time, tubeID, parentID, pmt_x, pmt_y, pmt_z, 
+	 //pmt_dirX, dirY, dirZ, trackID
+      
+	thisNtuple->truetime[totNumHits] = digi_time;
+	thisNtuple->totalPe[totNumHits] = (*WCDC_hits)[idigi]->GetTotalPe();
+	thisNtuple->parentid[totNumHits] = hit_parentid;
+	thisNtuple->vector_index[totNumHits] = id;
+	thisNtuple->tubeid[totNumHits] = digi_tubeid;
+	thisNtuple->mPMTid[totNumHits] = digi_tubeid/nMpmtID_pmts;
+ 	thisNtuple->mPMT_pmtid[totNumHits] = (digi_tubeid%nMpmtID_pmts == 0 ? nMpmtID_pmts : digi_tubeid%nMpmtID_pmts ); // No. 1 to nID
+
+	thisNtuple->trackid[totNumHits] = (*WCDC_hits)[idigi]->GetTrackID();
+	G4ThreeVector pos = (*WCDC_hits)[idigi]->GetPos();       // Can also grab it from theDetector also.
+	thisNtuple->tube_x[totNumHits] = pos[0];                 //already in CLHEP::cm
+	thisNtuple->tube_y[totNumHits] = pos[1];
+	thisNtuple->tube_z[totNumHits] = pos[2];
+	thisNtuple->tube_dirx[totNumHits] = pmt->Get_orienx();  //Can now also grab the ThreeVector Orientation from WCDigi
+	thisNtuple->tube_diry[totNumHits] = pmt->Get_orieny();
+	thisNtuple->tube_dirz[totNumHits] = pmt->Get_orienz();
+	totNumHits++;
+	if(hit_parentid > 0){
+	  totNumHits_noDN++;
+	  
+	} else if(hit_parentid == -1)
+	  numNoiseHits ++;
+      }
+      if (numNoiseHits < (*WCDC_hits)[idigi]->GetTotalPe())
+	numTubesHit_noDN++;
+      //Subtract noiseHits from realHits:
+      for(G4int id = totNumHits; id > (totNumHits-(*WCDC_hits)[idigi]->GetTotalPe()); id--){
+	thisNtuple->totalPe_noNoise[id-1] = (*WCDC_hits)[idigi]->GetTotalPe() - numNoiseHits; //id-1 because I already did totNumHits++ above for next PMT
+      }
+    }//idigi
+  }
+  thisNtuple->numTubesHit = WCDC_hits->entries();
+  thisNtuple->numTubesHit_noNoise= numTubesHit_noDN;
+  thisNtuple->totalNumHits = totNumHits;
+  thisNtuple->totalNumHits_noNoise = totNumHits_noDN;
+  */
 #endif //_SAVE_RAW_HITS
     
   // Setup Sub-events: only for Trigger and Digitized info. Everything else has no relation to the trigger
@@ -1217,8 +1498,12 @@ void WCSimEventAction::FillFlatTree(G4int event_id,
   // --> flat structure!
   // get number of gates
   G4DigiManager* DMman = G4DigiManager::GetDMpointer();
-  WCSimWCTriggerBase* WCTM =
-    (WCSimWCTriggerBase*)DMman->FindDigitizerModule("WCReadout");
+  WCSimWCTriggerBase* WCTM;
+  if(detectorElement=="tank"){
+    WCTM = (WCSimWCTriggerBase*)DMman->FindDigitizerModule("WCReadout");
+  } else if(detectorElement=="tankPMT2"){
+    WCTM = (WCSimWCTriggerBase*)DMman->FindDigitizerModule("WCReadout2");
+  }
   int ngates = WCTM->NumberOfGatesInThisEvent(); 
   G4cout << "ngates =  " << ngates << "\n";
 

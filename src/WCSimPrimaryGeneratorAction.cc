@@ -22,7 +22,7 @@
 #include "TRandom3.h"
 #include "G4PhysicalConstants.hh"
 #include "G4SystemOfUnits.hh"
-
+//#define PAIR//B.Q
 using std::vector;
 using std::string;
 using std::fstream;
@@ -351,7 +351,7 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
             dir = dir*(momentumGeV/momentum);
 
             particleGun->SetParticleDefinition(particleTable->FindParticle(fTmpRootrackerVtx->StdHepPdgTemp[i]));
-
+       
             double kin_energy = fabs(fTmpRootrackerVtx->StdHepP4[i][3])*GeV - particleGun->GetParticleDefinition()->GetPDGMass();
 
             particleGun->SetParticleEnergy(kin_energy);
@@ -365,6 +365,8 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 
   else if (useGunEvt)
   {      // manual gun operation
+    G4cout << "Use GUN event" << G4endl;
+    G4cout << "Name: " << particleGun->GetParticleDefinition()->GetParticleName() << ", E = " << particleGun->GetParticleEnergy() << G4endl;
     particleGun->GeneratePrimaryVertex(anEvent);
 
     G4ThreeVector P  =anEvent->GetPrimaryVertex()->GetPrimary()->GetMomentum();
@@ -384,6 +386,23 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
     SetBeamEnergy(E);
     SetBeamDir(dir);
     SetBeamPDG(pdg);
+    
+#ifdef PAIR//B.Q
+    G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+    G4String particleName;
+      particleGun->SetParticleDefinition(particleTable->FindParticle(particleName="e+"));
+      particleGun->SetParticlePosition(vtx);
+      particleGun->SetParticleMomentumDirection(P.unit());
+      particleGun->SetParticleMomentum(P);
+      //particleGun->SetParticleMomentum(P);
+      particleGun->GeneratePrimaryVertex(anEvent);
+      G4cout << "Use PAIR GUN event" << G4endl;
+      G4cout << "Name: " << particleGun->GetParticleDefinition()->GetParticleName() << ", E = " << particleGun->GetParticleEnergy() << G4endl;
+      
+      particleGun->SetParticleDefinition(particleTable->FindParticle(particleName="e-"));
+      //particleGun->SetParticleEnergy();
+#endif
+      
   }
   else if (useLaserEvt)
     {
@@ -399,6 +418,7 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
       //G4double E         = std::sqrt((P.dot(P)));
       G4double E         = std::sqrt((P.dot(P))+(m*m));
       //std::cout << "Energy " << E << " eV " << std::endl;
+
 
       mode            = LASER; //actually could also be particle gun here. Gps and laser will be separate soon!!
 
@@ -423,6 +443,21 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
       SetBeamEnergy(E);
       SetBeamDir(dir);
       SetBeamPDG(pdg);
+#ifdef PAIR//B.Q
+    G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+    G4String particleName;
+      particleGun->SetParticleDefinition(particleTable->FindParticle(particleName="e+"));
+      particleGun->SetParticlePosition(vtx);
+      particleGun->SetParticleMomentumDirection(P.unit());
+      particleGun->SetParticleMomentum(P);
+      //particleGun->SetParticleMomentum(P);
+      particleGun->GeneratePrimaryVertex(anEvent);
+      G4cout << "Use PAIR GUN event" << G4endl;
+      G4cout << "Name: " << particleGun->GetParticleDefinition()->GetParticleName() << ", E = " << particleGun->GetParticleEnergy() << G4endl;
+      
+      particleGun->SetParticleDefinition(particleTable->FindParticle(particleName="e-"));
+      //particleGun->SetParticleEnergy();
+#endif
     }
 }
 

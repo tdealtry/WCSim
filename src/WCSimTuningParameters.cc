@@ -13,6 +13,7 @@ WCSimTuningParameters::WCSimTuningParameters()
  bsrff=2.50;
  abwff=1.30;
  rgcff=0.32;
+ qeff=1.;
  mieff=0.0;
 
  //jl145 - For Top Veto
@@ -33,6 +34,7 @@ void WCSimTuningParameters::SaveOptionsToOutput(WCSimRootOptions * wcopt)
   wcopt->SetBsrff(bsrff);
   wcopt->SetAbwff(abwff);
   wcopt->SetRgcff(rgcff);
+  wcopt->SetQeff(qeff);
   wcopt->SetMieff(mieff);
   wcopt->SetTvspacing(tvspacing);
   wcopt->SetTopveto(topveto);

@@ -34,11 +34,13 @@
 WCSimWCDigitizerBase::WCSimWCDigitizerBase(G4String name,
 					   WCSimDetectorConstruction* inDetector,
 					   WCSimWCDAQMessenger* myMessenger,
-					   DigitizerType_t digitype)
-  :G4VDigitizerModule(name), myDetector(inDetector), DAQMessenger(myMessenger), DigitizerType(digitype),
-   DigitizerClassName("")
+					   DigitizerType_t digitype,
+					   G4String detectorElement)
+  :G4VDigitizerModule(name), myDetector(inDetector), DAQMessenger(myMessenger), DigitizerType(digitype), DigitizerClassName(""), detectorElement(detectorElement)
 {
-  G4String colName = "WCDigitizedStoreCollection";
+  G4String colName;
+  if(detectorElement=="tank") colName = "WCDigitizedStoreCollection";
+  else if(detectorElement=="tankPMT2") colName = "WCDigitizedStoreCollection2";
   collectionName.push_back(colName);
   ReInitialize();
 
@@ -86,8 +88,12 @@ void WCSimWCDigitizerBase::Digitize()
 
   G4DigiManager* DigiMan = G4DigiManager::GetDMpointer();
   
+
   // Get the PMT collection ID
-   G4int WCHCID = DigiMan->GetDigiCollectionID("WCRawPMTSignalCollection");
+  G4String rawcollectionName;
+  if(detectorElement=="tank") rawcollectionName = "WCRawPMTSignalCollection";
+  else if(detectorElement=="tankPMT2") rawcollectionName = "WCRawPMTSignalCollection2";
+  G4int WCHCID = DigiMan->GetDigiCollectionID(rawcollectionName);
 
   // Get the PMT Digits collection
   WCSimWCDigitsCollection* WCHCPMT = 
@@ -166,8 +172,9 @@ void WCSimWCDigitizerBase::SaveOptionsToOutput(WCSimRootOptions * wcopt)
 
 WCSimWCDigitizerSKI::WCSimWCDigitizerSKI(G4String name,
 					 WCSimDetectorConstruction* myDetector,
-					 WCSimWCDAQMessenger* myMessenger)
-  : WCSimWCDigitizerBase(name, myDetector, myMessenger, kDigitizerSKI)
+					 WCSimWCDAQMessenger* myMessenger,
+					 G4String detectorElement)
+  : WCSimWCDigitizerBase(name, myDetector, myMessenger, kDigitizerSKI, detectorElement)
 {
   DigitizerClassName = "SKI";
   GetVariables();
@@ -258,7 +265,6 @@ void WCSimWCDigitizerSKI::DigitizeHits(WCSimWCDigitsCollection* WCHCPMT) {
 	    if(ip + 1 == (*WCHCPMT)[i]->GetTotalPe()){
 	      MakeDigit = true;
 	    }
-	    
 	  }
 	  //if ensures we don't append the same digit multiple times while in the integration window
 	  else if(digi_comp.size()) {
@@ -272,6 +278,7 @@ void WCSimWCDigitizerSKI::DigitizeHits(WCSimWCDigitsCollection* WCHCPMT) {
 	  if(MakeDigit) {
 	    int iflag;
 	    WCSimWCDigitizerSKI::Threshold(peSmeared,iflag);
+
 
 	    //Check if previous hit passed the threshold.  If so we will digitize the hit
 	    if(iflag == 0) {
