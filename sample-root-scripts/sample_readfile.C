@@ -69,13 +69,17 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
   // Create a WCSimRootEvent to put stuff from the tree in
 
   WCSimRootEvent* wcsimrootsuperevent = new WCSimRootEvent();
+  WCSimRootEvent* wcsimrootsuperevent_mpmt = new WCSimRootEvent();
 
   // Set the branch address for reading from the tree
   TBranch *branch = tree->GetBranch("wcsimrootevent");
   branch->SetAddress(&wcsimrootsuperevent);
+  branch = tree->GetBranch("wcsimrootevent2");
+  branch->SetAddress(&wcsimrootsuperevent_mpmt);
 
   // Force deletion to prevent memory leak 
   tree->GetBranch("wcsimrootevent")->SetAutoDelete(kTRUE);
+  tree->GetBranch("wcsimrootevent2")->SetAutoDelete(kTRUE);
 
 
   // Geometry tree - only need 1 "event"
@@ -101,21 +105,27 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
 
   // start with the main "subevent", as it contains most of the info
   // and always exists.
-  WCSimRootTrigger* wcsimrootevent;
+  WCSimRootTrigger* wcsimrootevent, *wcsimrootevent_mpmt;
 
-  TH1F *h1 = new TH1F("PMT Hits", "PMT Hits", 8000, 0, 8000);
-  TH1F *hvtx0 = new TH1F("Event VTX0", "Event VTX0", 200, -1500, 1500);
-  TH1F *hvtx1 = new TH1F("Event VTX1", "Event VTX1", 200, -1500, 1500);
-  TH1F *hvtx2 = new TH1F("Event VTX2", "Event VTX2", 200, -1500, 1500);
+  TH1F *h1 = new TH1F("hNDigiHits", "PMT Hits;N 20 inch PMT digits", 800, 0, 800);
+  TH1F *hvtx0 = new TH1F("hvtxX", "Event VTX0;vertex X", 200, -3550, 3550);
+  TH1F *hvtx1 = new TH1F("hvtxY", "Event VTX1;vertex Y", 200, -3550, 3550);
+  TH1F *hvtx2 = new TH1F("hvtxZ", "Event VTX2;vertex Z", 200, -2750, 2750);
+  TH1F *hE = new TH1F("hE", "Energy of electron;E_{e}", 100, 0, 100);
+  TH1F *h1_mpmt = new TH1F("hNDigiHits_mpmt", "PMT Hits;N mPMT digits", 800, 0, 800);
+  TH1F *hvtx0_mpmt = new TH1F("hvtxX_mpmt", "Event VTX0;vertex X", 400, -3550, 3550);
+  TH1F *hvtx1_mpmt = new TH1F("hvtxY_mpmt", "Event VTX1;vertex Y", 400, -3550, 3550);
+  TH1F *hvtx2_mpmt = new TH1F("hvtxZ_mpmt", "Event VTX2;vertex Z", 400, -2750, 2750);
   
-  int num_trig=0;
-  
+  int num_trig_mpmt=0, num_trig_20=0;
+
   // Now loop over events
   for (int ev=0; ev<nevent; ev++)
   {
     // Read the event from the tree into the WCSimRootEvent instance
-    tree->GetEntry(ev);      
+    tree->GetEntry(ev);
     wcsimrootevent = wcsimrootsuperevent->GetTrigger(0);
+    wcsimrootevent_mpmt = wcsimrootsuperevent_mpmt->GetTrigger(0);
     if(verbose){
       printf("********************************************************");
       printf("Evt, date %d %d\n", wcsimrootevent->GetHeader()->GetEvtNum(),
@@ -128,9 +138,16 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
       printf("Vtx %f %f %f\n", wcsimrootevent->GetVtx(0),
 	     wcsimrootevent->GetVtx(1),wcsimrootevent->GetVtx(2));
     }
-    hvtx0->Fill(wcsimrootevent->GetVtx(0));
-    hvtx1->Fill(wcsimrootevent->GetVtx(1));
-    hvtx2->Fill(wcsimrootevent->GetVtx(2));
+    if(ev % 2 == 0) {
+      hvtx0->Fill(wcsimrootevent->GetVtx(0));
+      hvtx1->Fill(wcsimrootevent->GetVtx(1));
+      hvtx2->Fill(wcsimrootevent->GetVtx(2));
+    }
+    else {
+      hvtx0_mpmt->Fill(wcsimrootevent_mpmt->GetVtx(0));
+      hvtx1_mpmt->Fill(wcsimrootevent_mpmt->GetVtx(1));
+      hvtx2_mpmt->Fill(wcsimrootevent_mpmt->GetVtx(2));
+    }
 
     if(verbose){
       printf("Jmu %d\n", wcsimrootevent->GetJmu());
@@ -145,26 +162,29 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
     
     int i;
     // Loop through elements in the TClonesArray of WCSimTracks
-    for (i=0; i<ntrack; i++)
-    {
-      TObject *element = (wcsimrootevent->GetTracks())->At(i);
-      
+    if(verbose) {
+      for (i=0; i<ntrack; i++)
+	{
+	  TObject *element = (wcsimrootevent->GetTracks())->At(i);
+	  
+	  WCSimRootTrack *wcsimroottrack = dynamic_cast<WCSimRootTrack*>(element);
+	  
+	  printf("Track ipnu: %d\n",wcsimroottrack->GetIpnu());
+	  printf("Track parent ID: %d\n",wcsimroottrack->GetParenttype());
+	  
+	  for (int j=0; j<3; j++)
+	    printf("Track dir: %d %f\n",j, wcsimroottrack->GetDir(j));
+	  printf("Track energy: %f\n", wcsimroottrack->GetE());
+	  printf("Track momentum: %f\n", wcsimroottrack->GetP());
+	  printf("Track mass: %f\n", wcsimroottrack->GetM());
+	}  // End of loop over tracks
+    }//verbose
+    if(ev % 2 == 0) {
+      TObject *element = (wcsimrootevent->GetTracks())->At(2);	  
       WCSimRootTrack *wcsimroottrack = dynamic_cast<WCSimRootTrack*>(element);
+      hE->Fill(wcsimroottrack->GetP());
+    }
 
-      if(verbose){
-	printf("Track ipnu: %d\n",wcsimroottrack->GetIpnu());
-	printf("Track parent ID: %d\n",wcsimroottrack->GetParenttype());
-      
-	for (int j=0; j<3; j++)
-	  printf("Track dir: %d %f\n",j, wcsimroottrack->GetDir(j));
-	printf("Track energy: %f\n", wcsimroottrack->GetE());
-	printf("Track momentum: %f\n", wcsimroottrack->GetP());
-	printf("Track mass: %f\n", wcsimroottrack->GetM());
-      }
-
-      
-    }  // End of loop over tracks
-    
     // Now look at the Cherenkov hits
     
     // Get the number of Cherenkov hits.
@@ -184,14 +204,26 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
 
     int ncherenkovhits     = wcsimrootevent->GetNcherenkovhits();
     int ncherenkovdigihits = wcsimrootevent->GetNcherenkovdigihits(); 
+    int ncherenkovhits_mpmt     = wcsimrootevent_mpmt->GetNcherenkovhits();
+    int ncherenkovdigihits_mpmt = wcsimrootevent_mpmt->GetNcherenkovdigihits(); 
     
-    h1->Fill(ncherenkovdigihits);
+    if(ev % 2 == 0)
+      h1->Fill(ncherenkovdigihits);
+      if(ncherenkovdigihits > 0)
+	num_trig_20++;
+    else
+      h1_mpmt->Fill(ncherenkovdigihits_mpmt);
+      if(ncherenkovdigihits_mpmt > 0)
+	num_trig_mpmt++;
     if(verbose){
       printf("node id: %i\n", ev);
       printf("Ncherenkovhits %d\n",     ncherenkovhits);
       printf("Ncherenkovdigihits %d\n", ncherenkovdigihits);
+      printf("mPMT Ncherenkovhits %d\n",     ncherenkovhits_mpmt);
+      printf("mPMT Ncherenkovdigihits %d\n", ncherenkovdigihits_mpmt);
       cout << "RAW HITS:" << endl;
     }
+    continue;
 
     // Grab the big arrays of times and parent IDs
     TClonesArray *timeArray = wcsimrootevent->GetCherenkovHitTimes();
@@ -241,8 +273,6 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
       int ncherenkovdigihits = wcsimrootevent->GetNcherenkovdigihits();
       if(verbose) printf("Ncherenkovdigihits %d\n", ncherenkovdigihits);
      
-      if(ncherenkovdigihits>0)
-	num_trig++;
       //for (i=0;i<(ncherenkovdigihits>4 ? 4 : ncherenkovdigihits);i++){
       for (i=0;i<ncherenkovdigihits;i++)
       {
@@ -276,6 +306,37 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
   c1->cd(2); hvtx1->Draw();
   c1->cd(3); hvtx2->Draw();
   c1->cd(4); h1->Draw();
-  
-  std::cout<<"num_trig "<<num_trig<<"\n";
+
+  TCanvas * c2 = new TCanvas("c2", "First canvas", 500*n_wide*win_scale, 500*n_high*win_scale);
+  c2->Draw();
+  c2->Divide(2,2);
+  c2->cd(1); hE->Draw();
+  c2->cd(2); hvtx1_mpmt->Draw();
+  c2->cd(3); //->Draw();
+  c2->cd(4); h1_mpmt->Draw();
+
+  TFile f("plots.root","UPDATE");
+  h1->Write();
+  hvtx0->Write();
+  hvtx1->Write();
+  hvtx2->Write();
+  h1_mpmt->Write();
+  hvtx0_mpmt->Write();
+  hvtx1_mpmt->Write();
+  hvtx2_mpmt->Write();
+  hE->Write();
+
+  cout << "num evts: " << nevent << endl;
+  cout << "entries in histograms: " << endl
+       << "h1 " << h1->GetEntries() << endl
+       << "hvtx0 " << hvtx0->GetEntries() << endl
+       << "hvtx1 " << hvtx1->GetEntries() << endl
+       << "hvtx2 " << hvtx2->GetEntries() << endl
+       << "h1_mpmt " << h1_mpmt->GetEntries() << endl
+       << "hvtx0_mpmt " << hvtx0_mpmt->GetEntries() << endl
+       << "hvtx1_mpmt " << hvtx1_mpmt->GetEntries() << endl
+       << "hvtx2_mpmt " << hvtx2_mpmt->GetEntries() << endl
+       << "hE " << hE->GetEntries() << endl;
+  std::cout<<"num_trig 20\"  "<<num_trig_20<<"\n";
+  std::cout<<"num_trig mpmt "<<num_trig_mpmt<<"\n";
 }
