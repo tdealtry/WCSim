@@ -425,7 +425,7 @@ WCSimRootCherenkovHit *WCSimRootTrigger::AddCherenkovHit(Int_t tubeID, Int_t mPM
       new(cherenkovhittimes[fNcherenkovhittimes++]) WCSimRootCherenkovHitTime(truetime[i],primParID[i]);
   }
   
-  std::cout << "Debug B.Q: A new Cherenkov hit was added for tube " << tubeID << ", corresponding to PMT = " << mPMTID << ", and to small PMT in mPMT = " << mPMT_PMTID << std::endl;
+  //  std::cout << "Debug B.Q: A new Cherenkov hit was added for tube " << tubeID << ", corresponding to PMT = " << mPMTID << ", and to small PMT in mPMT = " << mPMT_PMTID << std::endl;
 
   Int_t WC_Index[2];
   WC_Index[0] = fNcherenkovhittimes-truetime.size(); //fCherenkovHitCounter-truetime.size();

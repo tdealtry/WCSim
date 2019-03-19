@@ -17,7 +17,7 @@
 #include <vector>
 // for memset
 #include <cstring>
-#define HYPER_VERBOSITY
+//#define HYPER_VERBOSITY
 
 
 
@@ -26,7 +26,7 @@
 // *******************************************
 
 #ifndef WCSIMWCTRIGGER_VERBOSE
-#define WCSIMWCTRIGGER_VERBOSE
+//#define WCSIMWCTRIGGER_VERBOSE
 #endif
 
 const double WCSimWCTriggerBase::offset = 950.0; // ns. apply offset to the digit time
