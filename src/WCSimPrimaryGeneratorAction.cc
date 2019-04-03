@@ -205,10 +205,28 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 
 	    // Read the Vertex line
 	    token = readInLine(inputFile, lineSize, inBuf);
+	    /*
 	    vtx = G4ThreeVector(atof(token[1])*cm,
 				atof(token[2])*cm,
 				atof(token[3])*cm);
-	    
+	    */
+	    //put in vertex in OD
+	    double odminz = 54.8/2 + 0.6 + 0.02; //half height of ID + 60 cm deadspace + wls plates/tyvek/black sheet
+	    double odmaxz = odminz + 2 - 0.1; //OD is 2 m high on caps
+	    double odminr = 70.8/2 + 0.6 + 0.02; //radius of ID + 60 cm deadpace + wls plates/tyvek/blacksheet
+	    double odmaxr = odminr + 1 - 0.1; //OD is 1 m wide round barrel
+	    double posx, posy, posr = 9999999;
+	    double posz = G4RandFlat::shoot(odminz, odmaxz);
+	    if(G4RandFlat::shoot(1) >= 0.5)
+	      posz *= -1;
+	    while(posr > odmaxr || posr < odminr) {
+	      posx = G4RandFlat::shoot(-odmaxr, +odmaxr);
+	      posy = G4RandFlat::shoot(-odmaxr, +odmaxr);
+	      posr = sqrt(posx*posx + posy*posy);
+	    }
+	    vtx = G4ThreeVector(posx*m, posy*m, posz*m);
+	    G4cout << "POS IN OD x,y,z " << posx << "\t" << posy << "\t" << posz << G4endl;
+
             // true : Generate vertex in Rock , false : Generate vertex in WC tank
             SetGenerateVertexInRock(false);
 
