@@ -69,13 +69,17 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
   // Create a WCSimRootEvent to put stuff from the tree in
 
   WCSimRootEvent* wcsimrootsuperevent = new WCSimRootEvent();
+  WCSimRootEvent* wcsimrootsuperevent_od = new WCSimRootEvent();
 
   // Set the branch address for reading from the tree
   TBranch *branch = tree->GetBranch("wcsimrootevent");
   branch->SetAddress(&wcsimrootsuperevent);
+  branch = tree->GetBranch("wcsimrootevent_OD");
+  branch->SetAddress(&wcsimrootsuperevent_od);
 
   // Force deletion to prevent memory leak 
   tree->GetBranch("wcsimrootevent")->SetAutoDelete(kTRUE);
+  tree->GetBranch("wcsimrootevent_OD")->SetAutoDelete(kTRUE);
 
 
   // Geometry tree - only need 1 "event"
@@ -97,25 +101,59 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
     exit(9);
   }
   opttree->GetEntry(0);
-  opt->Print();
+  if(verbose)
+    opt->Print();
 
   // start with the main "subevent", as it contains most of the info
   // and always exists.
-  WCSimRootTrigger* wcsimrootevent;
+  WCSimRootTrigger* wcsimrootevent, wcsimrootevent_od;
 
   TH1F *h1 = new TH1F("PMT Hits", "PMT Hits", 8000, 0, 8000);
   TH1F *hvtx0 = new TH1F("Event VTX0", "Event VTX0", 200, -1500, 1500);
   TH1F *hvtx1 = new TH1F("Event VTX1", "Event VTX1", 200, -1500, 1500);
   TH1F *hvtx2 = new TH1F("Event VTX2", "Event VTX2", 200, -1500, 1500);
   
-  int num_trig=0;
+  int num_trig_20=0;
+
+  TFile f(TString::Format("%s_plots.root", filename),"RECREATE");
+  TTree * t4 = new TTree("truehit", "");
+  TTree * t3 = new TTree("hit", "");
+  TTree * t = new TTree("event", "");
+  TTree * t2 = new TTree("global", "");
+  double tE, tX, tY, tZ, tQ;
+  int tNDigi20, tNEv20, tPDG, tParentId, tPMTId;
+  int tPMTIdTrue, tNTrue20;
+  float tNEv;
+  int tEv, tTrueTime;
+  t->Branch("E", &tE);
+  t->Branch("PDG", &tPDG);
+  t->Branch("ParentId", &tParentId);
+  t->Branch("X", &tX);
+  t->Branch("Y", &tY);
+  t->Branch("Z", &tZ);
+  t->Branch("NDigi20", &tNDigi20);
+  //t->Branch("NDigiM", &tNDigiM);
+  t->Branch("NTrue20", &tNTrue20);
+  //t->Branch("NTrueM", &tNTrueM);
+  t2->Branch("NEv", &tNEv);
+  //t2->Branch("NEvM", &tNEvM);
+  t2->Branch("NEv20", &tNEv20);
+  t3->Branch("PMTId", &tPMTId);
+  //t3->Branch("mPMTId", &tmPMTId);
+  t3->Branch("Q", &tQ);
+  t4->Branch("PMTId_True", &tPMTIdTrue);
+  //t4->Branch("mPMTId_True", &tmPMTIdTrue);
+  t4->Branch("TrueTime", &tTrueTime);
+  t4->Branch("Ev", &tEv);
   
   // Now loop over events
   for (int ev=0; ev<nevent; ev++)
   {
+    tEv = ev;
     // Read the event from the tree into the WCSimRootEvent instance
     tree->GetEntry(ev);      
-    wcsimrootevent = wcsimrootsuperevent->GetTrigger(0);
+    //wcsimrootevent = wcsimrootsuperevent->GetTrigger(0);
+    wcsimrootevent = wcsimrootsuperevent_od->GetTrigger(0);
     if(verbose){
       printf("********************************************************");
       printf("Evt, date %d %d\n", wcsimrootevent->GetHeader()->GetEvtNum(),
@@ -131,6 +169,9 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
     hvtx0->Fill(wcsimrootevent->GetVtx(0));
     hvtx1->Fill(wcsimrootevent->GetVtx(1));
     hvtx2->Fill(wcsimrootevent->GetVtx(2));
+    tX = wcsimrootevent->GetVtx(0);
+    tY = wcsimrootevent->GetVtx(1);
+    tZ = wcsimrootevent->GetVtx(2);
 
     if(verbose){
       printf("Jmu %d\n", wcsimrootevent->GetJmu());
@@ -145,6 +186,7 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
     
     int i;
     // Loop through elements in the TClonesArray of WCSimTracks
+    /*
     for (i=0; i<ntrack; i++)
     {
       TObject *element = (wcsimrootevent->GetTracks())->At(i);
@@ -164,7 +206,47 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
 
       
     }  // End of loop over tracks
-    
+    */
+    bool verbose_track = false;
+    TObject *element = (wcsimrootevent->GetTracks())->At(2);	  
+    WCSimRootTrack *wcsimroottrack = dynamic_cast<WCSimRootTrack*>(element);
+    tE = wcsimroottrack->GetE();
+    tPDG = wcsimroottrack->GetIpnu();
+    tParentId = wcsimroottrack->GetParenttype();
+    int itrack = 3;
+    while(TMath::Abs(tPDG) != 11 && tParentId != 0) {
+      //verbose_track = true;
+      TObject *element = (wcsimrootevent->GetTracks())->At(itrack); 
+      if(!element) {
+	verbose_track = true;
+	break;
+      }
+      WCSimRootTrack *wcsimroottrack = dynamic_cast<WCSimRootTrack*>(element);
+      tE = wcsimroottrack->GetE();
+      tPDG = wcsimroottrack->GetIpnu();
+      tParentId = wcsimroottrack->GetParenttype();
+      itrack++;
+    }
+    if(verbose || verbose_track) {
+      for (i=0; i<ntrack; i++)
+	{
+	  TObject *element = (wcsimrootevent->GetTracks())->At(i);
+	  
+	  WCSimRootTrack *wcsimroottrack = dynamic_cast<WCSimRootTrack*>(element);
+	  
+	  printf("Evt, date %d %d\n", wcsimrootevent->GetHeader()->GetEvtNum(),
+		 wcsimrootevent->GetHeader()->GetDate());	  
+	  printf("Track ipnu: %d\n",wcsimroottrack->GetIpnu());
+	  printf("Track parent ID: %d\n",wcsimroottrack->GetParenttype());
+	  
+	  for (int j=0; j<3; j++)
+	    printf("Track dir: %d %f\n",j, wcsimroottrack->GetDir(j));
+	  printf("Track energy: %f\n", wcsimroottrack->GetE());
+	  printf("Track momentum: %f\n", wcsimroottrack->GetP());
+	  printf("Track mass: %f\n", wcsimroottrack->GetM());
+	}  // End of loop over tracks
+    }//verbose
+
     // Now look at the Cherenkov hits
     
     // Get the number of Cherenkov hits.
@@ -184,6 +266,9 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
 
     int ncherenkovhits     = wcsimrootevent->GetNcherenkovhits();
     int ncherenkovdigihits = wcsimrootevent->GetNcherenkovdigihits(); 
+    tNTrue20 = ncherenkovhits;
+    tNDigi20 = ncherenkovdigihits;
+    t->Fill();
     
     h1->Fill(ncherenkovdigihits);
     if(verbose){
@@ -210,19 +295,17 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
       WCSimRootPMT pmt   = geo->GetPMT(tubeNumber-1);
       totalPe += peForTube;
 
-     
-      if ( i < 10 ) // Only print first XX=10 tubes
-      {
-	if(verbose) printf("Total pe: %d times( ",peForTube);
-	for (int j = timeArrayIndex; j < timeArrayIndex + peForTube; j++)
-	{
-	  WCSimRootCherenkovHitTime HitTime = 
-	    dynamic_cast<WCSimRootCherenkovHitTime>(timeArray->At(j));
-	  
-	  if(verbose) printf("%6.2f ", HitTime.GetTruetime() );	     
-	}
-	if(verbose) cout << ")" << endl;
+      tPMTIdTrue = tubeNumber;
+
+      if(i < 10 && verbose) printf("Total pe: %d times( ",peForTube);
+      for (int j = timeArrayIndex; j < timeArrayIndex + peForTube; j++) {
+	WCSimRootCherenkovHitTime HitTime = 
+	  dynamic_cast<WCSimRootCherenkovHitTime>(timeArray->At(j));
+	if(i < 10 && verbose) printf("%6.2f ", HitTime.GetTruetime() );
+	tTrueTime = HitTime.GetTruetime();
+	t4->Fill();
       }
+      if(i < 10 && verbose) cout << ")" << endl;
 
     } // End of loop over Cherenkov hits
     if(verbose) cout << "Total Pe : " << totalPe << endl;
@@ -233,16 +316,16 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
     // Loop over sub events
    
     if(verbose) cout << "DIGITIZED HITS:" << endl;
-    for (int index = 0 ; index < wcsimrootsuperevent->GetNumberOfEvents(); index++) 
+    for (int index = 0 ; index < wcsimrootsuperevent_od->GetNumberOfEvents(); index++) 
     {
-      wcsimrootevent = wcsimrootsuperevent->GetTrigger(index);
+      wcsimrootevent = wcsimrootsuperevent_od->GetTrigger(index);
       if(verbose) cout << "Sub event number = " << index << "\n";
       
       int ncherenkovdigihits = wcsimrootevent->GetNcherenkovdigihits();
       if(verbose) printf("Ncherenkovdigihits %d\n", ncherenkovdigihits);
      
       if(ncherenkovdigihits>0)
-	num_trig++;
+	num_trig_20++;
       //for (i=0;i<(ncherenkovdigihits>4 ? 4 : ncherenkovdigihits);i++){
       for (i=0;i<ncherenkovdigihits;i++)
       {
@@ -258,6 +341,9 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
 	    printf("q, t, tubeid: %f %f %d \n",wcsimrootcherenkovdigihit->GetQ(),
 		   wcsimrootcherenkovdigihit->GetT(),wcsimrootcherenkovdigihit->GetTubeId());
 	}
+	tPMTId = wcsimrootcherenkovdigihit->GetTubeId();
+	tQ = wcsimrootcherenkovdigihit->GetQ();
+	t3->Fill();
       } // End of loop over Cherenkov digihits
     } // End of loop over trigger
     
@@ -276,6 +362,24 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
   c1->cd(2); hvtx1->Draw();
   c1->cd(3); hvtx2->Draw();
   c1->cd(4); h1->Draw();
-  
-  std::cout<<"num_trig "<<num_trig<<"\n";
+
+  if(verbose) {
+    cout << "num evts: " << nevent << endl;
+    std::cout<<"num_trig 20\"  "<<num_trig_20<<"\n";
+  }
+
+  tNEv = nevent;
+  tNEv20 = num_trig_20;
+  t2->Fill();
+
+  t ->Write();
+  t2->Write();
+  t3->Write();
+  t4->Write();
+  if(verbose) {
+    t ->Print();
+    t2->Print();
+    t3->Print();
+    t4->Print();
+  }
 }
