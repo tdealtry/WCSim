@@ -16,7 +16,7 @@ endif
 ROOTCFLAGS   := $(shell root-config --cflags) -DUSE_ROOT -fPIC
 ROOTLIBS     := $(shell root-config --libs)
 
-LIBNAME := /t2k/hyperk/software/wcsim-devel/mpmt/WCSim_hybridPMT
+LIBNAME := ${WCSIMDIR}
 
 # NOTE: Geant4.7.0 changes the way Maximum Step size is defined.  
 # We need extra code for versions 4.7.0 and above; eventually 
@@ -53,7 +53,7 @@ all: rootcint lib bin shared $(WCSIMDIR)/libWCSim.a
 
 # Note dependencies not yet set up right yet
 
-ROOTSO    := /t2k/hyperk/software/wcsim-devel/mpmt/WCSim_hybridPMT/libWCSimRoot.so
+ROOTSO    := ${WCSIMDIR}/libWCSimRoot.so
 
 ROOTSRC  := $(WCSIMDIR)/src/WCSimRootEvent.cc $(WCSIMDIR)/include/WCSimRootEvent.hh $(WCSIMDIR)/src/WCSimRootGeom.cc $(WCSIMDIR)/include/WCSimRootGeom.hh $(WCSIMDIR)/include/WCSimPmtInfo.hh $(WCSIMDIR)/src/WCSimEnumerations.cc $(WCSIMDIR)/include/WCSimEnumerations.hh $(WCSIMDIR)/src/WCSimRootOptions.cc $(WCSIMDIR)/include/WCSimRootOptions.hh $(WCSIMDIR)/src/TJNuBeamFlux.cc $(WCSIMDIR)/include/TJNuBeamFlux.hh $(WCSIMDIR)/src/TNRooTrackerVtx.cc $(WCSIMDIR)/include/TNRooTrackerVtx.hh $(WCSIMDIR)/include/WCSimRootLinkDef.hh
 
