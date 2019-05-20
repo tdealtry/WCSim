@@ -24,7 +24,7 @@ int main(){
 
   //TFile output("radioactivity_hits_HK_BiPmt1event.root","RECREATE");
   //TFile output("radioactivity_hits_HK_KPmt1event.root","RECREATE");
- TString Isotope = Form("Tl207");
+ TString Isotope = Form("Rn220");
   TString RadioactivityDirec = Form("outputs/radioactivity_")+Isotope+Form("Pmt1event/");
   TString RadioactivityFile= Form("output.root");
 
