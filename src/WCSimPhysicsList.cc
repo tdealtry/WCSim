@@ -101,9 +101,9 @@ void WCSimPhysicsList::ConstructEM()
   //replaced by new G4MultipleScattering classes for e+-, mu+-, hadron and ions.
   //K. Zbiri, 12/30/2009
 
-  aParticleIterator->reset();
-  while( (*aParticleIterator)() ){
-    G4ParticleDefinition* particle = aParticleIterator->value();
+  GetParticleIterator()->reset();
+  while( (*GetParticleIterator())() ){
+    G4ParticleDefinition* particle = GetParticleIterator()->value();
     G4ProcessManager* pmanager = particle->GetProcessManager();
     G4String particleName = particle->GetParticleName();
 
@@ -229,10 +229,10 @@ void WCSimPhysicsList::ConstructEM()
 void WCSimPhysicsList::ConstructlArStepLimiter(){
 
 #ifdef GEANT4_7_0
-  aParticleIterator->reset();
-  while( (*aParticleIterator)() ){
+  GetParticleIterator()->reset();
+  while( (*GetParticleIterator())() ){
 
-    G4ParticleDefinition* particle = aParticleIterator->value();
+    G4ParticleDefinition* particle = GetParticleIterator()->value();
     G4ProcessManager* pmanager = particle->GetProcessManager();
 
      if ((!particle->IsShortLived()) &&
@@ -286,10 +286,10 @@ void WCSimPhysicsList::ConstructOp(){
   // theCherenkovProcess->SetMaxBetaChangePerStep(10.0);
   // theCherenkovProcess->SetTrackSecondariesFirst(true);
 
-  aParticleIterator->reset();
-  while( (*aParticleIterator)() )
+  GetParticleIterator()->reset();
+  while( (*GetParticleIterator())() )
   {
-    G4ParticleDefinition* particle     = aParticleIterator->value();
+    G4ParticleDefinition* particle     = GetParticleIterator()->value();
     G4ProcessManager*     pmanager     = particle->GetProcessManager();
     G4String              particleName = particle->GetParticleName();
 
@@ -327,9 +327,9 @@ void WCSimPhysicsList::ConstructGeneral()
 {
   // Add Decay Process
   G4Decay* theDecayProcess = new G4Decay();
-  aParticleIterator->reset();
-  while( (*aParticleIterator)() ){
-    G4ParticleDefinition* particle = aParticleIterator->value();
+  GetParticleIterator()->reset();
+  while( (*GetParticleIterator())() ){
+    G4ParticleDefinition* particle = GetParticleIterator()->value();
     G4ProcessManager* pmanager = particle->GetProcessManager();
     if (theDecayProcess->IsApplicable(*particle)) {
       pmanager ->AddProcess(theDecayProcess);
@@ -486,10 +486,10 @@ void WCSimPhysicsList::ConstructHad()
   G4HadronElastic* theElasticModel = new G4HadronElastic;
   theElasticProcess->RegisterMe(theElasticModel);
 
-  aParticleIterator->reset();
-  while ((*aParticleIterator)())
+  GetParticleIterator()->reset();
+  while ((*GetParticleIterator())())
     {
-      G4ParticleDefinition* particle = aParticleIterator->value();
+      G4ParticleDefinition* particle = GetParticleIterator()->value();
       G4ProcessManager* pmanager = particle->GetProcessManager();
       G4String particleName = particle->GetParticleName();
 
@@ -642,8 +642,8 @@ void WCSimPhysicsList::ConstructHad()
 	    //theLEInelasticModel->SetMinEnergy(10.1*GeV);
 	    //theLEInelasticModel->SetMaxEnergy( 45.*GeV );
         //theInelasticProcess->RegisterMe(theLEInelasticModel);
-	    FTFP_model->SetMinEnergy(10.1*GeV);
-        FTFP_model->SetMaxEnergy(45.*GeV);
+	    FTFP_model->SetMinEnergy(10.1*CLHEP::GeV);
+        FTFP_model->SetMaxEnergy(45.*CLHEP::GeV);
         theInelasticProcess->RegisterMe(FTFP_model);
 	  }
 	  else {
@@ -684,7 +684,7 @@ void WCSimPhysicsList::ConstructHad()
 	  G4HadronElastic* theElasticModel1 = new G4HadronElastic;
 	  G4NeutronHPElastic * theElasticNeutron = new G4NeutronHPElastic;
 	  theNeutronElasticProcess->RegisterMe(theElasticModel1);
-	  theElasticModel1->SetMinEnergy(19*MeV);
+	  theElasticModel1->SetMinEnergy(19*CLHEP::MeV);
 	  theNeutronElasticProcess->RegisterMe(theElasticNeutron);
 	  G4NeutronHPElasticData * theNeutronData = new G4NeutronHPElasticData;
 	  theNeutronElasticProcess->AddDataSet(theNeutronData);
@@ -711,17 +711,17 @@ void WCSimPhysicsList::ConstructHad()
 	    //G4LENeutronInelastic* theInelasticModel = new G4LENeutronInelastic;
 	    //theInelasticModel->SetMinEnergy(19*MeV);
 	    //theInelasticProcess->RegisterMe(theInelasticModel);
-        FTFP_model->SetMinEnergy(19*MeV);
+        FTFP_model->SetMinEnergy(19*CLHEP::MeV);
         theInelasticProcess->RegisterMe(FTFP_model);
 	  }
 	  else if (bertinihad) {
 	    G4CascadeInterface* theBertiniModel = new G4CascadeInterface;
-	    theBertiniModel->SetMinEnergy(19*MeV);
+	    theBertiniModel->SetMinEnergy(19*CLHEP::MeV);
 	    theInelasticProcess->RegisterMe(theBertiniModel);
 	  }
 	  else if (binaryhad) {
 	    G4BinaryCascade* theBinaryModel = new G4BinaryCascade();
-	    theBinaryModel->SetMinEnergy(19*MeV);
+	    theBinaryModel->SetMinEnergy(19*CLHEP::MeV);
 	    theInelasticProcess->RegisterMe(theBinaryModel);
 
       // comment out following 4 lines and use the FTFP model - FDL
@@ -729,14 +729,14 @@ void WCSimPhysicsList::ConstructHad()
       //theInelasticModel->SetMinEnergy(10.1*GeV);
       //theInelasticModel->SetMaxEnergy( 45.*GeV );
       //theInelasticProcess->RegisterMe(theInelasticModel);
-      FTFP_model->SetMinEnergy(10.1*GeV);
-      FTFP_model->SetMaxEnergy(45.*GeV);
+      FTFP_model->SetMinEnergy(10.1*CLHEP::GeV);
+      FTFP_model->SetMaxEnergy(45.*CLHEP::GeV);
       theInelasticProcess->RegisterMe(FTFP_model);
 	  }
 	  else {
 	    G4cout << "No secondary interaction model chosen! Using G4 BINARY." << G4endl;
 	    G4BinaryCascade* theBinaryModel = new G4BinaryCascade();
-	    theBinaryModel->SetMinEnergy(19*MeV);
+	    theBinaryModel->SetMinEnergy(19*CLHEP::MeV);
 	    theInelasticProcess->RegisterMe(theBinaryModel);
 	  }
 
