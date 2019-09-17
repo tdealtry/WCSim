@@ -97,6 +97,8 @@ G4LogicalVolume* WCSimDetectorConstruction::ConstructCylinder()
   {
 	  water = "Doped Water";
 	  if(!G4Material::GetMaterial("Doped Water", false)) AddDopedWater();
+	  G4cout << "\n\n\n\n********************************************\n"
+			 << "Using doped water" << G4endl;
   }
 
   // Optionally switch on the checkOverlaps. Once the geometry is debugged, switch off for 
