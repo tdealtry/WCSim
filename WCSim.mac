@@ -1,7 +1,7 @@
 # Sample setup macro with no visualization
 
 /run/verbose 1
-/tracking/verbose 0
+/tracking/verbose 1
 /hits/verbose 0
 
 ## select the geometry
@@ -26,10 +26,11 @@
 
 #Use mPMTs settings (uncomment/delete the above)
 #/WCSim/WCgeom nuPRISM_mPMT
-/WCSim/WCgeom nuPRISMShort_mPMT
+#/WCSim/WCgeom nuPRISMShort_mPMT
 # Set Gadolinium doping (concentration is in percent)
-#/WCSim/DopingConcentration 0.1
-#/WCSim/DopedWater false
+/WCSim/WCgeom HyperK
+/WCSim/DopingConcentration 0.1
+/WCSim/DopedWater true
 /WCSim/Construct
 ## OR for single mPMT mode or updating mPMT parameters:
 #/control/execute macros/mPMT_nuPrism1.mac         ## mPMT options: mPMT_nuPrism1.mac and 2.mac
@@ -57,6 +58,9 @@
 # command to choose save or not save the pi0 info 07/03/10 (XQ)
 /WCSim/SavePi0 false
 
+# and the neutron capture
+/WCSim/SaveCapture true
+
 #choose the Trigger & Digitizer type (and options)
 /DAQ/Digitizer SKI
 /DAQ/Trigger NDigits
@@ -67,7 +71,7 @@
 
 # default dark noise frequency (and conversion factor) is PMT property (NEW), set in the code.
 # Below gives possibility to overwrite nominal values, eg. to switch OFF the Dark Noise.
-#/DarkRate/SetDarkRate 0 kHz   #Turn dark noise off
+/DarkRate/SetDarkRate 0 kHz   #Turn dark noise off
 #/DarkRate/SetDarkRate 4.2 kHz #This is the value for SKI set in SKDETSIM.
 #/DarkRate/SetDarkRate 8.4 kHz #For 20 inch HPDs and Box and Line PMTs, based on High QE 20in R3600 dark rate from EGADS nov 2014
 #/DarkRate/SetDarkRate 3.0 kHz #For 12 inch HPDs and Box and Line PMTs, based on High QE 20in R3600 dark rate from EGADS nov 2014
@@ -106,9 +110,9 @@
 # for a full list of /gun/ commands see:
 # http://geant4.web.cern.ch/geant4/G4UsersDocuments/UsersGuides/ForApplicationDeveloper/html/Control/UIcommands/_gun_.html
 /mygen/generator gun
-/gun/particle e-
+/gun/particle neutron
 #/gun/particle pi0
-/gun/energy 500 MeV
+/gun/energy 10 MeV
 /gun/direction 1 0 0
 /gun/position 0 0 0  
 
@@ -152,5 +156,5 @@
 ## set a timer running on WCSimRunAction
 #/WCSimIO/Timer false
 
-/run/beamOn 10
+/run/beamOn 1
 #exit
