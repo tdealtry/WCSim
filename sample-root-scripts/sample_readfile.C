@@ -1,7 +1,43 @@
 #include <iostream>
-#include <TH1F.h>
-#include <stdio.h>     
-#include <stdlib.h>    
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "TSystem.h"
+#include "TFile.h"
+#include "TTree.h"
+#include "TCanvas.h"
+#include "TH1F.h"
+
+#if !defined(__CINT__) || defined(__MAKECINT__)
+#include "WCSimRootEvent.hh"
+#include "WCSimRootGeom.hh"
+#include "WCSimRootOptions.hh"
+#include "WCSimEnumerations.hh"
+#endif
+
+void PrintTrack(WCSimRootTrigger * wcsimrootevent, int itrack)
+{
+  TObject *element = (wcsimrootevent->GetTracks())->At(itrack);
+  WCSimRootTrack *wcsimroottrack = dynamic_cast<WCSimRootTrack*>(element);
+
+  printf("Track ipnu: %d\n",wcsimroottrack->GetIpnu());
+  printf("Track ID: %d\n", wcsimroottrack->GetId());
+  printf("Track parent ID: %d\n",wcsimroottrack->GetParenttype());
+  printf("Track flag: %d\n", wcsimroottrack->GetFlag());
+  printf("Track dir x y z: ");
+  for (int j=0; j<3; j++)
+    printf(" %f",wcsimroottrack->GetDir(j));
+  printf("\nTrack starting position (cm) x y z: ");
+  for (int j=0; j<3; j++)
+    printf(" %f",wcsimroottrack->GetStart(j));
+  printf("\nTrack stopping position (cm) x y z: ");
+  for (int j=0; j<3; j++)
+    printf(" %f",wcsimroottrack->GetStop(j));
+  printf("\nTrack energy:   %f MeV\n", wcsimroottrack->GetE());
+  printf(  "Track momentum: %f MeV/c\n", wcsimroottrack->GetP());
+  printf(  "Track mass:     %f MeV/c^2\n", wcsimroottrack->GetM());
+}
+
 // Simple example of reading a generated Root file
 void sample_readfile(char *filename=NULL, bool verbose=false)
 {
@@ -56,7 +92,7 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
   }
   if (!file->IsOpen()){
     cout << "Error, could not open input file: " << filename << endl;
-    return -1;
+    return;
   }
   
   // Get the a pointer to the tree from the file
@@ -103,7 +139,7 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
   // and always exists.
   WCSimRootTrigger* wcsimrootevent;
 
-  TH1F *h1 = new TH1F("PMT Hits", "PMT Hits", 8000, 0, 8000);
+  TH1F *h1 = new TH1F("PMT Hits", "PMT Hits", 600, 0, 60000);
   TH1F *hvtx0 = new TH1F("Event VTX0", "Event VTX0", 200, -1500, 1500);
   TH1F *hvtx1 = new TH1F("Event VTX1", "Event VTX1", 200, -1500, 1500);
   TH1F *hvtx2 = new TH1F("Event VTX2", "Event VTX2", 200, -1500, 1500);
@@ -143,27 +179,65 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
     int ntrack = wcsimrootevent->GetNtrack();
     if(verbose) printf("ntracks=%d\n",ntrack);
     
-    int i;
     // Loop through elements in the TClonesArray of WCSimTracks
-    for (i=0; i<ntrack; i++)
+    for (int i=0; i<ntrack; i++)
     {
-      TObject *element = (wcsimrootevent->GetTracks())->At(i);
-      
-      WCSimRootTrack *wcsimroottrack = dynamic_cast<WCSimRootTrack*>(element);
-
-      if(verbose){
-	printf("Track ipnu: %d\n",wcsimroottrack->GetIpnu());
-	printf("Track parent ID: %d\n",wcsimroottrack->GetParenttype());
-      
-	for (int j=0; j<3; j++)
-	  printf("Track dir: %d %f\n",j, wcsimroottrack->GetDir(j));
-	printf("Track energy: %f\n", wcsimroottrack->GetE());
-	printf("Track momentum: %f\n", wcsimroottrack->GetP());
-	printf("Track mass: %f\n", wcsimroottrack->GetM());
+      if(verbose) {
+	cout << endl;
+	PrintTrack(wcsimrootevent, i);
       }
-
-      
     }  // End of loop over tracks
+
+    //loop over triggers to get the truth capture information
+    for (int index = 0 ; index < wcsimrootsuperevent->GetNumberOfEvents(); index++) {
+      wcsimrootevent = wcsimrootsuperevent->GetTrigger(index);
+      if(verbose)
+	cout << "Sub event number = " << index
+	     << " at time " << wcsimrootevent->GetHeader()->GetDate() << "\n";
+
+      // Get the number of captures
+      int ncapture = wcsimrootevent->GetCaptures()->GetEntries();
+      if(verbose) printf("ncaptures=%d\n",ncapture);
+      
+      // Loop through elements in the TClonesArray of WCSimCaptures
+      for (int i=0; i<ncapture; i++) {
+	TObject *element = (wcsimrootevent->GetCaptures())->At(i);
+	WCSimRootCapture *wcsimrootcapture = dynamic_cast<WCSimRootCapture*>(element);
+
+	if(verbose){
+	  printf("**************************\n");
+	  printf("Capture: %d\n", i);
+	  printf("Capture parent ID: %d\n",wcsimrootcapture->GetCaptureParent());
+	  printf("--------\n");
+	  //this won't necessarily always get the right track, if the TClonesArray has gaps in (relative to track ID counting)
+	  PrintTrack(wcsimrootsuperevent->GetTrigger(0), wcsimrootcapture->GetCaptureParent() + 1);
+	  printf("--------\n");
+	  printf("Capture position:");
+	  for (int j=0; j<3; j++)
+	    printf(" %f",wcsimrootcapture->GetCaptureVtx(j));
+	  printf("\nCapture time: %f\n", wcsimrootcapture->GetCaptureT());
+	  printf("Capture nucleus: %d\n",wcsimrootcapture->GetCaptureNucleus());
+	  printf("Capture total gamma energy: %f\n", wcsimrootcapture->GetTotalGammaE());
+	  printf("Capture N gammas: %d\n", wcsimrootcapture->GetNGamma());
+
+	  for(int j = 0; j < wcsimrootcapture->GetNGamma(); j++) {
+	    TObject *element = (wcsimrootcapture->GetGammas())->At(j);
+	    WCSimRootCaptureGamma *wcsimrootgamma = dynamic_cast<WCSimRootCaptureGamma*>(element);
+	    
+	    printf("--------\n");
+	    printf("Gamma ID: %d\n", wcsimrootgamma->GetID());
+	    printf("Gamma energy: %f\n", wcsimrootgamma->GetE());
+	    printf("Gamma direction:");
+	    for(int k=0; k<3; k++)
+	      printf(" %f", wcsimrootgamma->GetDir(k));
+	    printf("\n");
+	  } // End of loop over gammas
+	} //verbose
+	printf("**************************\n");
+      } // End of loop over captures
+    } // End loop over triggers
+    //back to the first trigger
+    wcsimrootevent = wcsimrootsuperevent->GetTrigger(0);
     
     // Now look at the Cherenkov hits
     
@@ -185,7 +259,7 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
     int ncherenkovhits     = wcsimrootevent->GetNcherenkovhits();
     int ncherenkovdigihits = wcsimrootevent->GetNcherenkovdigihits(); 
     
-    h1->Fill(ncherenkovdigihits);
+    //h1->Fill(ncherenkovdigihits);
     if(verbose){
       printf("node id: %i\n", ev);
       printf("Ncherenkovhits %d\n",     ncherenkovhits);
@@ -198,7 +272,7 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
     
     int totalPe = 0;
     // Loop through elements in the TClonesArray of WCSimRootCherenkovHits
-    for (i=0; i< ncherenkovhits; i++)
+    for (int i=0; i< ncherenkovhits; i++)
     {
       TObject *Hit = (wcsimrootevent->GetCherenkovHits())->At(i);
       WCSimRootCherenkovHit *wcsimrootcherenkovhit = 
@@ -216,10 +290,10 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
 	if(verbose) printf("Total pe: %d times( ",peForTube);
 	for (int j = timeArrayIndex; j < timeArrayIndex + peForTube; j++)
 	{
-	  WCSimRootCherenkovHitTime HitTime = 
-	    dynamic_cast<WCSimRootCherenkovHitTime>(timeArray->At(j));
+	  WCSimRootCherenkovHitTime * HitTime =
+	    dynamic_cast<WCSimRootCherenkovHitTime*>(timeArray->At(j));
 	  
-	  if(verbose) printf("%6.2f ", HitTime.GetTruetime() );	     
+	  if(verbose) printf("%6.2f ", HitTime->GetTruetime() );
 	}
 	if(verbose) cout << ")" << endl;
       }
@@ -236,7 +310,7 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
     for (int index = 0 ; index < wcsimrootsuperevent->GetNumberOfEvents(); index++) 
     {
       wcsimrootevent = wcsimrootsuperevent->GetTrigger(index);
-      if(verbose) cout << "Sub event number = " << index << "\n";
+      if(verbose) cout << "Sub event number = " << index << " at time " << wcsimrootevent->GetHeader()->GetDate() << "\n";
       
       int ncherenkovdigihits = wcsimrootevent->GetNcherenkovdigihits();
       if(verbose) printf("Ncherenkovdigihits %d\n", ncherenkovdigihits);
@@ -244,7 +318,7 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
       if(ncherenkovdigihits>0)
 	num_trig++;
       //for (i=0;i<(ncherenkovdigihits>4 ? 4 : ncherenkovdigihits);i++){
-      for (i=0;i<ncherenkovdigihits;i++)
+      for (int i=0;i<ncherenkovdigihits;i++)
       {
     	// Loop through elements in the TClonesArray of WCSimRootCherenkovDigHits
 	
@@ -258,6 +332,7 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
 	    printf("q, t, tubeid: %f %f %d \n",wcsimrootcherenkovdigihit->GetQ(),
 		   wcsimrootcherenkovdigihit->GetT(),wcsimrootcherenkovdigihit->GetTubeId());
 	}
+	h1->Fill(wcsimrootcherenkovdigihit->GetT() + wcsimrootevent->GetHeader()->GetDate());
       } // End of loop over Cherenkov digihits
     } // End of loop over trigger
     
@@ -271,11 +346,13 @@ void sample_readfile(char *filename=NULL, bool verbose=false)
   int n_high(2);
   TCanvas* c1 = new TCanvas("c1", "First canvas", 500*n_wide*win_scale, 500*n_high*win_scale);
   c1->Draw();
+  /*
   c1->Divide(2,2);
   c1->cd(1); hvtx0->Draw();
   c1->cd(2); hvtx1->Draw();
   c1->cd(3); hvtx2->Draw();
-  c1->cd(4); h1->Draw();
-  
+  c1->cd(4); */
+  h1->Draw();
+  c1->SaveAs("time.pdf");
   std::cout<<"num_trig "<<num_trig<<"\n";
 }
