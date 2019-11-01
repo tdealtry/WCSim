@@ -27,7 +27,7 @@ delim_list = lambda s: list(set(s.split(',')))
 delim_list_str = lambda s: s.split(',') if len(s.split(',')) == 3 else s
 
 DAQdigitizer_choices = ['SKI', 'SKI_SKDETSIM']
-DAQtrigger_choices = ['NDigits', 'NDigits2', 'SKI_SKDETSIM']
+DAQtrigger_choices = ['NDigits', 'NDigits2', 'SKI_SKDETSIM','NoTrigger']
 DAQtrigger_ndigits_choices = ['NDigits', 'NDigits2', 'SKI_SKDETSIM']
 WCgeom_choices = ['HyperK', \
                       'HyperK_withHPD', \
@@ -64,7 +64,6 @@ parser.add_argument('--WCgeom', type=delim_list, default='SuperK', help='The wat
 # trigger & digitization
 parser.add_argument('--DAQdigitizer', type=delim_list, default='SKI', help='Which digitizer class to use? Specify multiple with comma separated list. Choices: '+ListAsString(DAQdigitizer_choices))
 parser.add_argument('--DAQtrigger', type=delim_list, default='NDigits', help='Which trigger class to use? Specify multiple with comma separated list. Choices: '+ListAsString(DAQtrigger_choices))
-parser.add_argument('--DAQconstruct', action='store_true', help='Append the /DAQ/Construct line to the end of the DAQ options. TODO remove after PR115 merge')
 parser.add_argument('--DAQMultiDigitsPerTrigger', action='store_true', help='Allow multiple digits per trigger window?')
 #generic digitizer options
 parser.add_argument('--DAQdigideadtime', type=delim_list, default='0', help='What value of the digitizer deadtime should be used (i.e. how long can the digitizer not create new digits)? Specify multiple with comma separated list')
@@ -297,9 +296,6 @@ def main(args_to_parse = None):
                 for (kO,vO), (kF, vF) in itertools.izip(pDictO.iteritems(), pDictF.iteritems()):
                     theseoptions += vO
                     thesefile += '_' + vF
-                #append the Construct line TODO remove this
-                if args.DAQconstruct:
-                    theseoptions += '/DAQ/Construct \n'
                 daqs.append(theseoptions)
                 filestubs.append(thesefile)
         return [daqs, filestubs]
@@ -345,7 +341,7 @@ def main(args_to_parse = None):
         permutationDictList = [ OrderedDict(zip(permutationDict, v)) for v in itertools.product(*permutationDict.values()) ]
         for pDict in permutationDictList:
             #get the options
-            darkoptions = ''
+            darkoptions = '/DarkRate/SetDetectorElement tank \n'
             for k,v in pDict.iteritems():
                 darkoptions += k + ' ' + v + '\n'
             noises.append(darkoptions)
@@ -536,4 +532,6 @@ if __name__ == "__main__":
     main()
 
     print "\n\n\nTODO fix defaults - certain variables should be allowed to be not written in the .mac file (e.g. if DarkRate == -99)"
+    print "\nTODO allow OD dark noise rate to be set correctly, and independently to ID dark noise rate"
+
 
