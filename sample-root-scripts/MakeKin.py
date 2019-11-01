@@ -118,6 +118,7 @@ def ReadPMTPositions(filename):
     return pmts
 
 randvertwater = False
+randvertpmt = False
 if options.vertname == "center":
     randvertwater = False
 elif options.vertname == "randomwater":
