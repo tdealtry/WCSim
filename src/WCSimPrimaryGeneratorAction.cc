@@ -236,10 +236,10 @@ void WCSimPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 
 		    G4double ekin = energy - mass;
 
-		    //particleGun->SetParticleEnergy(ekin);
+		    particleGun->SetParticleEnergy(ekin);
 		    //G4cout << "Particle: " << pdgid << " KE: " << ekin << G4endl;
-		    //particleGun->SetParticlePosition(vtxs[0]);
-		    //particleGun->SetParticleMomentumDirection(dir);
+		    particleGun->SetParticlePosition(vtxs[0]);
+		    particleGun->SetParticleMomentumDirection(dir);
 		    particleGun->GeneratePrimaryVertex(anEvent);
 		    SetVtx(vtxs[0]);
 		    SetBeamEnergy(ekin);
