@@ -30,6 +30,7 @@ DAQdigitizer_choices = ['SKI', 'SKI_SKDETSIM']
 DAQtrigger_choices = ['NDigits', 'NDigits2', 'SKI_SKDETSIM','NoTrigger']
 DAQtrigger_ndigits_choices = ['NDigits', 'NDigits2', 'SKI_SKDETSIM']
 WCgeom_choices = ['HyperK', \
+                  'HyperKWithOD', \
                       'HyperK_withHPD', \
                       'SuperK', \
                       'SuperK_20inchPMT_20perCent', \
@@ -39,6 +40,7 @@ WCgeom_choices = ['HyperK', \
                       'Cylinder_12inchHPD_15perCent', \
                       'Cylinder_60x74_20inchBandL_14perCent', \
                       'Cylinder_60x74_20inchBandL_40perCent']
+ODWCgeom_choices = ['HyperKWithOD']
 HKwatertargetlength_choices = ['HyperK', 'HyperK_withHPD']
 PMTQEMethod_choices = ['Stacking_Only', 'Stacking_And_SensitiveDetector', 'SensitiveDetector_Only']
 PMTCollEff_choices = ['on', 'off']
@@ -82,6 +84,11 @@ parser.add_argument('--DarkNoiseRate', type=delim_list, default='4.2', help='Dar
 parser.add_argument('--DarkNoiseConvert', type=delim_list, default='1.367', help='Convert dark noise frequency before digitization to after digitization by setting suitable factor. Specify multiple with comma separated list')
 parser.add_argument('--DarkNoiseMode', type=int, default=1, choices=[0,1], help='0: apply noise in a specified time window. 1: apply noise around hits. Choose exactly one')
 parser.add_argument('--DarkNoiseWindow', type=delim_list, default='1500', help=' Mode 0: Apply dark noise in range x:y (use : as delimeter!). Mode 1: Apply dark noise in a window around each hit (+-window/2). Specify multiple (for the same mode) with a comma separated list')
+#dark noise
+parser.add_argument('--ODDarkNoiseRate', type=delim_list, default='4.2', help='Dark noise rate (kHz). Specify multiple with comma separated list')
+parser.add_argument('--ODDarkNoiseConvert', type=delim_list, default='1.367', help='Convert dark noise frequency before digitization to after digitization by setting suitable factor. Specify multiple with comma separated list')
+parser.add_argument('--ODDarkNoiseMode', type=int, default=1, choices=[0,1], help='0: apply noise in a specified time window. 1: apply noise around hits. Choose exactly one')
+parser.add_argument('--ODDarkNoiseWindow', type=delim_list, default='1500', help=' Mode 0: Apply dark noise in range x:y (use : as delimeter!). Mode 1: Apply dark noise in a window around each hit (+-window/2). Specify multiple (for the same mode) with a comma separated list')
 # pmt
 parser.add_argument('--PMTQEMethod', type=delim_list, default='Stacking_Only', help='How the QE is applied? Specify multiple with comma separated list. Choices: '+ListAsString(PMTQEMethod_choices))
 parser.add_argument('--PMTCollEff', type=delim_list, default='on', help='Turn on/off the PMT collection efficiency? Specify multiple with comma separated list. Choices: '+ListAsString(PMTCollEff_choices))
@@ -150,16 +157,19 @@ def main(args_to_parse = None):
         parser.print_help()
         print "Must use consistent GunPosition and GunDirection options (i.e. both 3 vectors or both MakeKin.py str options)"
         sys.exit(1)
-    if args.DarkNoiseMode == 0:
-        check_input_pairs(args.DarkNoiseWindow)
-    elif args.DarkNoiseMode == 1:
-        for w in args.DarkNoiseWindow:
-            try:
-                int(w)
-            except:
-                parser.print_help()
-                print "DarkNoiseWindow must be a (comma separated list of) single int value(s) when running in mode 1"
-                sys.exit(1)
+    def CheckDarkNoiseArguments(mode, window, tag=''):
+        if mode == 0:
+            check_input_pairs(window)
+        elif mode == 1:
+            for w in window:
+                try:
+                    int(w)
+                except:
+                    parser.print_help()
+                    print tag + "DarkNoiseWindow must be a (comma separated list of) single int value(s) when running in mode 1"
+                    sys.exit(1)
+    CheckDarkNoiseArguments(args.DarkNoiseMode, args.DarkNoiseWindow)
+    CheckDarkNoiseArguments(args.ODDarkNoiseMode, args.ODDarkNoiseWindow, 'OD')
     check_input_pairs(args.DAQndigitssavewindow)
     check_input_pairs(args.DAQsavefailuressavewindow)
     if args.notifyuseremail != "" and (not "@" in args.notifyuseremail or len(args.notifyuseremail.split()) > 1):
@@ -324,32 +334,32 @@ def main(args_to_parse = None):
             filestubs.append(filestub)
         return [commands, filestubs]
 
-    def ConstructDarkNoise(args):
+    def ConstructDarkNoise(rate, convert, mode, window, tubes):
         noises = []
         filestubs = []
         # permutations
         permutationDict = OrderedDict()
-        permutationDict['/DarkRate/SetDarkRate'] = [x for x in args.DarkNoiseRate]
-        permutationDict['/DarkRate/SetConvert']  = [x for x in args.DarkNoiseConvert]
-        permutationDict['/DarkRate/SetDarkMode'] = [str(args.DarkNoiseMode)]
-        if args.DarkNoiseMode == 1:
-            permutationDict['/DarkRate/SetDarkWindow'] = [x for x in args.DarkNoiseWindow]
-        elif args.DarkNoiseMode == 0:
-            permutationDict['/DarkRate/SetDarkLow']  = [x.split(':')[0] for x in args.DarkNoiseWindow]
-            permutationDict['/DarkRate/SetDarkHigh'] = [x.split(':')[1] for x in args.DarkNoiseWindow]
+        permutationDict['/DarkRate/SetDarkRate'] = [x for x in rate]
+        permutationDict['/DarkRate/SetConvert']  = [x for x in convert]
+        permutationDict['/DarkRate/SetDarkMode'] = [str(mode)]
+        if mode == 1:
+            permutationDict['/DarkRate/SetDarkWindow'] = [x for x in window]
+        elif mode == 0:
+            permutationDict['/DarkRate/SetDarkLow']  = [x.split(':')[0] for x in window]
+            permutationDict['/DarkRate/SetDarkHigh'] = [x.split(':')[1] for x in window]
         # create a list of dictionaries for each permutation of the parameter values
         permutationDictList = [ OrderedDict(zip(permutationDict, v)) for v in itertools.product(*permutationDict.values()) ]
         for pDict in permutationDictList:
             #get the options
-            darkoptions = '/DarkRate/SetDetectorElement tank \n'
+            darkoptions = '/DarkRate/SetDetectorElement ' + tubes + ' \n'
             for k,v in pDict.iteritems():
                 darkoptions += k + ' ' + v + '\n'
             noises.append(darkoptions)
             #assemble the filename
-            filestub = 'DarkNoiseM' + pDict['/DarkRate/SetDarkMode'] + 'C' + pDict['/DarkRate/SetConvert'] + 'R' + pDict['/DarkRate/SetDarkRate'] + 'W'
-            if args.DarkNoiseMode == 1:
+            filestub = tubes + 'DarkNoiseM' + pDict['/DarkRate/SetDarkMode'] + 'C' + pDict['/DarkRate/SetConvert'] + 'R' + pDict['/DarkRate/SetDarkRate'] + 'W'
+            if mode == 1:
                 filestub += pDict['/DarkRate/SetDarkWindow'].strip()
-            elif args.DarkNoiseMode == 0:
+            elif mode == 0:
                 filestub += pDict['/DarkRate/SetDarkLow'].strip() + ':' + pDict['/DarkRate/SetDarkHigh'].strip()
             filestubs.append(filestub)
         return [noises, filestubs]
@@ -439,7 +449,9 @@ def main(args_to_parse = None):
     tempoptions.append(ConstructGeometry(args))
     tempoptions.append(ConstructPMT(args))
     tempoptions.append(ConstructDAQ(args))
-    tempoptions.append(ConstructDarkNoise(args))
+    tempoptions.append(ConstructDarkNoise(args.DarkNoiseRate, args.DarkNoiseConvert, args.DarkNoiseMode, args.DarkNoiseWindow, 'tank'))
+    #if args.WCgeom in ODWCgeom_choices:
+    tempoptions.append(ConstructDarkNoise(args.ODDarkNoiseRate, args.ODDarkNoiseConvert, args.ODDarkNoiseMode, args.ODDarkNoiseWindow, 'OD'))
 
     #assemble the complete set of options
     options = []
@@ -532,6 +544,4 @@ if __name__ == "__main__":
     main()
 
     print "\n\n\nTODO fix defaults - certain variables should be allowed to be not written in the .mac file (e.g. if DarkRate == -99)"
-    print "\nTODO allow OD dark noise rate to be set correctly, and independently to ID dark noise rate"
-
-
+    print "\nTODO only add OD dark noise options/filenames for geometries with an OD"
