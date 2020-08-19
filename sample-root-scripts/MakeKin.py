@@ -19,7 +19,8 @@ pid = {"pi0":111, "pi+":211, "k0l":130, "k0s":310, "k+":321,
 #holds detector [radius, height] in cm
 detectors = {"SuperK":[3368.15/2., 3620.],
              "Cylinder_60x74_20inchBandL_14perCent":[7400./2., 6000.],
-             "Cylinder_60x74_20inchBandL_40perCent":[7400./2., 6000.]}
+             "Cylinder_60x74_20inchBandL_40perCent":[7400./2., 6000.],
+             "HyperK":[7080./2., 5480.]}
 
 for pname, no in pid.items():
     if pname.endswith('+'):
@@ -61,7 +62,7 @@ parser.add_option("-e", "--energy", dest="energy",
                   help="Particle energy to be generated in MeV. Default: %s" \
                       % (optdefault),
                   metavar="ENERGY",default=optdefault)
-optchoices = ["center", "random", "minusx", "plusx", "minusz", "plusz"]
+optchoices = ["center", "randomwater", "randompmt", "minusx", "plusx", "minusz", "plusz"]
 optdefault = optchoices[0]
 parser.add_option("-v", "--vertex", dest="vertname",
                   help="Type of vertex. Choices: %s. Default: %s" \
@@ -100,12 +101,26 @@ particle = {"vertex":(0, 0, 0),
             "energy":energy,
             "direction":(1,0,0)}
 
+def ReadPMTPositions(filename):
+    pmts = {}
+    with open(filename) as f:
+        for l in f.readlines():
+            pmtnum,x,y,z = l.split()
+            pmts[int(pmtnum)] = [float(x), float(y), float(z)]
+    return pmts
 
-randvert = False
+randvertwater = False
+randvertpmt = False
 if options.vertname == "center":
-    randvert = False
-elif options.vertname == "random":
-    randvert = True
+    pass
+elif options.vertname == "randomwater":
+    randvertwater = True
+elif options.vertname == "randompmt":
+    fname = options.pmtlist
+    if options.pmtlist.strip()[-1] == '/':
+        fname += options.detector + '_pmts.list'
+    pmts = ReadPMTPositions(fname)
+    randvertpmt = True
 elif options.vertname == "wall":
     print >>sys.stderr, "Wall not implemented yet"
     sys.exit(3)
@@ -171,7 +186,7 @@ def partPrint(p, f, recno):
 
 def vertPrint(p,f,recno) :
     f.write("$ nuance 0\n")
-    if randvert:
+    if randvertwater:
         rad    = detectors[options.detector][0] - 20.
         height = detectors[options.detector][1] - 20.
         while True:
@@ -180,6 +195,9 @@ def vertPrint(p,f,recno) :
             if x**2 + y**2 < rad**2: break
         z = random.uniform(-height/2,height/2)
         f.write("$ vertex %.5f %.5f %.5f %.5f\n" % (x, y, z, p["time"]))
+    elif randvertpmt:
+        pmt = random.randint(1, len(pmts))
+        f.write("$ vertex %.5f %.5f %.5f %.5f\n" % (pmts[pmt][0], pmts[pmt][1], pmts[pmt][2], p["time"]))
     else:
         f.write("$ vertex %.5f %.5f %.5f %.5f\n" % (p["vertex"]+(p["time"],)) )
     printTrack(nu, f, -1)   # "Neutrino" Track
