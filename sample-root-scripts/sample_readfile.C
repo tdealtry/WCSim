@@ -1,5 +1,4 @@
 #include <iostream>
-#include <TH1F.h>
 #include <stdio.h>     
 #include <stdlib.h>
 
@@ -15,19 +14,24 @@
 #include "WCSimRootGeom.hh"
 #include "WCSimRootEvent.hh"
 
-// Simple example of reading a generated Root file
-int sample_readfile(const char *filename="../wcsim.root", bool verbose=false)
+TString create_filename(const char * prefix, TString& filename_string)
 {
-  // Clear global scope
-  //gROOT->Reset();
+  //std::cout << "Creating filename from prefix " << prefix << " and filename_string " << filename_string << std::endl;
+  TString prefix_string(prefix);
+  TString outfilename = prefix_string + filename_string;
+  return outfilename;
+}
 
+// Simple example of reading a generated Root file
+int sample_readfile(const char *filename="../wcsim.root", bool verbose=false, bool save_hists=true)//false)
+{
   // Open the file
-  TFile * file = new TFile(filename,"read");
+  TFile * file = new TFile(filename, "read");
   if (!file->IsOpen()){
     cout << "Error, could not open input file: " << filename << endl;
     return -1;
   }
-  
+
   // Get the a pointer to the tree from the file
   TTree *tree = (TTree*)file->Get("wcsimT");
   
@@ -72,11 +76,11 @@ int sample_readfile(const char *filename="../wcsim.root", bool verbose=false)
   // and always exists.
   WCSimRootTrigger* wcsimrootevent;
 
-  TH1F *h1 = new TH1F("PMT Hits", "PMT Hits", 8000, 0, 8000);
-  TH1F *hvtx0 = new TH1F("Event VTX0", "Event VTX0", 200, -1500, 1500);
-  TH1F *hvtx1 = new TH1F("Event VTX1", "Event VTX1", 200, -1500, 1500);
-  TH1F *hvtx2 = new TH1F("Event VTX2", "Event VTX2", 200, -1500, 1500);
-  
+  TH1F *h1 = new TH1F("h1", "Number of digitised hits;Number of digitised hits;Entries in bin", 200, 0, 8000);
+  TH1F *hvtx0 = new TH1F("hvtx0", "True vertex X;True event vertex X (cm);Entries in bin", 200, -1500, 1500);
+  TH1F *hvtx1 = new TH1F("hvtx1", "True vertex Y;True event vertex Y (cm);Entries in bin", 200, -1500, 1500);
+  TH1F *hvtx2 = new TH1F("hvtx2", "True vertex Z;True event vertex Z (cm);Entries in bin", 200, -1500, 1500);
+
   int num_trig=0;
   
   // Now loop over events
@@ -109,8 +113,8 @@ int sample_readfile(const char *filename="../wcsim.root", bool verbose=false)
     // Now read the tracks in the event
     
     // Get the number of tracks
-    int ntrack = wcsimrootevent->GetNtrack();
-    int ntrack_slots = wcsimrootevent->GetNtrack_slots();
+    const int ntrack = wcsimrootevent->GetNtrack();
+    const int ntrack_slots = wcsimrootevent->GetNtrack_slots();
     if(verbose) printf("ntracks=%d\n",ntrack);
     
     int i;
@@ -253,6 +257,18 @@ int sample_readfile(const char *filename="../wcsim.root", bool verbose=false)
   c1->cd(2); hvtx1->Draw();
   c1->cd(3); hvtx2->Draw();
   c1->cd(4); h1->Draw();
+
+  //save histograms to an output file
+  if(save_hists) {
+    TString filenameout(filename);
+    TFile * fout = new TFile(create_filename("analysed_", filenameout).Data(), "RECREATE");
+    fout->cd();
+    hvtx0->Write();
+    hvtx1->Write();
+    hvtx2->Write();
+    h1->Write();
+    fout->Close();
+  }
   
   std::cout<<"num_trig "<<num_trig<<"\n";
 
