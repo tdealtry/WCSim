@@ -1,20 +1,21 @@
 #!/bin/env python
 
-from ROOT import gROOT, gStyle, gSystem
-from ROOT import TFile, TH1F, TTree, TCanvas
+import ROOT as R
+R.PyConfig.IgnoreCommandLineOptions = True
 import os.path
 import sys
 
 #Load the library with class dictionary info
 #(create with "gmake shared")
-gSystem.Load(os.path.expandvars("${WCSIMDIR}/libWCSimRoot.so"))
+R.gSystem.Load(os.path.expandvars("${WCSIMDIR}/libWCSimRoot.so"))
 from ROOT import WCSimRootEvent, WCSimRootGeom, WCSimRootTrigger
+R.gROOT.SetBatch(1)
 
 # Simple example of reading a generated Root file
 def sample_readfile(filename, verbose):
     
     #Open the file
-    f = TFile(os.path.expandvars(filename), "read");
+    f = R.TFile(os.path.expandvars(filename), "read");
     if not f.IsOpen():
         print "Error, could not open input file:", filename
         sys.exit(-1)
@@ -37,17 +38,16 @@ def sample_readfile(filename, verbose):
         print "Geotree should have exactly 1 entry"
         sys.exit(9)
 
-    h1    = TH1F("h1", "Number of digitised hits;Number of digitised hits;Entries in bin", 200, 0, 8000);
-    hvtx0 = TH1F("hvtx0", "True vertex X;True event vertex X (cm);Entries in bin", 200, -1500, 1500);
-    hvtx1 = TH1F("hvtx1", "True vertex Y;True event vertex Y (cm);Entries in bin", 200, -1500, 1500);
-    hvtx2 = TH1F("hvtx2", "True vertex Z;True event vertex Z (cm);Entries in bin", 200, -1500, 1500);
+    h1    = R.TH1F("h1", "Number of digitised hits;Number of digitised hits;Entries in bin", 200, 0, 8000);
+    hvtx0 = R.TH1F("hvtx0", "True vertex X;True event vertex X (cm);Entries in bin", 200, -1500, 1500);
+    hvtx1 = R.TH1F("hvtx1", "True vertex Y;True event vertex Y (cm);Entries in bin", 200, -1500, 1500);
+    hvtx2 = R.TH1F("hvtx2", "True vertex Z;True event vertex Z (cm);Entries in bin", 200, -1500, 1500);
   
     num_trig = 0;
   
-    print nevent
     #Now loop over events
     for iev, event in enumerate(tree):
-        print "Tree entry", iev
+        print "Tree entry", iev, "of", nevent
 
         wcsimrootsuperevent = tree.wcsimrootevent
         wcsimrootevent = wcsimrootsuperevent.GetTrigger(0)
@@ -170,7 +170,7 @@ def sample_readfile(filename, verbose):
     win_scale = 0.75
     n_wide = 2
     n_high = 2
-    c1 = TCanvas("c1", "First canvas", int(500 * n_wide * win_scale), int(500 * n_high * win_scale))
+    c1 = R.TCanvas("c1", "First canvas", int(500 * n_wide * win_scale), int(500 * n_high * win_scale))
     c1.Draw()
     c1.Divide(2,2)
     c1.cd(1)
