@@ -86,6 +86,8 @@
 #grab the other DAQ options (thresholds, timing windows, etc.)
 /control/execute macros/daq.mac
 
+#everything from this point in /DarkRate/ affects the ID
+/DarkRate/SetDetectorElement tank
 
 # default dark noise frequency (and conversion factor) is PMT property (NEW), set in the code.
 # Below gives possibility to overwrite nominal values, eg. to switch OFF the Dark Noise.
@@ -113,6 +115,7 @@
 /DarkRate/SetDarkLow 0
 /DarkRate/SetDarkWindow 4000
 
+#everything from this point in /DarkRate/ affects the OD
 #/DarkRate/SetDetectorElement OD
 #/DarkRate/SetDarkMode 1
 #/DarkRate/SetDarkHigh 100000
