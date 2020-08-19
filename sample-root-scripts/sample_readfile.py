@@ -38,6 +38,12 @@ def sample_readfile(filename, verbose):
         print "Geotree should have exactly 1 entry"
         sys.exit(9)
 
+    #options tree
+    opttree = f.wcsimRootOptionsT
+    opttree.GetEntry(0)
+    opt = opttree.wcsimrootoptions
+    opt.Print()
+
     h1    = R.TH1F("h1", "Number of digitised hits;Number of digitised hits;Entries in bin", 200, 0, 8000);
     hvtx0 = R.TH1F("hvtx0", "True vertex X;True event vertex X (cm);Entries in bin", 200, -1500, 1500);
     hvtx1 = R.TH1F("hvtx1", "True vertex Y;True event vertex Y (cm);Entries in bin", 200, -1500, 1500);
