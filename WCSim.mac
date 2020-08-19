@@ -213,6 +213,11 @@
 
 /WCSimIO/RootFile wcsim.root
 
+#Random number seed.
+# Note that if you use the same seed with the same options, the results will be identical.
+# This is sometimes what you want. This sometimes isn't what you want.
+/WCSim/random/seed 31415
+
 ## set a timer running on WCSimRunAction
 #/WCSimIO/Timer false
 
