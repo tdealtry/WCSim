@@ -31,7 +31,13 @@ TString create_filename(const char * prefix, TString& filename_string)
 }
 
 // Simple example of reading a generated Root file
-int daq_readfile(const char *filename="../wcsim.root", bool verbose=false, Long64_t max_nevents = 999999999999, int max_ntriggers = -1, bool create_pdfs = false, bool hists_per_event = false)
+int daq_readfile(const char *filename="../wcsim.root", //input WCSim filename
+		 bool verbose=false, //print lots to screen?
+		 Long64_t max_nevents = 999999999999, //how many events to analyse?
+		 int max_ntriggers = -1, //the maximum number of triggers/subevents to analyse in an event. <=0 for all
+		 bool create_pdfs = false, //create a .pdf file with some drawn histograms?
+		 bool hists_per_event = false //make some extra histograms of hit/digit times, that are drawn per event?
+		 )
 {
 
   // Open the input file
