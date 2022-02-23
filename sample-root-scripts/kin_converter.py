@@ -4,22 +4,58 @@ import argparse
 import sys
 from datetime import datetime
 
+#All times internally in this code use ns
+#Use this to convert between other units (from command line options, or from input files)
 ns_conversion = {'ns':1,
                  'us':1E3,
                  'ms':1E6,
                  's':1E9}
 
+class TimeAndUnit(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        try:
+            value = int(values[0]) * ns_conversion[values[1]]
+        except ValueError:
+            print(option_string, 'is in form VALUE UNIT')
+            print('Require VALUE to be an integer')
+            sys.exit(-1)
+        except KeyError:
+            print(option_string, 'is in form VALUE UNIT')
+            print('Require UNIT to be one of:', ' '.join(ns_conversion.keys()))
+            sys.exit(-1)
+        else:
+            setattr(namespace, self.dest, int(value))
+
+
 parser = argparse.ArgumentParser(description='KinConverter: convert kin files that have multiple vertices into a single event (or multiple overlapping events)')
-parser.add_argument('--input-filename','-i',required=True,type=str,help='Input .kin filename. Output filename(s) will be the same as the input filename & path, with [0-9].merge suffix(es) added')
-parser.add_argument('--input-time-unit',required=True,choices=ns_conversion.keys(),help='The time unit of the input file')
-parser.add_argument('--dark-noise-start', type=int,required=True,help='When to start the simulation (in ns)')
-parser.add_argument('--dark-noise-end',type=int,required=True,help='When to end the simulation (in ns)')
-parser.add_argument('--event-overlap',type=int,required=True,help='How long (in ns) to overlap')
+parser.add_argument('--input-filename', '-i', required=True, type=str,
+                    help='Input .kin filename. Output filename(s) will be the same as the input filename & path, with [0-9].merge suffix(es) added')
+parser.add_argument('--input-time-unit', required=True, choices=ns_conversion.keys(),
+                    help='The time unit of the input file')
+parser.add_argument('--dark-noise-start', action=TimeAndUnit, nargs=2, required=True,
+                    help='When to start the simulation (in ns)')
+parser.add_argument('--dark-noise-end', action=TimeAndUnit, nargs=2, required=True,
+                    help='When to end the simulation (in ns)')
+parser.add_argument('--event-overlap', action=TimeAndUnit, nargs=2, required=True,
+                    help='How long (in ns) to overlap')
 parser.add_argument('--verbose','--v',type=int,default=0,help='Verbosity level')
+
+subparsers = parser.add_subparsers(dest='mode', help='Run mode')#, required=True)
 #Use either this
-parser.add_argument('--fixed-duration',type=int,default=None,help='A fixed duration (in ns) for each event')
+parser_fix = subparsers.add_parser('fixed', help='Use a fixed duration for each output event')
+parser_fix.add_argument('--fixed-duration', action=TimeAndUnit, nargs=2, required=True,
+                        help='A fixed duration (in ns) for each event')
 #or these - dark rate, ntubes, NHits per MeV, max allowed hits
-#TODO add option for windows that can change size depending on how many physics hits are expected
+parser_free = subparsers.add_parser('free', help='Use a variable duration for each output event, based on dark rate, number of PMTs, NHits per MeV, and limited by the "max number of allowed hits"')
+parser_free.add_argument('--dark-rate', type=float, required=True,
+                         help='Dark rate (in kHz) per PMT')
+parser_free.add_argument('--nPMTs', type=int, required=True,
+                         help='Number of PMTs in simulation')
+parser_free.add_argument('--nhits-per-MeV', type=float, required=True,
+                         help='Number of hits per MeV that are expected. This is used to give an estimate of the number of "physics" hits in the event')
+parser_free.add_argument('--max-hits-allowed', type=float, required=True,
+                         help='Maximum (expected) number of hits per out .kin file. This is limited by available memory')
+#TODO account for case where there are multiple PMT types in the detector
 args = parser.parse_args()
 
 ToNS = ns_conversion[args.input_time_unit]
