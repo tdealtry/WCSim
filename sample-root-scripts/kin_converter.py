@@ -170,6 +170,8 @@ last_event_end = args.dark_noise_end
 ievent = 0
 file_position = 0
 while event_start < last_event_end:
+    if args.mode != 'fixed':
+        break
     event_end = event_start + args.fixed_duration
     next_event_start = event_start + args.fixed_duration - args.event_overlap
     print("Event", ievent, "corresponds to range", PrintNS(event_start), PrintNS(event_end))
