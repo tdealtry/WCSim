@@ -144,17 +144,16 @@ def SortByTime(filename):
 
 #Get the header
 def GetHeader(filename, args):
+    header = ''
     with open(filename, 'r') as fin:
         for vertex in GetVertex(fin, "$ begin"):
-            #if there's no header, return blank
-            if vertex[0].startswith("$ begin"):
-                return ''
-            #return the header as a single string
-            header = ''.join(vertex) + ''\
-                     '# Split by kin_converter ' + str(datetime.now()) + '\n'\
-                     '# --fixed-duration ' + str(args.fixed_duration) + '\n'\
-                     '# --event-overlap ' + str(args.event_overlap) + '\n'
-            return header
+            #if there's a header in the input file, use that as the start of the header of the output files
+            if not vertex[0].startswith("$ begin"):
+                header += ''.join(vertex)
+            break
+    #return the header as a single string
+    header += '# Split by kin_converter ' + str(datetime.now()) + '\n' + str(args) + '\n'
+    return header
 
 #See if the file is time ordered
 if not IsTimeOrdered(args.input_filename):
