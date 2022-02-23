@@ -66,6 +66,8 @@ def PrintNS(time):
             return "%f %s" % (time, x)
         time /= 1000.0
 
+#Dummy vertex to use when there are no true physics events
+# in the given time window
 DummyVertex = """$ nuance 0
 $ vertex 0 0 0 0
 $ track -12 0.00000 0.00000 0.00000 1.00000 -1
@@ -96,6 +98,24 @@ def GetTime(vertex):
     for line in vertex:
         if 'vertex' in line:
             return float(line.split()[-1]) * ToNS
+
+#get the total energy from a vertex
+def GetEnergy(vertex):
+    total_energy = 0
+    for line in vertex:
+        #get only particles leaving the nucleus (after FSI)
+        if line.startswith('$ track') and line.endswith('0'):
+            a, b, pdg, energy, x = line.split(None, 4)
+        pdg = int(pdg)
+        energy = float(energy)
+        if abs(pdg) == 11:
+            total_energy += energy
+        elif pdg == 2112:
+            total_energy += 2.2 #assume neutron capture on H giving 2.2 MeV gamma
+        else:
+            print('Unknown pdg code', pdg)
+            sys.exit(1)
+    return total_energy
 
 #check that the file is time ordered
 def IsTimeOrdered(filename):
