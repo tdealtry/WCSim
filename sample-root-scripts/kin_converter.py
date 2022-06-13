@@ -69,7 +69,7 @@ if args.min_duration <= args.event_overlap:
 ToNS = ns_conversion[args.input_time_unit]
 
 def PrintNS(time):
-    for x in ['ns', 'us', 'ms', 's']:
+    for x in ns_conversion.keys():
         if time < 1000.0:
             return "%f %s" % (time, x)
         time /= 1000.0
