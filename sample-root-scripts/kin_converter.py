@@ -3,6 +3,7 @@
 import argparse
 import sys
 from datetime import datetime
+import os
 
 #All times internally in this code use ns
 #Use this to convert between other units (from command line options, or from input files)
@@ -73,6 +74,15 @@ def PrintNS(time):
         if time < 1000.0:
             return "%f %s" % (time, x)
         time /= 1000.0
+
+def GetExpectedHits(args, duration, total_energy):
+    #get the number of hits from dark noise
+    # 1E3 because dark rate is in kHz
+    # 1E-9 because duration is in ns
+    nhits_dark = args.nPMTs * args.dark_rate * 1E3 * duration * 1E-9
+    #get the physics-related number of hits
+    nhits_phys = args.nhits_per_MeV * total_energy
+    return nhits_dark + nhits_phys
 
 #Dummy vertex to use when there are no true physics events
 # in the given time window
@@ -230,3 +240,96 @@ while event_start < last_event_end:
     #increment for next event
     event_start = next_event_start
     ievent += 1
+
+
+#create new kin files based on the expected number of hits
+# (rather than of fixed duration, as above)
+event_start = args.dark_noise_start
+last_event_end = args.dark_noise_end
+ievent = 0
+file_position = 0
+while event_start < last_event_end:
+    if args.mode != 'free':
+        break
+    event_end_min = event_start + args.min_duration
+    event_end_max = event_start + args.max_duration
+    next_event_start_min = event_start - args.event_overlap + args.min_duration
+    print("Event", ievent, "starts at", PrintNS(event_start))
+    with open(args.input_filename, 'rb') as fin, open('kinsplit.temp', 'w') as fout:
+        nvertices = 0
+        total_energy = 0
+        #skip forward in the file a bit
+        if args.verbose > 1:
+            print('Skipping to position in file', file_position)
+        fin.seek(file_position)
+        #loop over the input file
+        for i, vertex in enumerate(GetVertex(fin, "$ begin", ["$ begin", "$ end"])):
+            #skip the header and any partial vertices we've found from using seek()
+            if not vertex[0].startswith('$ nuance'):
+                continue
+            #get the event time
+            time = GetTime(vertex)
+            #skip if the current vertex is before the earliest time for this event
+            if time < event_start:
+                continue
+            if args.verbose > 2:
+                print(PrintNS(time))
+                if args.verbose > 3:
+                    print("Vertex #{}".format(i))
+                    print("".join(vertex))
+            #get the event energy
+            total_energy += GetEnergy(vertex)
+            #check how many hits we expect in the event so far
+            nhits_expected = GetExpectedHits(args, time - event_start, total_energy)
+            if args.verbose > 1:
+                print("Expecting {} hits in from {} to {} ({} duration)".format(nhits_expected, PrintNS(event_start), PrintNS(time), PrintNS(time - event_start)))
+            #if the event is too long, break
+            if time > event_end_max:
+                if args.verbose:
+                    print('Breaking event after reaching --max-duration {}'.format(PrintNS(args.max_duration)))
+                event_end = event_end_max
+                break
+            #if the event has too many hits, break
+            # but only if the event isn't too short
+            if nhits_expected > args.max_hits_allowed and time >= event_end_min:
+                if args.verbose:
+                    print('Breaking event after reaching --max_hits_allowed {} and the minimum duration'.format(args.max_hits_allowed, args.min_duration))
+                event_end = time
+                #NEED TO DO STUFF ABOUT SETTING time_start, time_end, etc
+                break
+            fout.write(''.join(vertex))
+            nvertices += 1
+            #save the current file position if it's the first valid vertex for this particular output file
+            #Also save if the minimum possible next event start
+            # Most input vertices will be read twice
+            # Something smarter could be developed
+            if i == 0 or time < next_event_start_min:
+                file_position = fin.tell()
+        #need to add a dummy vertex, else WCSim/Geant4 will complain
+        if not nvertices:
+            fout.write(DummyVertex)
+        #and close the event/file
+        fout.write('$ end\n')
+        fout.write('$ stop\n')
+        print("Contains {} vertices, expecting {} hits from {} to {} ({} duration)".format(nvertices, int(nhits_expected), PrintNS(event_start), PrintNS(event_end), PrintNS(event_end - event_start)))
+    #now we have the temporary file written
+    # need to create the real output file
+    # this starts with the header
+    with open('kinsplit.temp', 'r') as fin, open(args.input_filename + '.%09d' % ievent, 'w') as fout:
+        #write the original header
+        fout.write(header)
+        #write the dark noise range
+        fout.write('# Event ' + str(ievent) + '\n')
+        fout.write('# /DarkRate/SetDarkLow  ' + str(event_start) + '\n')
+        fout.write('# /DarkRate/SetDarkHigh ' + str(event_end) + '\n')
+        fout.write('# Duration ' + str(PrintNS(event_end - event_start)) + '\n')
+        #and the event start
+        fout.write('$ begin\n')
+        #and the actual vertices
+        fout.write(fin.read())
+    #increment for next event
+    event_start = event_end - args.event_overlap
+    ievent += 1
+
+#and destroy the temporary file
+os.remove('kinsplit.temp')
