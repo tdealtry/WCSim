@@ -194,7 +194,7 @@ while event_start < last_event_end:
         fout.write('$ begin\n')
         nvertices = 0
         #skip forward in the file a bit
-        if args.verbose:
+        if args.verbose > 1:
             print('Skipping to position in file', file_position)
         fin.seek(file_position)
         #loop over the input file
@@ -204,9 +204,9 @@ while event_start < last_event_end:
                 continue
             #get the event time
             time = GetTime(vertex)
-            if args.verbose > 1:
+            if args.verbose > 2:
                 print(PrintNS(time))
-                if args.verbose > 2:
+                if args.verbose > 3:
                     print("Vertex #{}".format(i))
                     print("".join(vertex))
             if time > event_end:
