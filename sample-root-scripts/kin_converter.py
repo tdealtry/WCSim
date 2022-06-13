@@ -33,18 +33,18 @@ parser.add_argument('--input-filename', '-i', required=True, type=str,
 parser.add_argument('--input-time-unit', required=True, choices=ns_conversion.keys(),
                     help='The time unit of the input file')
 parser.add_argument('--dark-noise-start', action=TimeAndUnit, nargs=2, required=True,
-                    help='When to start the simulation (in ns)')
+                    help='When to start the simulation')
 parser.add_argument('--dark-noise-end', action=TimeAndUnit, nargs=2, required=True,
-                    help='When to end the simulation (in ns)')
+                    help='When to end the simulation')
 parser.add_argument('--event-overlap', action=TimeAndUnit, nargs=2, required=True,
-                    help='How long (in ns) to overlap')
-parser.add_argument('--verbose','--v',type=int,default=0,help='Verbosity level')
+                    help='How long to overlap')
+parser.add_argument('--verbose','-v',type=int,default=0,help='Verbosity level')
 
 subparsers = parser.add_subparsers(dest='mode', help='Run mode')#, required=True)
 #Use either this
 parser_fix = subparsers.add_parser('fixed', help='Use a fixed duration for each output event')
 parser_fix.add_argument('--fixed-duration', action=TimeAndUnit, nargs=2, required=True,
-                        help='A fixed duration (in ns) for each event')
+                        help='A fixed duration for each event')
 #or these - dark rate, ntubes, NHits per MeV, max allowed hits
 parser_free = subparsers.add_parser('free', help='Use a variable duration for each output event, based on dark rate, number of PMTs, NHits per MeV, and limited by the "max number of allowed hits"')
 parser_free.add_argument('--dark-rate', type=float, required=True,
