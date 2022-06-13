@@ -55,8 +55,16 @@ parser_free.add_argument('--nhits-per-MeV', type=float, required=True,
                          help='Number of hits per MeV that are expected. This is used to give an estimate of the number of "physics" hits in the event')
 parser_free.add_argument('--max-hits-allowed', type=float, required=True,
                          help='Maximum (expected) number of hits per out .kin file. This is limited by available memory')
+parser_free.add_argument('--min-duration', action=TimeAndUnit, nargs=2, required=True,
+                         help='The minimum event length for each event. Must be larger than --event-overlap')
+parser_free.add_argument('--max-duration', action=TimeAndUnit, nargs=2, required=True,
+                         help='The maximum event length for each event')
 #TODO account for case where there are multiple PMT types in the detector
 args = parser.parse_args()
+
+if args.min_duration <= args.event_overlap:
+    print('--min-duration {} must be larger than --event-overlap {}'.format(args.min_duration, args.event_overlap))
+    sys.exit(-1)
 
 ToNS = ns_conversion[args.input_time_unit]
 
