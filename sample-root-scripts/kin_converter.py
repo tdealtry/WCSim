@@ -114,6 +114,8 @@ def GetEnergy(vertex):
         #get only particles leaving the nucleus (after FSI)
         if line.startswith('$ track') and line.endswith('0'):
             a, b, pdg, energy, x = line.split(None, 4)
+        else:
+            continue
         pdg = int(pdg)
         energy = float(energy)
         if abs(pdg) == 11:
