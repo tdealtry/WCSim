@@ -278,6 +278,8 @@ while abs(event_end - last_event_end) > 0.001: #break when difference is more th
             time = GetTime(vertex)
             #skip if the current vertex is before the earliest time for this event
             if time < event_start:
+                if args.verbose > 4:
+                    print('Skipping past time', PrintNS(time))
                 continue
             if args.verbose > 2:
                 print(PrintNS(time))
@@ -324,6 +326,7 @@ while abs(event_end - last_event_end) > 0.001: #break when difference is more th
         #and close the event/file
         fout.write('$ end\n')
         fout.write('$ stop\n')
+        nhits_expected = GetExpectedHits(args, event_end - event_start, total_energy)
         print("Contains {} vertices, expecting {} hits from {} to {} ({} duration)".format(nvertices, int(nhits_expected), PrintNS(event_start), PrintNS(event_end), PrintNS(event_end - event_start)))
     #now we have the temporary file written
     # need to create the real output file
