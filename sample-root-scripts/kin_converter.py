@@ -124,6 +124,7 @@ def GetEnergy(vertex):
     total_energy = 0
     for line in vertex:
         #get only particles leaving the nucleus (after FSI)
+        line = line.strip()
         if line.startswith('$ track') and line.endswith('0'):
             a, b, pdg, energy, x = line.split(None, 4)
         else:
