@@ -248,19 +248,23 @@ while event_start < last_event_end:
 #create new kin files based on the expected number of hits
 # (rather than of fixed duration, as above)
 event_start = args.dark_noise_start
+event_end   = event_start + args.min_duration
 last_event_end = args.dark_noise_end
 ievent = 0
 file_position = 0
-while event_start < last_event_end:
+while abs(event_end - last_event_end) > 0.001: #break when difference is more than 1E-3 ns = 1 ps
     if args.mode != 'free':
         break
     event_end_min = event_start + args.min_duration
-    event_end_max = event_start + args.max_duration
+    event_end_max = min(event_start + args.max_duration, last_event_end)
+    #but also don't make the last event tiny (it needs to be at least args.min_duration long)
+    event_end_max = max(event_end_min, event_end_max)
     next_event_start_min = event_start - args.event_overlap + args.min_duration
     print("Event", ievent, "starts at", PrintNS(event_start))
     with open(args.input_filename, 'rb') as fin, open('kinsplit.temp', 'w') as fout:
         nvertices = 0
         total_energy = 0
+        break_before_end_of_input = False
         #skip forward in the file a bit
         if args.verbose > 1:
             print('Skipping to position in file', file_position)
@@ -291,14 +295,15 @@ while event_start < last_event_end:
                 if args.verbose:
                     print('Breaking event after reaching --max-duration {}'.format(PrintNS(args.max_duration)))
                 event_end = event_end_max
+                break_before_end_of_input = True
                 break
             #if the event has too many hits, break
             # but only if the event isn't too short
             if nhits_expected > args.max_hits_allowed and time >= event_end_min:
                 if args.verbose:
-                    print('Breaking event after reaching --max_hits_allowed {} and the minimum duration'.format(args.max_hits_allowed, args.min_duration))
-                event_end = time
-                #NEED TO DO STUFF ABOUT SETTING time_start, time_end, etc
+                    print('Breaking event after reaching --max_hits_allowed {} and the minimum duration {}'.format(args.max_hits_allowed, args.min_duration))
+                event_end = event_end_min
+                break_before_end_of_input = True
                 break
             fout.write(''.join(vertex))
             nvertices += 1
@@ -308,6 +313,11 @@ while event_start < last_event_end:
             # Something smarter could be developed
             if i == 0 or time < next_event_start_min:
                 file_position = fin.tell()
+        #when the input file has been finished, but we've not got to the end of the requested dark noise space
+        if not break_before_end_of_input:
+            if args.verbose:
+                print('Dark noise extends beyond last vertex time in input file {}'.format(PrintNS(time)))
+            event_end = event_end_max
         #need to add a dummy vertex, else WCSim/Geant4 will complain
         if not nvertices:
             fout.write(DummyVertex)
