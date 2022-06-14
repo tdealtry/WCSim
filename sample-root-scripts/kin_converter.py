@@ -82,6 +82,8 @@ def GetExpectedHits(args, duration, total_energy):
     nhits_dark = args.nPMTs * args.dark_rate * 1E3 * duration * 1E-9
     #get the physics-related number of hits
     nhits_phys = args.nhits_per_MeV * total_energy
+    if args.verbose > 2:
+        print(nhits_dark, 'dark hits', nhits_phys, 'physics hits')
     return nhits_dark + nhits_phys
 
 #Dummy vertex to use when there are no true physics events
