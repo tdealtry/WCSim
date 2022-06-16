@@ -175,7 +175,7 @@ def GetHeader(filename, args):
                 header += ''.join(vertex)
             break
     #return the header as a single string
-    header += '# Split by kin_converter ' + str(datetime.now()) + '\n' + str(args) + '\n'
+    header += '# Split by kin_converter ' + str(datetime.now()) + '\n# ' + str(args) + '\n'
     return header
 
 #See if the file is time ordered
