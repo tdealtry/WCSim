@@ -43,6 +43,7 @@ private:
   Int_t fParenttype;
   Double_t fTime;
   Int_t fId;
+  Int_t fParentId;
 
 public:
   WCSimRootTrack() {}
@@ -58,7 +59,9 @@ public:
 		  Double_t stop[3],
 		  Double_t start[3],
 		  Int_t parenttype,
-		 Double_t time,Int_t id);
+		 Double_t time,
+		 Int_t id,
+		 Int_t parentId);
   virtual ~WCSimRootTrack() { }
   bool CompareAllVariables(const WCSimRootTrack * c) const;
 
@@ -76,8 +79,11 @@ public:
   Int_t     GetParenttype(/*Int_t i=0*/) const {return fParenttype;}
   Double_t   GetTime() const { return fTime;}
   Int_t     GetId() const {return fId;}
+  Int_t     GetParentId() const {return fParentId;}
 
-  ClassDef(WCSimRootTrack,1)  
+  void      SetParentId(const Int_t parentId) {fParentId = parentId;}
+
+  ClassDef(WCSimRootTrack,2)
 };
 
 
@@ -328,7 +334,8 @@ public:
 				   Double_t start[3],
 				   Int_t parenttype,
 				   Double_t time,
-				   Int_t id);
+				   Int_t id,
+				   Int_t parentId);
 
   WCSimRootTrack * AddTrack   (WCSimRootTrack * track);
   WCSimRootTrack * RemoveTrack(WCSimRootTrack * track);

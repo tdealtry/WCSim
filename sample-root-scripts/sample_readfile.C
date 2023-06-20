@@ -130,7 +130,12 @@ int sample_readfile(const char *filename="../wcsim.root", bool verbose=false)
         else cout<<"Final state particle track"<<endl;
         printf("  Track ipnu (PDG code): %d\n",wcsimroottrack->GetIpnu());
         printf("  PDG code of parent particle (0 for primary): %d\n",wcsimroottrack->GetParenttype());
-            
+
+	cout<<"  Track time: " << wcsimroottrack->GetTime() << endl;
+        cout<<"  Track initial position: ("
+            <<wcsimroottrack->GetStart(0)<<", "
+            <<wcsimroottrack->GetStart(1)<<", "
+            <<wcsimroottrack->GetStart(2)<<")"<<endl;
         cout<<"  Track initial dir [unit 3-vector]: ("
             <<wcsimroottrack->GetDir(0)<<", "
             <<wcsimroottrack->GetDir(1)<<", "
@@ -139,6 +144,7 @@ int sample_readfile(const char *filename="../wcsim.root", bool verbose=false)
         printf("  Track initial momentum magnitude [MeV/c]: %f\n", wcsimroottrack->GetP());
         printf("  Track mass [MeV/c2]: %f\n", wcsimroottrack->GetM());
         printf("  Track ID: %d\n", wcsimroottrack->GetId());
+        printf("  Track parent ID: %d\n", wcsimroottrack->GetParentId());
       }//verbose
     }  // itrack // End of loop over tracks
     
@@ -185,7 +191,7 @@ int sample_readfile(const char *filename="../wcsim.root", bool verbose=false)
       WCSimRootPMT pmt   = geo->GetPMT(tubeNumber-1);
       totalPe += peForTube;
      
-      if ( itruepmt < 10 ) { // Only print first XX=10 tubes
+      if ( 1 || itruepmt < 10 ) { // Only print first XX=10 tubes
 	if(verbose) printf("photon hits on tube %d : %d, times: ( ",tubeNumber,peForTube);
 	for (int itruehit = timeArrayIndex; itruehit < timeArrayIndex + peForTube; itruehit++) {
 	  WCSimRootCherenkovHitTime* HitTime = 
@@ -194,6 +200,14 @@ int sample_readfile(const char *filename="../wcsim.root", bool verbose=false)
 	  if(verbose) printf("%6.2f ", HitTime->GetTruetime() );
 	}//itruehit
 	if(verbose) cout << ")" << endl;
+	if(1 || verbose) {
+	  for (int itruehit = timeArrayIndex; itruehit < timeArrayIndex + peForTube; itruehit++) {
+	    WCSimRootCherenkovHitTime* HitTime =
+	      dynamic_cast<WCSimRootCherenkovHitTime*>(timeArray->At(itruehit));
+	    if(HitTime->GetParentID() != 1)
+	      cout << " " << HitTime->GetParentID() << endl;
+	  }
+	}
       }//itruepmt < 10
 
     } // itruepmt // End of loop over Cherenkov hits

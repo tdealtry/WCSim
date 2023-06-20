@@ -311,7 +311,8 @@ WCSimRootTrack *WCSimRootTrigger::AddTrack(Int_t ipnu,
 					   Double_t start[3],
 					   Int_t parenttype,
 					   Double_t time,
-					   Int_t id)
+					   Int_t id,
+					   Int_t parentId)
 {
   // Add a new WCSimRootTrack to the list of tracks for this event.
   // To avoid calling the very time consuming operator new for each track,
@@ -333,7 +334,9 @@ WCSimRootTrack *WCSimRootTrigger::AddTrack(Int_t ipnu,
 					   stop,
 					   start,
 					   parenttype,
-					  time,id);
+						time,
+						id,
+						parentId);
   fNtrack++;
   return track;
 }
@@ -370,7 +373,8 @@ WCSimRootTrack *WCSimRootTrigger::AddTrack(WCSimRootTrack * track)
 					  start,
 					  track->GetParenttype(),
 					  track->GetTime(),
-					  track->GetId());
+						track->GetId(),
+						track->GetParentId());
   fNtrack++;
   return track_out;
 }
@@ -399,7 +403,9 @@ WCSimRootTrack::WCSimRootTrack(Int_t ipnu,
 				 Double_t stop[3],
 				 Double_t start[3],
 				 Int_t parenttype,
-			         Double_t time,Int_t id)
+			       Double_t time,
+			       Int_t id,
+			       Int_t parentId)
 {
 
   // Create a WCSimRootTrack object and fill it with stuff
@@ -422,6 +428,7 @@ WCSimRootTrack::WCSimRootTrack(Int_t ipnu,
   fParenttype = parenttype;
   fTime = time;
   fId = id;
+  fParentId = parentId;
 }
 
 //_____________________________________________________________________________
@@ -620,6 +627,7 @@ bool WCSimRootTrack::CompareAllVariables(const WCSimRootTrack * c) const
   failed = (!ComparisonPassed(fParenttype, c->GetParenttype(), typeid(*this).name(), __func__, "Parenttype")) || failed;
   failed = (!ComparisonPassed(fTime, c->GetTime(), typeid(*this).name(), __func__, "Time")) || failed;
   failed = (!ComparisonPassed(fId, c->GetId(), typeid(*this).name(), __func__, "Id")) || failed;
+  failed = (!ComparisonPassed(fParentId, c->GetParentId(), typeid(*this).name(), __func__, "ParentId")) || failed;
 
   return !failed;
 }

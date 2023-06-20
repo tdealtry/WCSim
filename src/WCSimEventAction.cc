@@ -893,7 +893,9 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 			      stop,
 			      start,
 			      jhfNtuple.parent[k],
-			     jhfNtuple.time[k],0); 
+			     jhfNtuple.time[k],
+			     0,
+			     0); 
   }
 
   // the rest of the tracks come from WCSimTrajectory
@@ -923,6 +925,13 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
   //n_trajectories=50;    // existed in previous versions of the code.  It also
                           // makes the ROOT file smaller.  
 
+  //Not all tracks are saved in the output file
+  //Therefore, need to do some bookkeeping to make sure that
+  // the saved track parent IDs correspond to tracks that are saved
+  //This means that parent IDs aren't necessarily pointing to direct parents,
+  // but they do point to their ancestor
+  std::map<int, int> parentMap;
+  std::set<int>   savedTracks;
   for (int i=0; i <n_trajectories; i++) 
   {
     WCSimTrajectory* trj = (WCSimTrajectory*)(*TC)[i];
@@ -936,7 +945,8 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
     if ( trj->GetPDGEncoding() == 211 ) pionList.insert(trj->GetTrackID());
     if ( trj->GetPDGEncoding() == -211 ) antipionList.insert(trj->GetTrackID());
     if ( trj->GetParentID() == 0 ) primaryList.insert(trj->GetTrackID());
-       
+
+    parentMap[trj->GetTrackID()] = trj->GetParentID();
 
     // Process primary tracks or the secondaries from pizero or muons...
 
@@ -947,6 +957,7 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 
       G4int         ipnu   = trj->GetPDGEncoding();
       G4int         id     = trj->GetTrackID();
+      G4int         idPrnt = trj->GetParentID();
       G4int         flag   = 0;    // will be set later
       G4double      mass   = trj->GetParticleDefinition()->GetPDGMass();
       G4ThreeVector mom    = trj->GetInitialMomentum();
@@ -981,7 +992,8 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 	parentType = 211;
       } else if (primaryList.count(trj->GetParentID()) ) {
 	parentType = 1;
-      } else {  // no identified parent, but not a primary
+      } else {
+	// no identified parent, but not a primary
 	parentType = 999;
       }
 
@@ -1029,7 +1041,10 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 				  stop,
 				  start,
 				  parentType,
-				 ttime,id); 
+				 ttime,
+				 id,
+				 idPrnt);
+	savedTracks.insert(id);
       }
       
 
@@ -1058,9 +1073,55 @@ void WCSimEventAction::FillRootEvent(G4int event_id,
 		wcsimrootevent->SetPi0Info(pi0Vtx, gammaID, gammaE, gammaVtx);
 	  }
 	}
+      }//save pi0 info
+    }//save track
+  }//loop over trajectories: i
+
+  //Now that we have identified all the tracks that have been saved
+  // we modify the saved tracks' parent IDs,
+  // such that the saved tracks' parent ID corresponds to the
+  // first ancestor that is saved
+  for(int itrig = 0; itrig < ngates; itrig++) {
+    wcsimrootevent = wcsimrootsuperevent->GetTrigger(itrig);
+    for(int itrack = 0; itrack < wcsimrootevent->GetNtrack(); itrack++) {
+      TObject *element = (wcsimrootevent->GetTracks())->At(itrack);
+      WCSimRootTrack *track = dynamic_cast<WCSimRootTrack*>(element);
+      int track_id = track->GetId();
+      int parent_id = track->GetParentId();
+      G4cout << "Trigger " << itrig << " track " << itrack
+	     << " id " << track_id << " (" << track->GetIpnu()
+	     << " at";
+      for(int i = 0; i < 3; i++)
+	G4cout << " " << track->GetStart(i);
+      G4cout << " E = " << track->GetE()
+	     << ") direct parent " << parent_id << G4endl;
+      //ignore the special cases of primary neutrino / target
+      if(track->GetFlag() < 0)
+	continue;
+      //and the case where it has no parent
+      else if(track->GetParentId() == 0)
+	continue;
+      if(savedTracks.count(parent_id)) {
+	G4cout << "  Parent already saved!" << G4endl;
+	continue;
       }
-    }
-  }
+      //the direct parent isn't saved.
+      //search for the ancestor
+      int ancestor_id = -1;
+      while(true) {
+	//find the parent of the parent
+	ancestor_id = parentMap[parent_id];
+	G4cout << "  ancestor " << ancestor_id << G4endl;
+	//check if the ancestor is saved
+	if(savedTracks.count(ancestor_id))
+	  break;
+	//if not, setup the parent such that we can go further up the chain
+	parent_id = ancestor_id;
+      }
+      //finally update the info in the saved object
+      track->SetParentId(ancestor_id);
+    }//loop over tracks: itrack
+  }//loop over triggers: itrig
 
   // Add the Cherenkov hits
   wcsimrootevent = wcsimrootsuperevent->GetTrigger(0);
